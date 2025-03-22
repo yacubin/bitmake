@@ -1,0 +1,326 @@
+"use strict";
+
+const { cloneString } = require("###/bitmake/StrictType.js");
+const { Scope } = require("###/bitmake/Scope.js");
+const { SourceFile } = require("###/bitmake/SourceFile.js");
+const { SourceFileList } = require("###/bitmake/SourceFileList.js");
+const { IncludeDirectory } = require("###/bitmake/IncludeDirectory.js");
+const { InterfaceTarget } = require("###/bitmake/InterfaceTarget.js");
+const { InterfaceIncludes } = require("./InterfaceIncludes.js");
+const { InterfaceObjects } = require("./InterfaceObjects.js");
+const { AbsolutePath } = require("###/utils/AbsolutePath.js");
+
+const NAME                = Symbol("NAME");
+const TARGET_SCOPE        = Symbol("TARGET_SCOPE");
+const OUTPUT_NAME         = Symbol("OUTPUT_NAME");
+const COMPILE_OPTIONS     = Symbol("COMPILE_OPTIONS");
+const PREFIX              = Symbol("PREFIX");
+const SUFFIX              = Symbol("SUFFIX");
+const LINK_OPTIONS        = Symbol("LINK_OPTIONS");
+const INCLUDES            = Symbol("INCLUDES");
+const SOURCES             = Symbol("SOURCES");
+const LIBRARIES           = Symbol("LIBRARIES");
+const INSTALL_DESTINATION = Symbol("INSTALL_DESTINATION");
+
+function BaseTarget(scope, name) {
+  this[NAME] = cloneString(name);
+  this[TARGET_SCOPE] = Scope.prototype.clone.call(scope);
+  this[OUTPUT_NAME] = cloneString(name);
+  this[COMPILE_OPTIONS] = [];
+  this[PREFIX] = "";
+  this[SUFFIX] = "";
+  this[LINK_OPTIONS] = [];
+  this[INCLUDES] = [];
+  this[SOURCES] = [];
+  this[LIBRARIES] = [];
+  this[INSTALL_DESTINATION] = null;
+}
+
+BaseTarget.prototype = Object.create(Object.prototype, {
+  constructor: {
+    value: BaseTarget,
+    enumerable: false,
+  },
+  NAME: {
+    get() { return this[NAME]; },
+    enumerable: true,
+  },
+  TARGET_SCOPE: {
+    get() { return this[TARGET_SCOPE]; },
+    enumerable: true,
+  },
+  OUTPUT_NAME: {
+    get() { return this[OUTPUT_NAME]; },
+    set(value) { this[OUTPUT_NAME] = cloneString(value); },
+    enumerable: true,
+  },
+  COMPILE_OPTIONS: {
+    get() { return this[COMPILE_OPTIONS]; },
+    enumerable: true,
+  },
+  PREFIX: {
+    get() { return this[PREFIX]; },
+    set(value) { this[PREFIX] = value; },
+    enumerable: true,
+  },
+  SUFFIX: {
+    get() { return this[SUFFIX]; },
+    set(value) { this[SUFFIX] = value; },
+    enumerable: true,
+  },
+  LINK_OPTIONS: {
+    get() { return this[LINK_OPTIONS]; },
+    enumerable: true,
+  },
+  INCLUDES: {
+    get() { return this[INCLUDES]; },
+    enumerable: true,
+  },
+  SOURCES: {
+    get() { return this[SOURCES]; },
+    enumerable: true,
+  },
+  LIBRARIES: {
+    get() { return this[LIBRARIES]; },
+    enumerable: true,
+  },
+  INSTALL_DESTINATION: {
+    get() { return this[INSTALL_DESTINATION]; },
+    set(value) { this[INSTALL_DESTINATION] = value; },
+    enumerable: true,
+  },
+  FILE_DIR: {
+    get() { return this[TARGET_SCOPE].BINARY_DIR; },
+    enumerable: true,
+  },
+  FILE_NAME: {
+    get() { return this.PREFIX + this.OUTPUT_NAME + this.SUFFIX; },
+    enumerable: true,
+  },
+  FILE: {
+    get() { return this.FILE_DIR.join(this.FILE_NAME); },
+    enumerable: true,
+  },
+});
+
+BaseTarget.prototype.addSources = function(...sources) {
+  for (let it of sources.flat(1)) {
+    if (typeof it === "string" || AbsolutePath.isAbsolute(it))
+      it = SourceFile.create(this, it);
+    else
+      it = InterfaceObjects.asInstance(it);
+    this[SOURCES].push(it);
+  }
+}
+
+BaseTarget.prototype.addIncludes = function(...includes) {
+  for (const it of includes.flat(1)) {
+    let VALUE;
+    if (typeof it === "string" || AbsolutePath.isAbsolute(it))
+      VALUE = IncludeDirectory.create(this[TARGET_SCOPE], it);
+    else
+      VALUE = InterfaceIncludes.asInstance(it);
+    this[INCLUDES].push({VALUE}); // IncludeDirectory[]
+  }
+}
+
+BaseTarget.prototype.addLibraries = function(...libraries) {
+  for (const it of libraries.flat(1)) {
+    this[LIBRARIES].push({ VALUE: InterfaceTarget.asInstance(it) });
+  }
+}
+
+BaseTarget.prototype.addCompileOptions = function(...options) {
+  for (const it of options.flat(1)) {
+    this.COMPILE_OPTIONS.push(it);
+  }
+}
+
+BaseTarget.prototype.addLinkOptions = function(...options) {
+  for (const it of options.flat(1)) {
+    this.LINK_OPTIONS.push(it);
+  }
+}
+
+BaseTarget.prototype.addInstallDestination = function(dir) {
+  this[INSTALL_DESTINATION] = dir;
+}
+
+BaseTarget.prototype.getSourceFiles = function(...sources) {
+  const result = [];
+  for (const it of sources.flat(1)) {
+    const filename = this[TARGET_SCOPE].SOURCE_DIR.resolve(it).toString();
+    const src = this[SOURCES].find(i => i instanceof SourceFile && i.FILE.toString() === filename);
+    if (!src)
+      throw new Error(`Cannot find "${it}"`);
+    result.push(src);
+  }
+
+  if (result.length)
+    return SourceFileList.create(this[TARGET_SCOPE], result);
+
+  return SourceFileList.create(this[TARGET_SCOPE], this[SOURCES].filter(i => i instanceof SourceFile));
+}
+
+BaseTarget.prototype.setPrefix = function(prefix) {
+  this[PREFIX] = prefix;
+}
+
+BaseTarget.prototype.setSuffix = function(suffix) {
+  this[SUFFIX] = suffix;
+}
+
+BaseTarget.prototype.setOutputName = function(outputName) {
+  this[OUTPUT_NAME] = outputName;
+}
+
+BaseTarget.prototype.getIncludes = function() {
+  return this[INCLUDES].map(i => i.VALUE);
+}
+
+BaseTarget.prototype.getLibraries = function() {
+  return this[LIBRARIES].map(i => i.VALUE);
+}
+
+BaseTarget.prototype.getHeaders = function() {
+  return this[SOURCES].filter(i => i.HEADER_FILE_ONLY);
+}
+
+BaseTarget.prototype.toJSON = function() {
+  const json = {};
+  for (const key in this)
+    json[key] = this[key];
+  return json;
+}
+
+function BaseLibrary(scope, name) {
+  BaseTarget.call(this, scope, name);
+}
+
+BaseLibrary.prototype = Object.create(BaseTarget.prototype, {
+  constructor: {
+    value: BaseLibrary,
+    enumerable: false,
+    writable: true,
+    configurable: true,
+  },
+});
+
+BaseLibrary.prototype.addPublicIncludes = function(...includes) {
+  for (const it of includes.flat(1)) {
+    let VALUE;
+    if (typeof it === "string" || AbsolutePath.isAbsolute(it))
+      VALUE = IncludeDirectory.create(this[TARGET_SCOPE], it);
+    else
+      VALUE = InterfaceIncludes.asInstance(it);
+    this[INCLUDES].push({VALUE, PUBLIC_ONLY: true}); // IncludeDirectory[]
+  }
+}
+
+BaseLibrary.prototype.getPrivateIncludes = function() {
+  return this[INCLUDES].filter(i => !i.PUBLIC_ONLY).map(i => i.VALUE);
+}
+
+BaseLibrary.prototype.getPublicIncludes = function() {
+  return this[INCLUDES].filter(i => i.PUBLIC_ONLY).map(i => i.VALUE);
+}
+
+BaseLibrary.prototype.addPublicLibraries = function(...libraries) {
+  for (const it of libraries.flat(1)) {
+    this[LIBRARIES].push({VALUE: InterfaceTarget.asInstance(it), PUBLIC_ONLY: true});
+  }
+}
+
+BaseLibrary.prototype.getPrivateLibraries = function() {
+  return this[LIBRARIES].filter(i => !i.PUBLIC_ONLY).map(i => i.VALUE);
+}
+
+BaseLibrary.prototype.getPublicLibraries = function() {
+  return this[LIBRARIES].filter(i => i.PUBLIC_ONLY).map(i => i.VALUE);
+}
+
+function ObjectLibrary(scope, name) {
+  BaseLibrary.call(this, scope, name);
+  this.PREFIX = this[TARGET_SCOPE].OBJECT_LIBRARY_PREFIX;
+  this.SUFFIX = this[TARGET_SCOPE].OBJECT_LIBRARY_SUFFIX;
+  this.LINK_OPTIONS.push(...this[TARGET_SCOPE].OBJECT_LINKER_FLAGS);
+}
+
+ObjectLibrary.prototype = Object.create(BaseLibrary.prototype, {
+  constructor: {
+    value: ObjectLibrary,
+    enumerable: false,
+    writable: true,
+    configurable: true,
+  },
+});
+
+ObjectLibrary.create = (scope, name) => {
+  return Object.seal(new ObjectLibrary(scope, name));
+}
+
+function StaticLibrary(scope, name) {
+  BaseLibrary.call(this, scope, name);
+  this.PREFIX = this[TARGET_SCOPE].STATIC_LIBRARY_PREFIX;
+  this.SUFFIX = this[TARGET_SCOPE].STATIC_LIBRARY_SUFFIX;
+  this.LINK_OPTIONS.push(...this[TARGET_SCOPE].STATIC_LINKER_FLAGS);
+}
+
+StaticLibrary.prototype = Object.create(BaseLibrary.prototype, {
+  constructor: {
+    value: StaticLibrary,
+    enumerable: false,
+    writable: true,
+    configurable: true,
+  },
+});
+
+StaticLibrary.create = (scope, name) => {
+  return Object.seal(new StaticLibrary(scope, name));
+}
+
+function SharedLibrary(scope, name) {
+  BaseLibrary.call(this, scope, name);
+  this.PREFIX = this[TARGET_SCOPE].SHARED_LIBRARY_PREFIX;
+  this.SUFFIX = this[TARGET_SCOPE].SHARED_LIBRARY_SUFFIX;
+  this.LINK_OPTIONS.push(...this[TARGET_SCOPE].SHARED_LINKER_FLAGS);
+}
+
+SharedLibrary.prototype = Object.create(BaseLibrary.prototype, {
+  constructor: {
+    value: SharedLibrary,
+    enumerable: false,
+    writable: true,
+    configurable: true,
+  },
+});
+
+SharedLibrary.create = (scope, name) => {
+  return Object.seal(new SharedLibrary(scope, name));
+}
+
+function Executable(scope, name) {
+  BaseTarget.call(this, scope, name);
+  this.SUFFIX = this[TARGET_SCOPE].EXECUTABLE_SUFFIX;
+  this.LINK_OPTIONS.push(...this[TARGET_SCOPE].EXE_LINKER_FLAGS);
+}
+
+Executable.prototype = Object.create(BaseTarget.prototype, {
+  constructor: {
+    value: Executable,
+    enumerable: false,
+    writable: true,
+    configurable: true,
+  },
+});
+
+Executable.create = (scope, name) => {
+  return Object.seal(new Executable(scope, name));
+}
+
+module.exports = {
+  ObjectLibrary,
+  StaticLibrary,
+  SharedLibrary,
+  Executable,
+};

@@ -1,0 +1,27 @@
+{
+  "name": "bitmake",
+  "version": "0.0.1-develop.1",
+  "description": "",
+  "author": "Yurii Yakubin",
+  "homepage": "https://github.com/ykbin/bitmake#readme",
+  "imports": {
+    "###/*": "./src/*"
+  },
+  "exports": {
+    ".": "./src/main.js",
+    "./*": "./src/*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ykbin/bitmake.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ykbin/bitmake/issues",
+    "email": "yurii.yakubin@gmail.com"
+  },
+  "bin": {
+    "bitmake": "src/bitmake-cli.mjs"
+  },
+  "dependencies": {
+  }
+}

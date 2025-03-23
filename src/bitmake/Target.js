@@ -1,6 +1,6 @@
 "use strict";
 
-const { cloneString } = require("###/bitmake/StrictType.js");
+const { ensureString } = require("###/bitmake/StrictType.js");
 const { Scope } = require("###/bitmake/Scope.js");
 const { SourceFile } = require("###/bitmake/SourceFile.js");
 const { SourceFileList } = require("###/bitmake/SourceFileList.js");
@@ -20,12 +20,20 @@ const LINK_OPTIONS        = Symbol("LINK_OPTIONS");
 const INCLUDES            = Symbol("INCLUDES");
 const SOURCES             = Symbol("SOURCES");
 const LIBRARIES           = Symbol("LIBRARIES");
-const INSTALL_DESTINATION = Symbol("INSTALL_DESTINATION");
+
+const reservedTagetNames = [ "all", "install" ];
+function ensureTargetName(name) {
+  if (typeof name !== "string")
+    throw new Error(`Target "${name}" is not string type`);
+  if (reservedTagetNames.includes(name))
+    throw new Error(`Target "${name}" is reserved name`);
+  return name;
+}
 
 function BaseTarget(scope, name) {
-  this[NAME] = cloneString(name);
+  this[NAME] = ensureTargetName(name);
   this[TARGET_SCOPE] = Scope.prototype.clone.call(scope);
-  this[OUTPUT_NAME] = cloneString(name);
+  this[OUTPUT_NAME] = ensureString(name);
   this[COMPILE_OPTIONS] = [];
   this[PREFIX] = "";
   this[SUFFIX] = "";
@@ -33,7 +41,6 @@ function BaseTarget(scope, name) {
   this[INCLUDES] = [];
   this[SOURCES] = [];
   this[LIBRARIES] = [];
-  this[INSTALL_DESTINATION] = null;
 }
 
 BaseTarget.prototype = Object.create(Object.prototype, {
@@ -47,11 +54,11 @@ BaseTarget.prototype = Object.create(Object.prototype, {
   },
   TARGET_SCOPE: {
     get() { return this[TARGET_SCOPE]; },
-    enumerable: true,
+    enumerable: false,
   },
   OUTPUT_NAME: {
     get() { return this[OUTPUT_NAME]; },
-    set(value) { this[OUTPUT_NAME] = cloneString(value); },
+    set(value) { this[OUTPUT_NAME] = ensureString(value); },
     enumerable: true,
   },
   COMPILE_OPTIONS: {
@@ -84,11 +91,6 @@ BaseTarget.prototype = Object.create(Object.prototype, {
     get() { return this[LIBRARIES]; },
     enumerable: true,
   },
-  INSTALL_DESTINATION: {
-    get() { return this[INSTALL_DESTINATION]; },
-    set(value) { this[INSTALL_DESTINATION] = value; },
-    enumerable: true,
-  },
   FILE_DIR: {
     get() { return this[TARGET_SCOPE].BINARY_DIR; },
     enumerable: true,
@@ -108,7 +110,7 @@ BaseTarget.prototype.addSources = function(...sources) {
     if (typeof it === "string" || AbsolutePath.isAbsolute(it))
       it = SourceFile.create(this, it);
     else
-      it = InterfaceObjects.asInstance(it);
+      it = InterfaceObjects.ensureInstance(it);
     this[SOURCES].push(it);
   }
 }
@@ -119,14 +121,14 @@ BaseTarget.prototype.addIncludes = function(...includes) {
     if (typeof it === "string" || AbsolutePath.isAbsolute(it))
       VALUE = IncludeDirectory.create(this[TARGET_SCOPE], it);
     else
-      VALUE = InterfaceIncludes.asInstance(it);
+      VALUE = InterfaceIncludes.ensureInstance(it);
     this[INCLUDES].push({VALUE}); // IncludeDirectory[]
   }
 }
 
 BaseTarget.prototype.addLibraries = function(...libraries) {
   for (const it of libraries.flat(1)) {
-    this[LIBRARIES].push({ VALUE: InterfaceTarget.asInstance(it) });
+    this[LIBRARIES].push({ VALUE: InterfaceTarget.ensureInstance(it) });
   }
 }
 
@@ -140,10 +142,6 @@ BaseTarget.prototype.addLinkOptions = function(...options) {
   for (const it of options.flat(1)) {
     this.LINK_OPTIONS.push(it);
   }
-}
-
-BaseTarget.prototype.addInstallDestination = function(dir) {
-  this[INSTALL_DESTINATION] = dir;
 }
 
 BaseTarget.prototype.getSourceFiles = function(...sources) {
@@ -212,7 +210,7 @@ BaseLibrary.prototype.addPublicIncludes = function(...includes) {
     if (typeof it === "string" || AbsolutePath.isAbsolute(it))
       VALUE = IncludeDirectory.create(this[TARGET_SCOPE], it);
     else
-      VALUE = InterfaceIncludes.asInstance(it);
+      VALUE = InterfaceIncludes.ensureInstance(it);
     this[INCLUDES].push({VALUE, PUBLIC_ONLY: true}); // IncludeDirectory[]
   }
 }
@@ -227,7 +225,7 @@ BaseLibrary.prototype.getPublicIncludes = function() {
 
 BaseLibrary.prototype.addPublicLibraries = function(...libraries) {
   for (const it of libraries.flat(1)) {
-    this[LIBRARIES].push({VALUE: InterfaceTarget.asInstance(it), PUBLIC_ONLY: true});
+    this[LIBRARIES].push({VALUE: InterfaceTarget.ensureInstance(it), PUBLIC_ONLY: true});
   }
 }
 
@@ -319,6 +317,7 @@ Executable.create = (scope, name) => {
 }
 
 module.exports = {
+  BaseTarget,
   ObjectLibrary,
   StaticLibrary,
   SharedLibrary,

@@ -1,6 +1,6 @@
 "use strict";
 
-const { cloneBoolean } = require("###/bitmake/StrictType.js");
+const { ensureBoolean } = require("###/bitmake/StrictType.js");
 
 const TARGET_SCOPE        = Symbol("TARGET_SCOPE");
 const NAME                = Symbol("NAME");
@@ -9,8 +9,6 @@ const HEADER_FILE_ONLY    = Symbol("HEADER_FILE_ONLY");
 const COMPILE_FLAGS       = Symbol("COMPILE_FLAGS");
 const FILE                = Symbol("FILE");
 const OBJECT_FILE         = Symbol("OBJECT_FILE");
-const INSTALL_BASE_DIR    = Symbol("INSTALL_BASE_DIR");
-const INSTALL_DESTINATION = Symbol("INSTALL_DESTINATION");
 
 const _languageExtensions = {
   ASM: [ ".asm", ".s" ],
@@ -48,8 +46,6 @@ function SourceFile(target, filename) {
   this[LANGUAGE] = getFileLanguage(fname);
   this[HEADER_FILE_ONLY] = !this[LANGUAGE];
   this[COMPILE_FLAGS] = [];
-  this[INSTALL_BASE_DIR] = fname.dirname();
-  this[INSTALL_DESTINATION] = null;
   this[FILE] = fname;
 
   if (this[LANGUAGE]) {
@@ -86,49 +82,11 @@ SourceFile.prototype = Object.create(Object.prototype, {
   },
   HEADER_FILE_ONLY: {
     get() { return this[HEADER_FILE_ONLY]; },
-    set(value) { this[HEADER_FILE_ONLY] = cloneBoolean(value); },
+    set(value) { this[HEADER_FILE_ONLY] = ensureBoolean(value); },
     enumerable: true,
   },
   COMPILE_FLAGS: {
     get() { return this[COMPILE_FLAGS]; },
-    enumerable: true,
-  },
-  INSTALL_BASE_DIR: {
-    get() { return this[INSTALL_BASE_DIR]; },
-    enumerable: true,
-  },
-  INSTALL_DESTINATION: {
-    get() { return this[INSTALL_DESTINATION]; },
-    enumerable: true,
-  },
-  INSTALL_FILE: {
-    get() {
-      if (this[INSTALL_DESTINATION])
-        return this.INSTALL_FILE_DIR.join(this.INSTALL_FILE_NAME);
-      return null;
-    },
-    enumerable: true,
-  },
-  INSTALL_FILE_DIR: {
-    get() {
-      if (this[INSTALL_DESTINATION]) {
-        let dest = this[TARGET_SCOPE].INSTALL_PREFIX.resolve(this[INSTALL_DESTINATION]);
-
-        if (this[TARGET_SCOPE].DESTDIR)
-          dest = this[TARGET_SCOPE].DESTDIR.join(dest);
-
-        return dest.join(this[INSTALL_BASE_DIR].relative(this.FILE_DIR));
-      }
-      return null;
-    },
-    enumerable: true,
-  },
-  INSTALL_FILE_NAME: {
-    get() {
-      if (this[INSTALL_DESTINATION])
-        return this[FILE].basename();
-      return null;
-    },
     enumerable: true,
   },
   FILE: {
@@ -156,14 +114,6 @@ SourceFile.prototype = Object.create(Object.prototype, {
     enumerable: true,
   },
 });
-
-SourceFile.prototype.setInstallBaseDir = function(baseDir) {
-  this[INSTALL_BASE_DIR] = this[TARGET_SCOPE].SOURCE_DIR.resolve(baseDir);
-}
-
-SourceFile.prototype.setInstallDestination = function(destination) {
-  this[INSTALL_DESTINATION] = destination;
-}
 
 SourceFile.prototype.toJSON = function() {
   const json = {};

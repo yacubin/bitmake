@@ -1,5 +1,6 @@
 "use strict";
 
+const { DirPath } = require("./Path.js");
 const { AbsolutePath } = require("###/utils/AbsolutePath.js");
 
 const SYSTEM_NAME           = Symbol("SYSTEM_NAME");
@@ -54,7 +55,7 @@ function Scope() {
   this[PROJECT_BINARY_DIR]    = null;
   this[BUILD_TYPE]            = "Debug";
   this[DESTDIR]               = "";
-  this[INSTALL_PREFIX]        = null;
+  this[INSTALL_PREFIX]        = DirPath.create("/usr");
   this[SCRIPT_FILE]           = null;
   this[SOURCE_DIR]            = null;
   this[BINARY_DIR]            = null;
@@ -131,6 +132,7 @@ Scope.prototype = Object.create(Object.prototype, {
   },
   INSTALL_PREFIX: {
     get () { return this[INSTALL_PREFIX]; },
+    set(value) { this[INSTALL_PREFIX] = DirPath.create(value); },
     enumerable: true,
   },
   SCRIPT_FILE: {
@@ -292,7 +294,7 @@ Scope.prototype.clone = function() {
   o[PROJECT_BINARY_DIR]    = AbsolutePath.create(this.PROJECT_BINARY_DIR);
   o[BUILD_TYPE]            = this.BUILD_TYPE;
   o[DESTDIR]               = AbsolutePath.create(this.DESTDIR);
-  o[INSTALL_PREFIX]        = AbsolutePath.create(this.INSTALL_PREFIX);
+  o[INSTALL_PREFIX]        = this.INSTALL_PREFIX;
   o[SCRIPT_FILE]           = AbsolutePath.create(this.SCRIPT_FILE);
   o[SOURCE_DIR]            = AbsolutePath.create(this.SOURCE_DIR);
   o[BINARY_DIR]            = AbsolutePath.create(this.BINARY_DIR);

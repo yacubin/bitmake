@@ -24,14 +24,6 @@ SourceFileList.prototype.addCompileFlags = function(flags) {
   this[SOURCES].forEach(i => i.COMPILE_FLAGS.push(flags));
 }
 
-SourceFileList.prototype.setInstallBaseDir = function(baseDir) {
-  this[SOURCES].forEach(i => i.setInstallBaseDir(baseDir));
-}
-
-SourceFileList.prototype.setInstallDestination = function(destination) {
-  this[SOURCES].forEach(i => i.setInstallDestination(destination));
-}
-
 SourceFileList.prototype.sourceAt = function(index) {
   return this[SOURCES][index];
 }

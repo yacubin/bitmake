@@ -1,7 +1,7 @@
 "use strict";
 
 const { Scope } = require("###/bitmake/Scope.js");
-const { cloneString } = require("###/bitmake/StrictType.js");
+const { ensureString } = require("###/bitmake/StrictType.js");
 const { AbsolutePath } = require("###/utils/AbsolutePath.js");
 
 const TARGET_SCOPE = Symbol("TARGET_SCOPE");
@@ -16,7 +16,7 @@ const SYSTEM_SCRIPTS_DIR = AbsolutePath.create(__dirname).join("SystemScripts");
 
 function CustomScript(scope, name, params) {
   this[TARGET_SCOPE] = Scope.prototype.clone.call(scope);
-  this[NAME] = cloneString(name);
+  this[NAME] = ensureString(name);
 
   if (!params || !params.script || !params.output)
     throw new Error(`Uknown params ${JSON.stringify(params)}`);

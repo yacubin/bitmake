@@ -13,6 +13,7 @@ const { InterfaceScript } = require("./InterfaceScript.js");
 const { ScriptCollection } = require("./ScriptCollection.js");
 const { TargetCollection } = require("./TargetCollection.js");
 const { DirPath, FilePath } = require("./Path.js");
+const { InstallEntity } = require("./InstallEntity.js");
 
 module.exports = {
   Scope,
@@ -32,4 +33,5 @@ module.exports = {
   TargetCollection,
   DirPath,
   FilePath,
+  InstallEntity,
 };

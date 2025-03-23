@@ -12,7 +12,7 @@ InterfaceScript.create = (name) => {
   return Object.seal(new InterfaceScript(name));
 }
 
-InterfaceScript.asInstance = (value) => {
+InterfaceScript.ensureInstance = (value) => {
   if (value instanceof InterfaceScript)
     return value;
   throw new Error(`The '${value}' is not a InterfaceScript`);

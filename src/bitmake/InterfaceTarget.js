@@ -46,7 +46,7 @@ InterfaceTarget.create = (name) => {
   return Object.seal(new InterfaceTarget(name));
 }
 
-InterfaceTarget.asInstance = (value) => {
+InterfaceTarget.ensureInstance = (value) => {
   if (value instanceof InterfaceTarget)
     return value;
   throw new Error(`The '${value}' is not a InterfaceTarget`);

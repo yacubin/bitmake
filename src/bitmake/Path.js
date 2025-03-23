@@ -69,6 +69,12 @@ function FilePath(path) {
 }
 
 FilePath.create = (path) => {
+  if (path instanceof FilePath)
+    return path;
+
+  if (typeof path !== "string")
+    throw new Error(`The '${path}' is not a string`);
+
   let filePath = _paths.get(path);
   if (filePath)
     return FilePath.ensureInstance(filePath);
@@ -97,6 +103,12 @@ function DirPath(path) {
 }
 
 DirPath.create = (path) => {
+  if (path instanceof DirPath)
+    return path;
+
+  if (typeof path !== "string")
+    throw new Error(`The '${path}' is not a string`);
+
   let dirPath = _paths.get(path);
   if (dirPath)
     return DirPath.ensureInstance(dirPath);

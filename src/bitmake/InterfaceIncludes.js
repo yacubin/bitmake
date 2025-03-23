@@ -10,7 +10,7 @@ InterfaceIncludes.create = (name) => {
   return Object.seal(new InterfaceIncludes(name));
 }
 
-InterfaceIncludes.asInstance = (value) => {
+InterfaceIncludes.ensureInstance = (value) => {
   if (value instanceof InterfaceIncludes)
     return value;
   throw new Error(`The '${value}' is not a InterfaceIncludes`);

@@ -193,13 +193,57 @@ const INTERFACE_TARGETS = Symbol("INTERFACE_TARGETS");
 const INTERFACE_SCRIPTS = Symbol("INTERFACE_SCRIPTS");
 const INSTALL_LIST = Symbol("INSTALL_LIST");
 
-function UserContext() {
+function GlobalContext() {
   this[TARGETS] = bitmake.TargetCollection.create();
   this[SCRIPTS] = bitmake.ScriptCollection.create();
   this[CACHE] = {};
   this[INTERFACE_TARGETS] = {};
   this[INTERFACE_SCRIPTS] = {};
   this[INSTALL_LIST] = [];
+}
+
+GlobalContext.prototype = Object.create(Object.prototype, {
+  constructor: {
+    value: GlobalContext,
+    enumerable: false,
+  },
+  TARGETS: {
+    get() { return this[TARGETS]; },
+    enumerable: true,
+  },
+  SCRIPTS: {
+    get() { return this[SCRIPTS]; },
+    enumerable: true,
+  },
+  CACHE: {
+    get() { return this[CACHE]; },
+    enumerable: true,
+  },
+  INTERFACE_TARGETS: {
+    get() { return this[INTERFACE_TARGETS]; },
+    enumerable: true,
+  },
+  INTERFACE_SCRIPTS: {
+    get() { return this[INTERFACE_SCRIPTS]; },
+    enumerable: true,
+  },
+  INSTALL_LIST: {
+    get() { return this[INSTALL_LIST]; },
+    enumerable: true,
+  },
+});
+
+GlobalContext.prototype.toJSON = function() {
+  const json = {};
+  for (const key in this)
+    json[key] = this[key];
+  return json;
+}
+
+const GLOBAL = Symbol("GLOBAL");
+
+function UserContext(global) {
+  this[GLOBAL] = global;
 }
 
 function makeLogger(loggerFunc, withTag) {
@@ -241,14 +285,14 @@ UserContext.prototype.__loadCacheVariables = function() {
 UserContext.prototype.__syncCacheVariables = function() {
   this.logDebug(currentFunctionName());
   const filename = this.PROJECT_BINARY_DIR.join(MAKE_CACHE).toString();
-  const json = JSON.stringify(this[CACHE], null, 2);
+  const json = JSON.stringify(this[GLOBAL].CACHE, null, 2);
   fs.writeFileSync(filename, json, "utf-8");
 }
 
 UserContext.prototype.getCacheVariables = function() {
   this.logDebug(currentFunctionName());
   const result = {};
-  for (const [key, entry] of Object.entries(this[CACHE])) {
+  for (const [key, entry] of Object.entries(this[GLOBAL].CACHE)) {
     const value = copyValue(this[key]);
     result[key] = {
       type: copyValue(entry.type) || typeof value,
@@ -274,7 +318,7 @@ UserContext.prototype.addCacheVariables = function(params) {
   }
 
   for (const [key, entry] of Object.entries(variables)) {
-    this[CACHE][key] = entry;
+    this[GLOBAL].CACHE[key] = entry;
     if (!Object.hasOwn(this, key)) {
       this[key] = entry.value;
     }
@@ -318,17 +362,17 @@ UserContext.prototype.addCustomScript = function(name, params) {
   this.logDebug(currentFunctionName(), name);
 
   const target = bitmake.CustomScript.create(this, name, params);
-  this[SCRIPTS].set(name, target);
+  this[GLOBAL].SCRIPTS.set(name, target);
   return target;
 }
 
 UserContext.prototype.target = function(name) {
   this.logDebug(currentFunctionName(), name);
 
-  let target = this[INTERFACE_TARGETS][name];
+  let target = this[GLOBAL].INTERFACE_TARGETS[name];
   if (!target) {
     target = bitmake.InterfaceTarget.create(name);
-    this[INTERFACE_TARGETS][name] = target;
+    this[GLOBAL].INTERFACE_TARGETS[name] = target;
   }
 
   return target.forUser(this);
@@ -337,10 +381,10 @@ UserContext.prototype.target = function(name) {
 UserContext.prototype.script = function(name) {
   this.logDebug(currentFunctionName(), name);
 
-  let script = this[INTERFACE_SCRIPTS][name];
+  let script = this[GLOBAL].INTERFACE_SCRIPTS[name];
   if (!script) {
     script = bitmake.InterfaceScript.create(name);
-    this[INTERFACE_SCRIPTS][name] = script;
+    this[GLOBAL].INTERFACE_SCRIPTS[name] = script;
   }
 
   return script;
@@ -349,7 +393,7 @@ UserContext.prototype.script = function(name) {
 UserContext.prototype.install = function(value, params) {
   for (const iter of [ value ].flat(1)) {
     const entity = bitmake.InstallEntity.create(this, iter, params);
-    this[INSTALL_LIST].push(entity);
+    this[GLOBAL].INSTALL_LIST.push(entity);
   }
 }
 
@@ -373,28 +417,13 @@ UserContext.prototype.dump = function() {
   }
 }
 
-UserContext.prototype.__saveContextAsJSON = function(filename) {
-  this.logDebug(currentFunctionName(), filename);
-  const json = {
-    TARGETS: this[TARGETS],
-    SCRIPTS: this[SCRIPTS],
-    CACHE: this[CACHE],
-    INTERFACE_TARGETS: this[INTERFACE_TARGETS],
-    INTERFACE_SCRIPTS: this[INTERFACE_SCRIPTS],
-    INSTALL_LIST: this[INSTALL_LIST],
-  };
-  const content = JSON.stringify(json, null, 2);
-  fs.mkdirSync(path.dirname(filename), { recursive: true });
-  fs.writeFileSync(filename, content, { encoding: "utf8" });
-}
-
 UserContext.prototype.addStaticLibrary = function(name, ...sources) {
   this.logDebug(currentFunctionName(), name);
 
   const target = bitmake.StaticLibrary.create(this, name);
   target.addSources(...sources);
 
-  this[TARGETS].set(name, target);
+  this[GLOBAL].TARGETS.set(name, target);
   return target;
 }
 
@@ -404,7 +433,7 @@ UserContext.prototype.addObjectLibrary = function(name, ...sources) {
   const target = bitmake.ObjectLibrary.create(this, name);
   target.addSources(...sources);
 
-  this[TARGETS].set(name, target);
+  this[GLOBAL].TARGETS.set(name, target);
   return target;
 }
 
@@ -414,7 +443,7 @@ UserContext.prototype.addSharedLibrary = function(name, ...sources) {
   const target = bitmake.SharedLibrary.create(this, name);
   target.addSources(...sources);
 
-  this[TARGETS].set(name, target);
+  this[GLOBAL].TARGETS.set(name, target);
   return target;
 }
 
@@ -424,7 +453,7 @@ UserContext.prototype.addExecutable = function(name, ...sources) {
   const target = bitmake.Executable.create(this, name);
   target.addSources(...sources);
 
-  this[TARGETS].set(name, target);
+  this[GLOBAL].TARGETS.set(name, target);
   return target;
 }
 
@@ -456,7 +485,7 @@ UserContext.prototype.__getAllIncludes = function(includes, targetSet, list) {
     if (iter instanceof bitmake.InterfaceIncludes || iter instanceof bitmake.InterfaceTarget) {
       if (!targetSet.has(iter.NAME)) {
         targetSet.add(iter.NAME);
-        const target = this[TARGETS].get(iter.NAME);
+        const target = this[GLOBAL].TARGETS.get(iter.NAME);
         this.__getAllIncludes(includes, targetSet, target.getPublicIncludes());
         this.__getAllIncludes(includes, targetSet, target.getPublicLibraries());
       }
@@ -484,7 +513,7 @@ UserContext.prototype.__getAllHeaders = function(headers, targetSet, list) {
     if (iter instanceof bitmake.InterfaceIncludes || iter instanceof bitmake.InterfaceTarget) {
       if (!targetSet.has(iter.NAME)) {
         targetSet.add(iter.NAME);
-        const target = this[TARGETS].get(iter.NAME);
+        const target = this[GLOBAL].TARGETS.get(iter.NAME);
         for (const header of target.getHeaders().map(i => i.FILE.toString())) {
           if (!headers.includes(header.toString()))
             headers.push(header.toString());
@@ -509,7 +538,7 @@ UserContext.prototype.__getAllLibraries = function(libraries, targetSet, list) {
     console.assert(iter instanceof bitmake.InterfaceTarget);
     if (!targetSet.has(iter.NAME)) {
       targetSet.add(iter.NAME);
-      const target = this[TARGETS].get(iter.NAME);
+      const target = this[GLOBAL].TARGETS.get(iter.NAME);
       libraries.push(target.FILE.toString());
       this.__getAllLibraries(libraries, targetSet, target.getPublicLibraries());
     }
@@ -526,8 +555,8 @@ UserContext.prototype.getAllLibraries = function(target) {
 UserContext.prototype.__createGoalList = function() {
   const goalList = new GoalList;
   this.logDebug(currentFunctionName());
-  for (const iter of Object.values(this[INTERFACE_TARGETS])) {
-    const target = this[TARGETS].get(iter.NAME);
+  for (const iter of Object.values(this[GLOBAL].INTERFACE_TARGETS)) {
+    const target = this[GLOBAL].TARGETS.get(iter.NAME);
     target.addSources(iter.SOURCES);
     for (const it of iter.INCLUDES) {
       if (it.PUBLIC_ONLY)
@@ -537,13 +566,13 @@ UserContext.prototype.__createGoalList = function() {
     }
   }
 
-  for (const iter of Object.values(this[INTERFACE_SCRIPTS])) {
-    const script = this[SCRIPTS].get(iter.NAME);
+  for (const iter of Object.values(this[GLOBAL].INTERFACE_SCRIPTS)) {
+    const script = this[GLOBAL].SCRIPTS.get(iter.NAME);
     for (const [key, vals] of Object.entries(iter.PROPERTIES))
       script.addProperty(key, ...vals);
   }
 
-  for (const [name, script] of Object.entries(this[SCRIPTS].ENTRIES)) {   
+  for (const [name, script] of Object.entries(this[GLOBAL].SCRIPTS.ENTRIES)) {   
     const depends = [ script.FILE.toString() ];
     if (script.INPUT)
       depends.push(script.INPUT.toString());
@@ -552,12 +581,12 @@ UserContext.prototype.__createGoalList = function() {
     goalList.addScript(script.FILE, "", depends, script.OUTPUT.toString(), params, msg);
   }
 
-  for (const [name, target] of Object.entries(this[TARGETS].ENTRIES)) {
+  for (const [name, target] of Object.entries(this[GLOBAL].TARGETS.ENTRIES)) {
     const headers = this.getAllHeaders(target);
     const depends = [];
     for (const s of target.SOURCES) {
       if (s instanceof bitmake.InterfaceObjects) {
-        const t = this[TARGETS].get(s.NAME);
+        const t = this[GLOBAL].TARGETS.get(s.NAME);
         for (const f of t.SOURCES) {
           if (f instanceof bitmake.SourceFile && f.OBJECT_FILE)
             depends.push(f.OBJECT_FILE.toString());
@@ -646,7 +675,7 @@ UserContext.prototype.__createGoalList = function() {
 
   const install_files = [];
   const install_script = path.posix.join(__dirname, "bitmake/SystemScripts/install_script.js");
-  for (const iter of this[INSTALL_LIST]) {
+  for (const iter of this[GLOBAL].INSTALL_LIST) {
     let src, dest;
     if (iter.VALUE instanceof bitmake.FilePath) {
       src = iter.VALUE.toString();
@@ -654,7 +683,7 @@ UserContext.prototype.__createGoalList = function() {
       dest = iter.DESTINATION.join(rfile);
     }
     else if (iter.VALUE instanceof bitmake.InterfaceTarget) {
-      const target = this[TARGETS].get(iter.VALUE.NAME);
+      const target = this[GLOBAL].TARGETS.get(iter.VALUE.NAME);
       src = target.FILE.toString();
       dest = iter.DESTINATION.join(target.FILE_NAME);
     }
@@ -668,7 +697,7 @@ UserContext.prototype.__createGoalList = function() {
   }
 
   goalList.addTarget("install", install_files, "");
-  goalList.addTarget("all", Object.keys(this[TARGETS].ENTRIES), "");
+  goalList.addTarget("all", Object.keys(this[GLOBAL].TARGETS.ENTRIES), "");
 
   return goalList;
 }
@@ -683,12 +712,7 @@ UserContext.prototype.__clone = function() {
       o[k] = cloneScopeValue(v);
   }
 
-  o[TARGETS] = this[TARGETS];
-  o[SCRIPTS] = this[SCRIPTS];
-  o[CACHE] = this[CACHE];
-  o[INTERFACE_TARGETS] = this[INTERFACE_TARGETS];
-  o[INTERFACE_SCRIPTS] = this[INTERFACE_SCRIPTS];
-  o[INSTALL_LIST] = this[INSTALL_LIST];
+  o[GLOBAL] = this[GLOBAL];
 
   return o;
 }
@@ -697,7 +721,8 @@ async function actionMakeScript(config, environment, settings)
 {
   process.env = environment;
 
-  const root = new UserContext;
+  const global = new GlobalContext;
+  const root = new UserContext(global);
 
   root.SYSTEM_NAME = "Linux";
 
@@ -760,8 +785,11 @@ async function actionMakeScript(config, environment, settings)
   root.__applyDirectory(root.PROJECT_SOURCE_DIR, root.PROJECT_BINARY_DIR);
   root.logInfo("Configuring done");
 
-  if (root.MAKE_CONTEXT_JSON) {
-    root.__saveContextAsJSON(root.MAKE_CONTEXT_JSON.toString());
+  if (root.GLOBAL_CONTEXT_JSON) {
+    const filename = root.GLOBAL_CONTEXT_JSON.toString();
+    const content = JSON.stringify(global, null, 2);
+    fs.mkdirSync(path.dirname(filename), { recursive: true });
+    fs.writeFileSync(filename, content, { encoding: "utf8" });
   }
 
   const allGoalList = root.__createGoalList();

@@ -10,6 +10,7 @@ const { fileExistsSync } = require("###/utils/FileSystem.js");
 const { AbsolutePath } = require("###/utils/AbsolutePath.js");
 const bitmake = require("###/bitmake/index.js");
 
+const PACKAGE_JSON = "package.json";
 const MAKE_SCRIPT = "MakeScript.js";
 const MAKE_CACHE = "MakeCache.json";
 
@@ -192,7 +193,7 @@ const INTERFACE_TARGETS = Symbol("INTERFACE_TARGETS");
 const INTERFACE_SCRIPTS = Symbol("INTERFACE_SCRIPTS");
 const INSTALL_LIST = Symbol("INSTALL_LIST");
 
-function MakeContext() {
+function UserContext() {
   this[TARGETS] = bitmake.TargetCollection.create();
   this[SCRIPTS] = bitmake.ScriptCollection.create();
   this[CACHE] = {};
@@ -218,18 +219,18 @@ function makeLogger(loggerFunc, withTag) {
   };
 }
 
-MakeContext.prototype.logDefault = makeLogger(console.log);
-MakeContext.prototype.logInfo = makeLogger(console.info);
-MakeContext.prototype.logDebug = makeLogger(/*console.debug*/);
-MakeContext.prototype.logWarn = makeLogger(console.warn);
-MakeContext.prototype.logError = makeLogger(console.error);
+UserContext.prototype.logDefault = makeLogger(console.log);
+UserContext.prototype.logInfo = makeLogger(console.info);
+UserContext.prototype.logDebug = makeLogger(/*console.debug*/);
+UserContext.prototype.logWarn = makeLogger(console.warn);
+UserContext.prototype.logError = makeLogger(console.error);
 
-MakeContext.prototype.__logTag = function() {
+UserContext.prototype.__logTag = function() {
   const tag = this.PROJECT_SOURCE_DIR.relative(this.SOURCE_DIR);
   return path.posix.join(this.PROJECT_NAME, tag);
 }
 
-MakeContext.prototype.__loadCacheVariables = function() {
+UserContext.prototype.__loadCacheVariables = function() {
   this.logDebug(currentFunctionName());
   const filename = this.PROJECT_BINARY_DIR.join(MAKE_CACHE).toString();
   if (fileExistsSync(filename)) {
@@ -237,14 +238,14 @@ MakeContext.prototype.__loadCacheVariables = function() {
   }
 }
 
-MakeContext.prototype.__syncCacheVariables = function() {
+UserContext.prototype.__syncCacheVariables = function() {
   this.logDebug(currentFunctionName());
   const filename = this.PROJECT_BINARY_DIR.join(MAKE_CACHE).toString();
   const json = JSON.stringify(this[CACHE], null, 2);
   fs.writeFileSync(filename, json, "utf-8");
 }
 
-MakeContext.prototype.getCacheVariables = function() {
+UserContext.prototype.getCacheVariables = function() {
   this.logDebug(currentFunctionName());
   const result = {};
   for (const [key, entry] of Object.entries(this[CACHE])) {
@@ -258,7 +259,7 @@ MakeContext.prototype.getCacheVariables = function() {
   return result;
 }
 
-MakeContext.prototype.addCacheVariables = function(params) {
+UserContext.prototype.addCacheVariables = function(params) {
   this.logDebug(currentFunctionName());
 
   let variables = params;
@@ -280,7 +281,7 @@ MakeContext.prototype.addCacheVariables = function(params) {
   }
 }
 
-MakeContext.prototype.addIncludeDirectories = function(...dirs) {
+UserContext.prototype.addIncludeDirectories = function(...dirs) {
   this.logDebug(currentFunctionName());
 
   for (const iter of dirs.flat(1)) {
@@ -288,7 +289,7 @@ MakeContext.prototype.addIncludeDirectories = function(...dirs) {
   }
 }
 
-MakeContext.prototype.addSubdirectory = function(sourceDir, binaryDir) {
+UserContext.prototype.addSubdirectory = function(sourceDir, binaryDir) {
   this.logDebug(currentFunctionName());
 
   binaryDir = binaryDir || path.isAbsolute(sourceDir) ? undefined : sourceDir;
@@ -299,7 +300,7 @@ MakeContext.prototype.addSubdirectory = function(sourceDir, binaryDir) {
   this.__applyDirectory(SOURCE_DIR, BINARY_DIR);
 }
 
-MakeContext.prototype.__applyDirectory = function(sourceDir, binaryDir) {
+UserContext.prototype.__applyDirectory = function(sourceDir, binaryDir) {
   this.logDebug(currentFunctionName(), scopeValueAsPrimitives(sourceDir), scopeValueAsPrimitives(binaryDir));
 
   const newMake = this.__clone();
@@ -313,7 +314,7 @@ MakeContext.prototype.__applyDirectory = function(sourceDir, binaryDir) {
   this.__syncCacheVariables();
 }
 
-MakeContext.prototype.addCustomScript = function(name, params) {
+UserContext.prototype.addCustomScript = function(name, params) {
   this.logDebug(currentFunctionName(), name);
 
   const target = bitmake.CustomScript.create(this, name, params);
@@ -321,7 +322,7 @@ MakeContext.prototype.addCustomScript = function(name, params) {
   return target;
 }
 
-MakeContext.prototype.target = function(name) {
+UserContext.prototype.target = function(name) {
   this.logDebug(currentFunctionName(), name);
 
   let target = this[INTERFACE_TARGETS][name];
@@ -333,7 +334,7 @@ MakeContext.prototype.target = function(name) {
   return target.forUser(this);
 }
 
-MakeContext.prototype.script = function(name) {
+UserContext.prototype.script = function(name) {
   this.logDebug(currentFunctionName(), name);
 
   let script = this[INTERFACE_SCRIPTS][name];
@@ -345,21 +346,21 @@ MakeContext.prototype.script = function(name) {
   return script;
 }
 
-MakeContext.prototype.install = function(value, params) {
+UserContext.prototype.install = function(value, params) {
   for (const iter of [ value ].flat(1)) {
     const entity = bitmake.InstallEntity.create(this, iter, params);
     this[INSTALL_LIST].push(entity);
   }
 }
 
-MakeContext.prototype.dump = function() {
+UserContext.prototype.dump = function() {
   this.logDebug(currentFunctionName());
 
   const printedValues = {};
 
   let current = this;
   let deep = 0;
-  while (current instanceof MakeContext) {
+  while (current instanceof UserContext) {
     const space = deep ? "  ".repeat(deep) : "";
     for (const [key, val] of Object.entries(current)) {
       if (Object.hasOwn(printedValues, key))
@@ -372,7 +373,7 @@ MakeContext.prototype.dump = function() {
   }
 }
 
-MakeContext.prototype.__saveContextAsJSON = function(filename) {
+UserContext.prototype.__saveContextAsJSON = function(filename) {
   this.logDebug(currentFunctionName(), filename);
   const json = {
     TARGETS: this[TARGETS],
@@ -387,7 +388,7 @@ MakeContext.prototype.__saveContextAsJSON = function(filename) {
   fs.writeFileSync(filename, content, { encoding: "utf8" });
 }
 
-MakeContext.prototype.addStaticLibrary = function(name, ...sources) {
+UserContext.prototype.addStaticLibrary = function(name, ...sources) {
   this.logDebug(currentFunctionName(), name);
 
   const target = bitmake.StaticLibrary.create(this, name);
@@ -397,7 +398,7 @@ MakeContext.prototype.addStaticLibrary = function(name, ...sources) {
   return target;
 }
 
-MakeContext.prototype.addObjectLibrary = function(name, ...sources) {
+UserContext.prototype.addObjectLibrary = function(name, ...sources) {
   this.logDebug(currentFunctionName(), name);
 
   const target = bitmake.ObjectLibrary.create(this, name);
@@ -407,7 +408,7 @@ MakeContext.prototype.addObjectLibrary = function(name, ...sources) {
   return target;
 }
 
-MakeContext.prototype.addSharedLibrary = function(name, ...sources) {
+UserContext.prototype.addSharedLibrary = function(name, ...sources) {
   this.logDebug(currentFunctionName(), name);
 
   const target = bitmake.SharedLibrary.create(this, name);
@@ -417,7 +418,7 @@ MakeContext.prototype.addSharedLibrary = function(name, ...sources) {
   return target;
 }
 
-MakeContext.prototype.addExecutable = function(name, ...sources) {
+UserContext.prototype.addExecutable = function(name, ...sources) {
   this.logDebug(currentFunctionName(), name);
 
   const target = bitmake.Executable.create(this, name);
@@ -427,7 +428,7 @@ MakeContext.prototype.addExecutable = function(name, ...sources) {
   return target;
 }
 
-MakeContext.prototype.findProgram = function(name) {
+UserContext.prototype.findProgram = function(name) {
   this.logDebug(currentFunctionName(), name);
 
   if (os.platform() === "win32" && !name.endsWith(".exe"))
@@ -443,14 +444,14 @@ MakeContext.prototype.findProgram = function(name) {
   return null;
 }
 
-MakeContext.prototype.executeScript = function(script, options) {
+UserContext.prototype.executeScript = function(script, options) {
   this.logDebug(currentFunctionName(), script);
   const scriptPath = this.SOURCE_DIR.resolve(script);
   const module = require(scriptPath.toString());
   module(scopeValueAsPrimitives(options));
 }
 
-MakeContext.prototype.__getAllIncludes = function(includes, targetSet, list) {
+UserContext.prototype.__getAllIncludes = function(includes, targetSet, list) {
   for (const iter of list) {
     if (iter instanceof bitmake.InterfaceIncludes || iter instanceof bitmake.InterfaceTarget) {
       if (!targetSet.has(iter.NAME)) {
@@ -470,7 +471,7 @@ MakeContext.prototype.__getAllIncludes = function(includes, targetSet, list) {
   }
 }
 
-MakeContext.prototype.getAllIncludes = function(target) {
+UserContext.prototype.getAllIncludes = function(target) {
   const includes = target.TARGET_SCOPE.INCLUDES.map(i => i.toString());
   const targetSet = new Set([ target.NAME ]);
   this.__getAllIncludes(includes, targetSet, target.getIncludes());
@@ -478,7 +479,7 @@ MakeContext.prototype.getAllIncludes = function(target) {
   return includes;
 }
 
-MakeContext.prototype.__getAllHeaders = function(headers, targetSet, list) {
+UserContext.prototype.__getAllHeaders = function(headers, targetSet, list) {
   for (const iter of list) {
     if (iter instanceof bitmake.InterfaceIncludes || iter instanceof bitmake.InterfaceTarget) {
       if (!targetSet.has(iter.NAME)) {
@@ -495,7 +496,7 @@ MakeContext.prototype.__getAllHeaders = function(headers, targetSet, list) {
   }
 }
 
-MakeContext.prototype.getAllHeaders = function(target) {
+UserContext.prototype.getAllHeaders = function(target) {
   const headers = target.getHeaders().map(i => i.FILE.toString());
   const targetSet = new Set([ target.NAME ]);
   this.__getAllHeaders(headers, targetSet, target.getIncludes());
@@ -503,7 +504,7 @@ MakeContext.prototype.getAllHeaders = function(target) {
   return headers;
 }
 
-MakeContext.prototype.__getAllLibraries = function(libraries, targetSet, list) {
+UserContext.prototype.__getAllLibraries = function(libraries, targetSet, list) {
   for (const iter of list) {
     console.assert(iter instanceof bitmake.InterfaceTarget);
     if (!targetSet.has(iter.NAME)) {
@@ -515,14 +516,14 @@ MakeContext.prototype.__getAllLibraries = function(libraries, targetSet, list) {
   }
 }
 
-MakeContext.prototype.getAllLibraries = function(target) {
+UserContext.prototype.getAllLibraries = function(target) {
   const libraries = [];
   const targetSet = new Set([ target.NAME ]);
   this.__getAllLibraries(libraries, targetSet, target.getLibraries());
   return libraries;
 }
 
-MakeContext.prototype.__createGoalList = function() {
+UserContext.prototype.__createGoalList = function() {
   const goalList = new GoalList;
   this.logDebug(currentFunctionName());
   for (const iter of Object.values(this[INTERFACE_TARGETS])) {
@@ -672,7 +673,7 @@ MakeContext.prototype.__createGoalList = function() {
   return goalList;
 }
 
-MakeContext.prototype.__clone = function() {
+UserContext.prototype.__clone = function() {
   const proto = Object.getPrototypeOf(this);
   const o = Object.create(proto);
   for (const [k,v] of Object.entries(this)) {
@@ -696,7 +697,7 @@ async function actionMakeScript(config, environment, settings)
 {
   process.env = environment;
 
-  const root = new MakeContext;
+  const root = new UserContext;
 
   root.SYSTEM_NAME = "Linux";
 
@@ -706,7 +707,7 @@ async function actionMakeScript(config, environment, settings)
   root.SOURCE_DIR = root.PROJECT_SOURCE_DIR;
   root.BINARY_DIR = root.PROJECT_BINARY_DIR;
 
-  const pkg = require(root.SOURCE_DIR.join("package.json").toString());
+  const pkg = require(root.SOURCE_DIR.join(PACKAGE_JSON).toString());
 
   root.PROJECT_NAME = pkg.name;
   root.PROJECT_VERSION = pkg.version;
@@ -750,6 +751,9 @@ async function actionMakeScript(config, environment, settings)
     const filename = path.posix.join(__dirname, `toolchain/${root.TOOLCHAIN_NAME}.js`);
     const toolchain = require(filename);
     toolchain(root);
+  }
+
+  for (const plugin of (root.MAKE_PLUGIN_LIST || [])) {
   }
 
   root.__loadCacheVariables();

@@ -93,8 +93,8 @@ function Scope() {
   this[EXE_LINKER_FLAGS]      = [];
 }
 
-Scope.create = function(other) {
-  return Object.seal(new Scope(other));
+Scope.create = function() {
+  return Object.seal(new Scope);
 }
 
 Scope.prototype = Object.create(Object.prototype, {

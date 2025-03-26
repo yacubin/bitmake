@@ -3,7 +3,6 @@
 const os = require("node:os");
 const fs = require("node:fs");
 const path = require("node:path");
-const { spawnSync } = require("node:child_process");
 
 const { copyValue } = require("###/utils/Primitives.js");
 const { fileExistsSync } = require("###/utils/FileSystem.js");
@@ -81,165 +80,6 @@ function scopeValueAsPrimitives(o) {
   throw new Error(`Unknown instance of ${o}`);
 }
 
-const SCRIPT_GOAL = "script";
-const EXEC_GOAL = "exec";
-const TARGET_GOAL = "target";
-
-class GoalList {
-  _list = [];
-
-  findScriptByOutput(output) {
-    if (!output)
-      return undefined;
-    return this._list.find((i) => i.type === SCRIPT_GOAL && i.output === output);
-  }
-
-  hasScriptByOutput(output) {
-    return !!this.findScriptByOutput(output);
-  }
-
-  addScript(script, name, depends, output, params, msg) {
-    if (this.hasScriptByOutput(output.toString()))
-      throw new Error(`Output "${output}" exists`);
-    this._list.push({ name, type: SCRIPT_GOAL, script, output, depends, params, msg });
-  }
-
-  addExec(output, depends, command, args, cwd, msg) {
-    this._list.push({ name: "", type: EXEC_GOAL, depends, output, command, args, cwd, msg });
-  }
-
-  addTarget(name, depends, msg) {
-    this._list.push({ name, type: TARGET_GOAL, depends, msg });
-  }
-
-  getTarget(name) {
-    return this._list.find((i) => i.type === TARGET_GOAL && i.name === name);
-  }
-
-  addTargetListImpl(name, result) {
-    if (result.find(i => i.name === name || i.output === name)) {
-      return;
-    }
-
-    const goal = this._list.find(i => i.name === name || i.output === name);
-    if (!goal) {
-      return;
-    }
-
-    for (const iter of goal.depends) {
-      this.addTargetListImpl(iter.toString(), result);
-    }
-
-    result.push(goal);
-  }
-
-  getTargetList(name) {
-    const result = [];
-    this.addTargetListImpl(name, result);
-    return result;
-  }
-
-  toJSON() {
-    return this._list;
-  }
-};
-
-async function buildGoals(goalList) {
-  let msgCount = 0;
-  for (const iter of goalList)
-    msgCount += iter.msg ? 1 : 0;
-
-  let msgIndex = 0;
-  for (const goal of goalList) {
-    const { type, msg } = goal;
-    if (msg) {
-      const relationOfLength = Math.round((++msgIndex / msgCount) * 100);
-      const percent = "[" + relationOfLength.toString().padStart(3, " ") + "%] ";
-      console.info(percent + msg);
-    }
-    if (type === SCRIPT_GOAL) {
-      const { script, params } = goal;
-      const module = require(script.toString());
-      const result = module(scopeValueAsPrimitives(params));
-      if (result instanceof Promise) {
-        await result;
-      }
-    }
-    else if (type === EXEC_GOAL) {
-      const { command, args, cwd, output } = goal;
-      fs.mkdirSync(path.posix.dirname(output), { recursive: true });
-      const result = spawnSync(command, args, { cwd, encoding: "utf-8" });
-      if (result.status) {
-        console.info("cd " + cwd);
-        let cmd = args.join(" ");
-        cmd = command + (cmd ? " " : "") + cmd;
-        console.info(cmd);
-        console.info("");
-
-        console.error(result.stderr);
-
-        throw new Error("Status " + result.status);
-      }
-    }
-    else if (type === TARGET_GOAL) {
-    }
-  }
-}
-
-const TARGETS = Symbol("TARGETS");
-const SCRIPTS = Symbol("SCRIPTS");
-const CACHE = Symbol("CACHE");
-const INTERFACE_TARGETS = Symbol("INTERFACE_TARGETS");
-const INTERFACE_SCRIPTS = Symbol("INTERFACE_SCRIPTS");
-const INSTALL_LIST = Symbol("INSTALL_LIST");
-
-function GlobalContext() {
-  this[TARGETS] = bitmake.TargetCollection.create();
-  this[SCRIPTS] = bitmake.ScriptCollection.create();
-  this[CACHE] = {};
-  this[INTERFACE_TARGETS] = {};
-  this[INTERFACE_SCRIPTS] = {};
-  this[INSTALL_LIST] = [];
-}
-
-GlobalContext.prototype = Object.create(Object.prototype, {
-  constructor: {
-    value: GlobalContext,
-    enumerable: false,
-  },
-  TARGETS: {
-    get() { return this[TARGETS]; },
-    enumerable: true,
-  },
-  SCRIPTS: {
-    get() { return this[SCRIPTS]; },
-    enumerable: true,
-  },
-  CACHE: {
-    get() { return this[CACHE]; },
-    enumerable: true,
-  },
-  INTERFACE_TARGETS: {
-    get() { return this[INTERFACE_TARGETS]; },
-    enumerable: true,
-  },
-  INTERFACE_SCRIPTS: {
-    get() { return this[INTERFACE_SCRIPTS]; },
-    enumerable: true,
-  },
-  INSTALL_LIST: {
-    get() { return this[INSTALL_LIST]; },
-    enumerable: true,
-  },
-});
-
-GlobalContext.prototype.toJSON = function() {
-  const json = {};
-  for (const key in this)
-    json[key] = this[key];
-  return json;
-}
-
 const GLOBAL = Symbol("GLOBAL");
 
 function UserContext(global) {
@@ -274,21 +114,6 @@ UserContext.prototype.__logTag = function() {
   return path.posix.join(this.PROJECT_NAME, tag);
 }
 
-UserContext.prototype.__loadCacheVariables = function() {
-  this.logDebug(currentFunctionName());
-  const filename = this.PROJECT_BINARY_DIR.join(MAKE_CACHE).toString();
-  if (fileExistsSync(filename)) {
-    this.addCacheVariables(filename);
-  }
-}
-
-UserContext.prototype.__syncCacheVariables = function() {
-  this.logDebug(currentFunctionName());
-  const filename = this.PROJECT_BINARY_DIR.join(MAKE_CACHE).toString();
-  const json = JSON.stringify(this[GLOBAL].CACHE, null, 2);
-  fs.writeFileSync(filename, json, "utf-8");
-}
-
 UserContext.prototype.getCacheVariables = function() {
   this.logDebug(currentFunctionName());
   const result = {};
@@ -306,23 +131,17 @@ UserContext.prototype.getCacheVariables = function() {
 UserContext.prototype.addCacheVariables = function(params) {
   this.logDebug(currentFunctionName());
 
-  let variables = params;
-
-  if (typeof variables === "string") {
-    const scripts = this.SOURCE_DIR.resolve(variables);
-    variables = require(scripts.toString());
+  if (typeof params === "string") {
+    const scripts = this.SOURCE_DIR.resolve(params);
+    this[GLOBAL].loadCacheVariables(scripts);
   }
-  
-  if (typeof variables !== "object") {
-    throw "Only object type is supported";
+  else if (typeof params === "object") {
+    this[GLOBAL].addCacheVariables(params);
   }
-
-  for (const [key, entry] of Object.entries(variables)) {
-    this[GLOBAL].CACHE[key] = entry;
-    if (!Object.hasOwn(this, key)) {
-      this[key] = entry.value;
-    }
+  else {
+    throw new Error(`Type ${params} cannot use for cache variables`);
   }
+  this[GLOBAL].copyCacheVariables(this);
 }
 
 UserContext.prototype.addIncludeDirectories = function(...dirs) {
@@ -354,8 +173,12 @@ UserContext.prototype.__applyDirectory = function(sourceDir, binaryDir) {
   newMake.SCRIPT_FILE = newMake.SOURCE_DIR.join(MAKE_SCRIPT);
 
   const module = require(newMake.SCRIPT_FILE.toString());
+
+  this[GLOBAL].copyCacheVariables(this);
   module(newMake);
-  this.__syncCacheVariables();
+  
+  const filename = this.PROJECT_BINARY_DIR.join(MAKE_CACHE).toString();
+  this[GLOBAL].writeCacheVariables(filename);
 }
 
 UserContext.prototype.addCustomScript = function(name, params) {
@@ -394,26 +217,6 @@ UserContext.prototype.install = function(value, params) {
   for (const iter of [ value ].flat(1)) {
     const entity = bitmake.InstallEntity.create(this, iter, params);
     this[GLOBAL].INSTALL_LIST.push(entity);
-  }
-}
-
-UserContext.prototype.dump = function() {
-  this.logDebug(currentFunctionName());
-
-  const printedValues = {};
-
-  let current = this;
-  let deep = 0;
-  while (current instanceof UserContext) {
-    const space = deep ? "  ".repeat(deep) : "";
-    for (const [key, val] of Object.entries(current)) {
-      if (Object.hasOwn(printedValues, key))
-        continue;
-      this.logInfo(`${space}${key}: ${val}`);
-      printedValues[key] = val;
-    }
-    current = Object.getPrototypeOf(current);
-    deep++;
   }
 }
 
@@ -480,80 +283,8 @@ UserContext.prototype.executeScript = function(script, options) {
   module(scopeValueAsPrimitives(options));
 }
 
-UserContext.prototype.__getAllIncludes = function(includes, targetSet, list) {
-  for (const iter of list) {
-    if (iter instanceof bitmake.InterfaceIncludes || iter instanceof bitmake.InterfaceTarget) {
-      if (!targetSet.has(iter.NAME)) {
-        targetSet.add(iter.NAME);
-        const target = this[GLOBAL].TARGETS.get(iter.NAME);
-        this.__getAllIncludes(includes, targetSet, target.getPublicIncludes());
-        this.__getAllIncludes(includes, targetSet, target.getPublicLibraries());
-      }
-    }
-    else if (iter instanceof bitmake.IncludeDirectory) {
-      if (!includes.includes(iter.toString()))
-        includes.push(iter.toString());
-    }
-    else {
-      throw new Error(`Not support instance ${iter}`);
-    }
-  }
-}
-
-UserContext.prototype.getAllIncludes = function(target) {
-  const includes = target.TARGET_SCOPE.INCLUDES.map(i => i.toString());
-  const targetSet = new Set([ target.NAME ]);
-  this.__getAllIncludes(includes, targetSet, target.getIncludes());
-  this.__getAllIncludes(includes, targetSet, target.getLibraries());
-  return includes;
-}
-
-UserContext.prototype.__getAllHeaders = function(headers, targetSet, list) {
-  for (const iter of list) {
-    if (iter instanceof bitmake.InterfaceIncludes || iter instanceof bitmake.InterfaceTarget) {
-      if (!targetSet.has(iter.NAME)) {
-        targetSet.add(iter.NAME);
-        const target = this[GLOBAL].TARGETS.get(iter.NAME);
-        for (const header of target.getHeaders().map(i => i.FILE.toString())) {
-          if (!headers.includes(header.toString()))
-            headers.push(header.toString());
-        }
-        this.__getAllHeaders(headers, targetSet, target.getPublicIncludes());
-        this.__getAllHeaders(headers, targetSet, target.getPublicLibraries());
-      }
-    }
-  }
-}
-
-UserContext.prototype.getAllHeaders = function(target) {
-  const headers = target.getHeaders().map(i => i.FILE.toString());
-  const targetSet = new Set([ target.NAME ]);
-  this.__getAllHeaders(headers, targetSet, target.getIncludes());
-  this.__getAllHeaders(headers, targetSet, target.getLibraries());
-  return headers;
-}
-
-UserContext.prototype.__getAllLibraries = function(libraries, targetSet, list) {
-  for (const iter of list) {
-    console.assert(iter instanceof bitmake.InterfaceTarget);
-    if (!targetSet.has(iter.NAME)) {
-      targetSet.add(iter.NAME);
-      const target = this[GLOBAL].TARGETS.get(iter.NAME);
-      libraries.push(target.FILE.toString());
-      this.__getAllLibraries(libraries, targetSet, target.getPublicLibraries());
-    }
-  }
-}
-
-UserContext.prototype.getAllLibraries = function(target) {
-  const libraries = [];
-  const targetSet = new Set([ target.NAME ]);
-  this.__getAllLibraries(libraries, targetSet, target.getLibraries());
-  return libraries;
-}
-
 UserContext.prototype.__createGoalList = function() {
-  const goalList = new GoalList;
+  const goalList = bitmake.GoalCollection.create();
   this.logDebug(currentFunctionName());
   for (const iter of Object.values(this[GLOBAL].INTERFACE_TARGETS)) {
     const target = this[GLOBAL].TARGETS.get(iter.NAME);
@@ -578,11 +309,11 @@ UserContext.prototype.__createGoalList = function() {
       depends.push(script.INPUT.toString());
     const msg = "\x1b[36m" + "Generating " + script.TARGET_SCOPE.BINARY_DIR.relative(script.OUTPUT) + "\x1b[0m";
     const params = { ...script.PROPERTIES, ...script.PARAMS };
-    goalList.addScript(script.FILE, "", depends, script.OUTPUT.toString(), params, msg);
+    goalList.addScript(script.FILE, "", depends, script.OUTPUT.toString(), scopeValueAsPrimitives(params), msg);
   }
 
   for (const [name, target] of Object.entries(this[GLOBAL].TARGETS.ENTRIES)) {
-    const headers = this.getAllHeaders(target);
+    const headers = this[GLOBAL].getAllHeaders(target);
     const depends = [];
     for (const s of target.SOURCES) {
       if (s instanceof bitmake.InterfaceObjects) {
@@ -608,7 +339,7 @@ UserContext.prototype.__createGoalList = function() {
       args.push(...target.TARGET_SCOPE[s.LANGUAGE + "_FLAGS_" + target.TARGET_SCOPE.BUILD_TYPE.toUpperCase()]);
       args.push(...target.COMPILE_OPTIONS);
       args.push(...s.COMPILE_FLAGS);
-      args.push(...this.getAllIncludes(target).map(i => "-I" + i));
+      args.push(...this[GLOBAL].getAllIncludes(target).map(i => "-I" + i));
       args.push("-o", relativeObject);
       args.push("-c", s.FILE);
       const cwd = target.TARGET_SCOPE.BINARY_DIR.toString();
@@ -653,7 +384,7 @@ UserContext.prototype.__createGoalList = function() {
     if (target instanceof bitmake.Executable) {
       const objs = depends.filter(i => i.endsWith(".o") || i.endsWith(".obj")).map(i => target.FILE_DIR.relative(i));
       if (objs.length) {
-        const libs = this.getAllLibraries(target);
+        const libs = this[GLOBAL].getAllLibraries(target);
         const args = [
           ...target.TARGET_SCOPE.CXX_FLAGS,
           ...target.LINK_OPTIONS,
@@ -692,7 +423,7 @@ UserContext.prototype.__createGoalList = function() {
     }
     if (this.DESTDIR)
       dest = bitmake.DirPath.create(this.DESTDIR).join(dest);
-    goalList.addScript(install_script, "", [ src ], dest, {src, dest}, "");
+    goalList.addScript(install_script, "", [ src ], dest, scopeValueAsPrimitives({src, dest}), "");
     install_files.push(dest);
   }
 
@@ -721,7 +452,9 @@ async function actionMakeScript(config, environment, settings)
 {
   process.env = environment;
 
-  const global = new GlobalContext;
+  const global = bitmake.GlobalContext.create();
+  global.loadCacheVariables(AbsolutePath.create(config.binaryDir).join(MAKE_CACHE));
+
   const root = new UserContext(global);
 
   root.SYSTEM_NAME = "Linux";
@@ -781,7 +514,6 @@ async function actionMakeScript(config, environment, settings)
   for (const plugin of (root.MAKE_PLUGIN_LIST || [])) {
   }
 
-  root.__loadCacheVariables();
   root.__applyDirectory(root.PROJECT_SOURCE_DIR, root.PROJECT_BINARY_DIR);
   root.logInfo("Configuring done");
 
@@ -802,7 +534,7 @@ async function actionMakeScript(config, environment, settings)
     fs.writeFileSync(filename, content, { encoding: "utf8" });
   }
 
-  await buildGoals(goalList);
+  await bitmake.GoalCollection.buildGoals(goalList);
 }
 
 module.exports = {

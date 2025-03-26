@@ -14,6 +14,8 @@ const { ScriptCollection } = require("./ScriptCollection.js");
 const { TargetCollection } = require("./TargetCollection.js");
 const { DirPath, FilePath } = require("./Path.js");
 const { InstallEntity } = require("./InstallEntity.js");
+const { GoalCollection } = require("./GoalCollection.js");
+const { GlobalContext } = require("./GlobalContext.js");
 
 module.exports = {
   Scope,
@@ -34,4 +36,6 @@ module.exports = {
   DirPath,
   FilePath,
   InstallEntity,
+  GoalCollection,
+  GlobalContext,
 };

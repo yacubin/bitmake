@@ -50,7 +50,7 @@ export default async function(ctx)
         lines.push(`${space}set(${name} "${entry.value}" CACHE STRING "${description}")`);
       }
       else {
-        throw `Not supported value of ${entry.value}`;
+        throw new Error(`Not supported value of ${entry.value}`);
       }
       if (isPrint) {
         lines.push(`${space}message(STATUS "${name}:${leader.substring(name.length)} \${${name}}")`);
@@ -87,7 +87,7 @@ export default async function(ctx)
         lines.push(`#define ${name} "@${name}@"`);
       }
       else {
-        throw `Not supported value of ${entry.value}`;
+        throw new Error(`Not supported value of ${entry.value}`);
       }
       lines.push("");
     }
@@ -119,7 +119,7 @@ export default async function(ctx)
           type = "string[]";
         }
         else {
-          throw `Not supported value of ${entry.value}`;
+          throw new Error(`Not supported value of ${entry.value}`);
         }
       }
 

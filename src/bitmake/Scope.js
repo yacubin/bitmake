@@ -94,7 +94,36 @@ function Scope() {
 }
 
 Scope.create = function() {
-  return Object.seal(new Scope);
+  return new Scope;
+}
+
+function ensureValueByType(type, value) {
+  if (Array.isArray(type) ? type.includes(value) : typeof value === type)
+    return value;
+  throw new Error(`The '${value}' is not a ${type}`);
+}
+
+Scope.defineProperty = function(scope, name, params)
+{
+  const type = params.type || typeof params.value;
+  const description = params.description || "";
+  const value = Array.isArray(params.value) ? [ ...params.value ] : params.value;
+
+  const dataEntry = {
+    type,
+    description,
+    value: ensureValueByType(type, value),
+  };
+
+  Object.defineProperty(scope, name, {
+    enumerable: true,
+    get() {
+      return dataEntry.value;
+    },
+    set(value) {
+      dataEntry.value = ensureValueByType(dataEntry.type, value);
+    },
+  });
 }
 
 Scope.prototype = Object.create(Object.prototype, {

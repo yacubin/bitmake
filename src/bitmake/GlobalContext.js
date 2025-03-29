@@ -15,6 +15,7 @@ const { InterfaceObjects } = require("./InterfaceObjects.js");
 const { SourceFile } = require("./SourceFile.js");
 const { ObjectLibrary, StaticLibrary, SharedLibrary, Executable } = require("./Target.js");
 const { FilePath, DirPath } = require("./Path.js");
+const { Scope } = require("./Scope.js");
 
 const TARGETS = Symbol("TARGETS");
 const SCRIPTS = Symbol("SCRIPTS");
@@ -84,6 +85,8 @@ GlobalContext.prototype.loadCacheVariables = function(filename) {
 GlobalContext.prototype.addCacheVariables = function(variables) {
   const cache = this[CACHE];
   for (const [key, entry] of Object.entries(variables)) {
+    if (entry.value === "${CMAKE_SYSTEM_PROCESSOR}")
+      entry.value = "wasm32"; // TODO
     cache[key] = entry;
   }
 }
@@ -91,7 +94,7 @@ GlobalContext.prototype.addCacheVariables = function(variables) {
 GlobalContext.prototype.copyCacheVariables = function(scope) {
   for (const [key, entry] of Object.entries(this[CACHE])) {
     if (!Object.hasOwn(scope, key))
-      scope[key] = entry.value;
+      Scope.defineProperty(scope, key, entry);
   }
 }
 

@@ -6,6 +6,8 @@ const { AbsolutePath } = require("###/utils/AbsolutePath.js");
 const SYSTEM_NAME           = Symbol("SYSTEM_NAME");
 const PROJECT_NAME          = Symbol("PROJECT_NAME");
 const PROJECT_VERSION       = Symbol("PROJECT_VERSION");
+const PROJECT_DESCRIPTION   = Symbol("PROJECT_DESCRIPTION");
+const PROJECT_HOMEPAGE_URL  = Symbol("PROJECT_HOMEPAGE_URL");
 const PROJECT_SOURCE_DIR    = Symbol("PROJECT_SOURCE_DIR");
 const PROJECT_BINARY_DIR    = Symbol("PROJECT_BINARY_DIR");
 const BUILD_TYPE            = Symbol("BUILD_TYPE");
@@ -51,6 +53,8 @@ function Scope() {
   this[SYSTEM_NAME]           = "Linux";
   this[PROJECT_NAME]          = "";
   this[PROJECT_VERSION]       = "";
+  this[PROJECT_DESCRIPTION]   = "";
+  this[PROJECT_HOMEPAGE_URL]  = "";
   this[PROJECT_SOURCE_DIR]    = null;
   this[PROJECT_BINARY_DIR]    = null;
   this[BUILD_TYPE]            = "Debug";
@@ -97,35 +101,6 @@ Scope.create = function() {
   return new Scope;
 }
 
-function ensureValueByType(type, value) {
-  if (Array.isArray(type) ? type.includes(value) : typeof value === type)
-    return value;
-  throw new Error(`The '${value}' is not a ${type}`);
-}
-
-Scope.defineProperty = function(scope, name, params)
-{
-  const type = params.type || typeof params.value;
-  const description = params.description || "";
-  const value = Array.isArray(params.value) ? [ ...params.value ] : params.value;
-
-  const dataEntry = {
-    type,
-    description,
-    value: ensureValueByType(type, value),
-  };
-
-  Object.defineProperty(scope, name, {
-    enumerable: true,
-    get() {
-      return dataEntry.value;
-    },
-    set(value) {
-      dataEntry.value = ensureValueByType(dataEntry.type, value);
-    },
-  });
-}
-
 Scope.prototype = Object.create(Object.prototype, {
   constructor: {
     value: Scope,
@@ -133,30 +108,47 @@ Scope.prototype = Object.create(Object.prototype, {
   },
   SYSTEM_NAME: {
     get () { return this[SYSTEM_NAME]; },
+    set(value) { this[SYSTEM_NAME] = value; },
     enumerable: true,
   },
   PROJECT_NAME: {
     get () { return this[PROJECT_NAME]; },
+    set(value) { this[PROJECT_NAME] = value; },
     enumerable: true,
   },
   PROJECT_VERSION: {
     get () { return this[PROJECT_VERSION]; },
+    set(value) { this[PROJECT_VERSION] = value; },
+    enumerable: true,
+  },
+  PROJECT_DESCRIPTION: {
+    get () { return this[PROJECT_DESCRIPTION]; },
+    set(value) { this[PROJECT_DESCRIPTION] = value; },
+    enumerable: true,
+  },
+  PROJECT_HOMEPAGE_URL: {
+    get () { return this[PROJECT_HOMEPAGE_URL]; },
+    set(value) { this[PROJECT_HOMEPAGE_URL] = value; },
     enumerable: true,
   },
   PROJECT_SOURCE_DIR: {
     get () { return this[PROJECT_SOURCE_DIR]; },
+    set(value) { this[PROJECT_SOURCE_DIR] = value; },
     enumerable: true,
   },
   PROJECT_BINARY_DIR: {
     get () { return this[PROJECT_BINARY_DIR]; },
+    set(value) { this[PROJECT_BINARY_DIR] = value; },
     enumerable: true,
   },
   BUILD_TYPE: {
     get () { return this[BUILD_TYPE]; },
+    set(value) { this[BUILD_TYPE] = value; },
     enumerable: true,
   },
   DESTDIR: {
     get () { return this[DESTDIR]; },
+    set(value) { this[DESTDIR] = value; },
     enumerable: true,
   },
   INSTALL_PREFIX: {
@@ -166,142 +158,177 @@ Scope.prototype = Object.create(Object.prototype, {
   },
   SCRIPT_FILE: {
     get () { return this[SCRIPT_FILE]; },
+    set(value) { this[SCRIPT_FILE] = value; },
     enumerable: true,
   },
   SOURCE_DIR: {
     get () { return this[SOURCE_DIR]; },
+    set(value) { this[SOURCE_DIR] = value; },
     enumerable: true,
   },
   BINARY_DIR: {
     get () { return this[BINARY_DIR]; },
+    set(value) { this[BINARY_DIR] = value; },
     enumerable: true,
   },
   MODULE_PATH: {
     get () { return this[MODULE_PATH]; },
+    set(value) { this[MODULE_PATH] = value; },
     enumerable: true,
   },
   ASM_COMPILER: {
     get () { return this[ASM_COMPILER]; },
+    set(value) { this[ASM_COMPILER] = value; },
     enumerable: true,
   },
   ASM_FLAGS: {
     get () { return this[ASM_FLAGS]; },
+    set(value) { this[ASM_FLAGS] = value; },
     enumerable: true,
   },
   ASM_FLAGS_DEBUG: {
     get () { return this[ASM_FLAGS_DEBUG]; },
+    set(value) { this[ASM_FLAGS_DEBUG] = value; },
     enumerable: true,
   },
   ASM_FLAGS_RELEASE: {
     get () { return this[ASM_FLAGS_RELEASE]; },
+    set(value) { this[ASM_FLAGS_RELEASE] = value; },
     enumerable: true,
   },
   C_COMPILER: {
     get () { return this[C_COMPILER]; },
+    set(value) { this[C_COMPILER] = value; },
     enumerable: true,
   },
   C_FLAGS: {
     get () { return this[C_FLAGS]; },
+    set(value) { this[C_FLAGS] = value; },
     enumerable: true,
   },
   C_FLAGS_DEBUG: {
     get () { return this[C_FLAGS_DEBUG]; },
+    set(value) { this[C_FLAGS_DEBUG] = value; },
     enumerable: true,
   },
   C_FLAGS_RELEASE: {
     get () { return this[C_FLAGS_RELEASE]; },
+    set(value) { this[C_FLAGS_RELEASE] = value; },
     enumerable: true,
   },
   CXX_COMPILER: {
     get () { return this[CXX_COMPILER]; },
+    set(value) { this[CXX_COMPILER] = value; },
     enumerable: true,
   },
   CXX_FLAGS: {
     get () { return this[CXX_FLAGS]; },
+    set(value) { this[CXX_FLAGS] = value; },
     enumerable: true,
   },
   CXX_FLAGS_DEBUG: {
     get () { return this[CXX_FLAGS_DEBUG]; },
+    set(value) { this[CXX_FLAGS_DEBUG] = value; },
     enumerable: true,
   },
   CXX_FLAGS_RELEASE: {
     get () { return this[CXX_FLAGS_RELEASE]; },
+    set(value) { this[CXX_FLAGS_RELEASE] = value; },
     enumerable: true,
   },
   AR: {
     get () { return this[AR]; },
+    set(value) { this[AR] = value; },
     enumerable: true,
   },
   RANLIB: {
     get () { return this[RANLIB]; },
+    set(value) { this[RANLIB] = value; },
     enumerable: true,
   },
   LINKER: {
     get () { return this[LINKER]; },
+    set(value) { this[LINKER] = value; },
     enumerable: true,
   },
   NM: {
     get () { return this[NM]; },
+    set(value) { this[NM] = value; },
     enumerable: true,
   },
   OBJCOPY: {
     get () { return this[OBJCOPY]; },
+    set(value) { this[OBJCOPY] = value; },
     enumerable: true,
   },
   OBJDUMP: {
     get () { return this[OBJDUMP]; },
+    set(value) { this[OBJDUMP] = value; },
     enumerable: true,
   },
   STRIP: {
     get () { return this[STRIP]; },
+    set(value) { this[STRIP] = value; },
     enumerable: true,
   },
   INCLUDES: {
     get () { return this[INCLUDES]; },
+    set(value) { this[INCLUDES] = value; },
     enumerable: true,
   },
   OBJECT_LIBRARY_PREFIX: {
     get () { return this[OBJECT_LIBRARY_PREFIX]; },
+    set(value) { this[OBJECT_LIBRARY_PREFIX] = value; },
     enumerable: true,
   },
   OBJECT_LIBRARY_SUFFIX: {
     get () { return this[OBJECT_LIBRARY_SUFFIX]; },
+    set(value) { this[OBJECT_LIBRARY_SUFFIX] = value; },
     enumerable: true,
   },
   OBJECT_LINKER_FLAGS: {
     get() { return this[OBJECT_LINKER_FLAGS]; },
+    set(value) { this[OBJECT_LINKER_FLAGS] = value; },
     enumerable: true,
   },
   STATIC_LIBRARY_PREFIX: {
     get () { return this[STATIC_LIBRARY_PREFIX]; },
+    set(value) { this[STATIC_LIBRARY_PREFIX] = value; },
     enumerable: true,
   },
   STATIC_LIBRARY_SUFFIX: {
     get () { return this[STATIC_LIBRARY_SUFFIX]; },
+    set(value) { this[STATIC_LIBRARY_SUFFIX] = value; },
     enumerable: true,
   },
   STATIC_LINKER_FLAGS: {
     get() { return this[STATIC_LINKER_FLAGS]; },
+    set(value) { this[STATIC_LINKER_FLAGS] = value; },
     enumerable: true,
   },
   SHARED_LIBRARY_PREFIX: {
     get() { return this[SHARED_LIBRARY_PREFIX]; },
+    set(value) { this[SHARED_LIBRARY_PREFIX] = value; },
     enumerable: true,
   },
   SHARED_LIBRARY_SUFFIX: {
     get() { return this[SHARED_LIBRARY_SUFFIX]; },
+    set(value) { this[SHARED_LIBRARY_SUFFIX] = value; },
     enumerable: true,
   },
   SHARED_LINKER_FLAGS: {
     get() { return this[SHARED_LINKER_FLAGS]; },
+    set(value) { this[SHARED_LINKER_FLAGS] = value; },
     enumerable: true,
   },
   EXECUTABLE_SUFFIX: {
     get() { return this[EXECUTABLE_SUFFIX]; },
+    set(value) { this[EXECUTABLE_SUFFIX] = value; },
     enumerable: true,
   },
   EXE_LINKER_FLAGS: {
     get() { return this[EXE_LINKER_FLAGS]; },
+    set(value) { this[EXE_LINKER_FLAGS] = value; },
     enumerable: true,
   },
 });
@@ -319,12 +346,14 @@ Scope.prototype.clone = function() {
   o[SYSTEM_NAME]           = this.SYSTEM_NAME;
   o[PROJECT_NAME]          = this.PROJECT_NAME;
   o[PROJECT_VERSION]       = this.PROJECT_VERSION;
+  o[PROJECT_DESCRIPTION]   = this[PROJECT_DESCRIPTION]
+  o[PROJECT_HOMEPAGE_URL]  = this[PROJECT_HOMEPAGE_URL]
   o[PROJECT_SOURCE_DIR]    = AbsolutePath.create(this.PROJECT_SOURCE_DIR);
   o[PROJECT_BINARY_DIR]    = AbsolutePath.create(this.PROJECT_BINARY_DIR);
   o[BUILD_TYPE]            = this.BUILD_TYPE;
   o[DESTDIR]               = AbsolutePath.create(this.DESTDIR);
   o[INSTALL_PREFIX]        = this.INSTALL_PREFIX;
-  o[SCRIPT_FILE]           = AbsolutePath.create(this.SCRIPT_FILE);
+  o[SCRIPT_FILE]           = this.SCRIPT_FILE ? AbsolutePath.create(this.SCRIPT_FILE) : this.SCRIPT_FILE;
   o[SOURCE_DIR]            = AbsolutePath.create(this.SOURCE_DIR);
   o[BINARY_DIR]            = AbsolutePath.create(this.BINARY_DIR);
   o[MODULE_PATH]           = this.MODULE_PATH;
@@ -360,7 +389,7 @@ Scope.prototype.clone = function() {
   o[EXECUTABLE_SUFFIX]     = this.EXECUTABLE_SUFFIX;
   o[EXE_LINKER_FLAGS]      = this.EXE_LINKER_FLAGS;
 
-  return Object.seal(o);
+  return o;
 }
 
 module.exports = {

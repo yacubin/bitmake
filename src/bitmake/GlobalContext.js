@@ -15,7 +15,6 @@ const { InterfaceObjects } = require("./InterfaceObjects.js");
 const { SourceFile } = require("./SourceFile.js");
 const { ObjectLibrary, StaticLibrary, SharedLibrary, Executable } = require("./Target.js");
 const { FilePath, DirPath } = require("./Path.js");
-const { Scope } = require("./Scope.js");
 
 const TARGETS = Symbol("TARGETS");
 const SCRIPTS = Symbol("SCRIPTS");
@@ -85,16 +84,44 @@ GlobalContext.prototype.loadCacheVariables = function(filename) {
 GlobalContext.prototype.addCacheVariables = function(variables) {
   const cache = this[CACHE];
   for (const [key, entry] of Object.entries(variables)) {
-    if (entry.value === "${CMAKE_SYSTEM_PROCESSOR}")
-      entry.value = "wasm32"; // TODO
     cache[key] = entry;
   }
 }
 
+function ensureValueByType(type, value) {
+  if (Array.isArray(type) ? type.includes(value) : typeof value === type)
+    return value;
+  throw new Error(`The '${value}' is not a ${type}`);
+}
+
 GlobalContext.prototype.copyCacheVariables = function(scope) {
-  for (const [key, entry] of Object.entries(this[CACHE])) {
-    if (!Object.hasOwn(scope, key))
-      Scope.defineProperty(scope, key, entry);
+  for (const [name, entry] of Object.entries(this[CACHE])) {
+    if (!Object.hasOwn(scope, name)) {
+      const type = entry.type || typeof entry.value;
+      const description = entry.description || "";
+      let value = Array.isArray(entry.value) ? [ ...entry.value ] : entry.value;
+      if (value === "${PROJECT_VERSION}")
+        value = scope.PROJECT_VERSION;
+      else if (value === "${PROJECT_DESCRIPTION}")
+        value = scope.PROJECT_DESCRIPTION;
+      else if (value === "${PROJECT_HOMEPAGE_URL}")
+        value = scope.PROJECT_HOMEPAGE_URL;
+      else if (entry.value === "${CMAKE_SYSTEM_PROCESSOR}")
+        value = scope.SYSTEM_PROCESSOR;
+
+      const nameSymbol = Symbol(name);
+      scope[nameSymbol] = ensureValueByType(type, value);
+
+      Object.defineProperty(scope, name, {
+        enumerable: true,
+        get() {
+          return this[nameSymbol];
+        },
+        set(value) {
+          this[nameSymbol] = ensureValueByType(type, value);
+        },
+      });
+    }
   }
 }
 

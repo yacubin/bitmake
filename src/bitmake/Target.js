@@ -32,7 +32,7 @@ function ensureTargetName(name) {
 
 function BaseTarget(scope, name) {
   this[NAME] = ensureTargetName(name);
-  this[TARGET_SCOPE] = Scope.prototype.clone.call(scope);
+  this[TARGET_SCOPE] = scope;
   this[OUTPUT_NAME] = ensureString(name);
   this[COMPILE_OPTIONS] = [];
   this[PREFIX] = "";

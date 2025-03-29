@@ -81,9 +81,22 @@ function scopeValueAsPrimitives(o) {
 }
 
 const GLOBAL = Symbol("GLOBAL");
+const SCOPE = Symbol("SCOPE");
 
-function UserContext(global) {
+function UserContext(scope, global) {
+  this[SCOPE] = scope;
   this[GLOBAL] = global;
+
+  const descriptors = Object.getOwnPropertyDescriptors(Object.getPrototypeOf(scope));
+  for (const [key, desc] of Object.entries(descriptors)) {
+    const newDesc = { enumerable: true };
+    if (typeof desc.get === "function")
+      newDesc.get = function() { return scope[key]; };
+    if (typeof desc.set === "function")
+      newDesc.set = function(value) { scope[key] = value; };
+    if (newDesc.get || newDesc.set)
+      Object.defineProperty(this, key, newDesc);
+  }
 }
 
 function makeLogger(loggerFunc, withTag) {
@@ -141,6 +154,7 @@ UserContext.prototype.addCacheVariables = function(params) {
   else {
     throw new Error(`Type ${params} cannot use for cache variables`);
   }
+
   this[GLOBAL].copyCacheVariables(this);
 }
 
@@ -166,17 +180,22 @@ UserContext.prototype.addSubdirectory = function(sourceDir, binaryDir) {
 UserContext.prototype.__applyDirectory = function(sourceDir, binaryDir) {
   this.logDebug(currentFunctionName(), scopeValueAsPrimitives(sourceDir), scopeValueAsPrimitives(binaryDir));
 
-  const newMake = this.__clone();
+  const newScope = this[SCOPE].clone();
 
-  newMake.SOURCE_DIR = sourceDir;
-  newMake.BINARY_DIR = binaryDir;
-  newMake.SCRIPT_FILE = newMake.SOURCE_DIR.join(MAKE_SCRIPT);
+  const newContex = UserContext.create(newScope, this[GLOBAL]);
+  for (const [key, val] of Object.entries(this)) {
+    newContex[key] = val;
+  }
 
-  const module = require(newMake.SCRIPT_FILE.toString());
+  newContex.SOURCE_DIR = sourceDir;
+  newContex.BINARY_DIR = binaryDir;
+  newContex.SCRIPT_FILE = newContex.SOURCE_DIR.join(MAKE_SCRIPT);
 
-  this[GLOBAL].copyCacheVariables(this);
-  module(newMake);
-  
+  this[GLOBAL].copyCacheVariables(newContex);
+  const module = require(newContex.SCRIPT_FILE.toString());
+
+  module(newContex);
+
   const filename = this.PROJECT_BINARY_DIR.join(MAKE_CACHE).toString();
   this[GLOBAL].writeCacheVariables(filename);
 }
@@ -184,7 +203,8 @@ UserContext.prototype.__applyDirectory = function(sourceDir, binaryDir) {
 UserContext.prototype.addCustomScript = function(name, params) {
   this.logDebug(currentFunctionName(), name);
 
-  const target = bitmake.CustomScript.create(this, name, params);
+  const newScope = this[SCOPE].clone();
+  const target = bitmake.CustomScript.create(newScope, name, params);
   this[GLOBAL].SCRIPTS.set(name, target);
   return target;
 }
@@ -223,7 +243,8 @@ UserContext.prototype.install = function(value, params) {
 UserContext.prototype.addStaticLibrary = function(name, ...sources) {
   this.logDebug(currentFunctionName(), name);
 
-  const target = bitmake.StaticLibrary.create(this, name);
+  const newScope = this[SCOPE].clone();
+  const target = bitmake.StaticLibrary.create(newScope, name);
   target.addSources(...sources);
 
   this[GLOBAL].TARGETS.set(name, target);
@@ -233,7 +254,8 @@ UserContext.prototype.addStaticLibrary = function(name, ...sources) {
 UserContext.prototype.addObjectLibrary = function(name, ...sources) {
   this.logDebug(currentFunctionName(), name);
 
-  const target = bitmake.ObjectLibrary.create(this, name);
+  const newScope = this[SCOPE].clone();
+  const target = bitmake.ObjectLibrary.create(newScope, name);
   target.addSources(...sources);
 
   this[GLOBAL].TARGETS.set(name, target);
@@ -243,7 +265,8 @@ UserContext.prototype.addObjectLibrary = function(name, ...sources) {
 UserContext.prototype.addSharedLibrary = function(name, ...sources) {
   this.logDebug(currentFunctionName(), name);
 
-  const target = bitmake.SharedLibrary.create(this, name);
+  const newScope = this[SCOPE].clone();
+  const target = bitmake.SharedLibrary.create(newScope, name);
   target.addSources(...sources);
 
   this[GLOBAL].TARGETS.set(name, target);
@@ -253,7 +276,8 @@ UserContext.prototype.addSharedLibrary = function(name, ...sources) {
 UserContext.prototype.addExecutable = function(name, ...sources) {
   this.logDebug(currentFunctionName(), name);
 
-  const target = bitmake.Executable.create(this, name);
+  const newScope = this[SCOPE].clone();
+  const target = bitmake.Executable.create(newScope, name);
   target.addSources(...sources);
 
   this[GLOBAL].TARGETS.set(name, target);
@@ -283,19 +307,15 @@ UserContext.prototype.executeScript = function(script, options) {
   module(scopeValueAsPrimitives(options));
 }
 
-UserContext.prototype.__clone = function() {
-  const proto = Object.getPrototypeOf(this);
-  const o = Object.create(proto);
-  for (const [k,v] of Object.entries(this)) {
-    if (k === "INSTALL_PREFIX")
-      o[k] = v;
-    else
-      o[k] = cloneScopeValue(v);
-  }
+UserContext.prototype.toJSON = function() {
+  const json = {};
+  for (const key in this)
+    json[key] = this[key];
+  return json;
+}
 
-  o[GLOBAL] = this[GLOBAL];
-
-  return o;
+UserContext.create = (scope, global) => {
+  return new UserContext(scope, global);
 }
 
 async function actionMakeScript(config, environment, settings)
@@ -305,7 +325,8 @@ async function actionMakeScript(config, environment, settings)
   const global = bitmake.GlobalContext.create();
   global.loadCacheVariables(AbsolutePath.create(config.binaryDir).join(MAKE_CACHE));
 
-  const root = new UserContext(global);
+  const scope = bitmake.Scope.create();
+  const root = UserContext.create(scope, global);
 
   root.SYSTEM_NAME = "Linux";
 
@@ -319,6 +340,8 @@ async function actionMakeScript(config, environment, settings)
 
   root.PROJECT_NAME = pkg.name;
   root.PROJECT_VERSION = pkg.version;
+  root.PROJECT_DESCRIPTION = pkg.description;
+  root.PROJECT_HOMEPAGE_URL = pkg.homepage;
 
   root.DESTDIR = config.destDir || "";
   root.INSTALL_PREFIX = bitmake.DirPath.create("/usr");
@@ -350,6 +373,10 @@ async function actionMakeScript(config, environment, settings)
     for (const [key, val] of Object.entries(config.variables)) {
       if (key === "INSTALL_PREFIX")
         root.INSTALL_PREFIX = bitmake.DirPath.create(val);
+      else if (key === "GLOBAL_CONTEXT_JSON")
+        root.GLOBAL_CONTEXT_JSON = bitmake.FilePath.create(val);
+      else if (key === "TARGET_GOALS_JSON")
+        root.TARGET_GOALS_JSON = bitmake.FilePath.create(val);
       else
         root[key] = val;
     }

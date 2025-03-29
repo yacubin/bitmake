@@ -15,7 +15,7 @@ const PROPERTIES   = Symbol("PROPERTIES");
 const SYSTEM_SCRIPTS_DIR = AbsolutePath.create(__dirname).join("SystemScripts");
 
 function CustomScript(scope, name, params) {
-  this[TARGET_SCOPE] = Scope.prototype.clone.call(scope);
+  this[TARGET_SCOPE] = scope;
   this[NAME] = ensureString(name);
 
   if (!params || !params.script || !params.output)

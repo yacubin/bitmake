@@ -7,6 +7,8 @@ const { copyValue } = require("###/utils/Primitives.js");
 const { fileExistsSync } = require("###/utils/FileSystem.js");
 const { AbsolutePath } = require("###/utils/AbsolutePath.js");
 const { InterfaceTarget } = require("./InterfaceTarget.js");
+const { BaseTarget } = require("./Target.js");
+const { DirPath } = require("./Path.js");
 const bitmake = require("###/bitmake/index.js");
 
 const currentFunctionName = () => {
@@ -159,8 +161,9 @@ UserContext.prototype.addCustomScript = function(name, params) {
 }
 
 UserContext.prototype.target = function(name) {
-  const target = this[GLOBAL].getUknownTarget(name);
-  return InterfaceTarget.create(this[SCOPE], target);
+  const sourceDir = DirPath.create(this[SCOPE].SOURCE_DIR.toString());
+  const utarget = this[GLOBAL].getUknownTarget(name);
+  return InterfaceTarget.create(utarget, sourceDir);
 }
 
 UserContext.prototype.script = function(name) {
@@ -176,7 +179,8 @@ UserContext.prototype.script = function(name) {
 }
 
 UserContext.prototype.install = function(value, params) {
-  for (const iter of [ value ].flat(1)) {
+  for (const it of [ value ].flat(1)) {
+    const iter = (it instanceof BaseTarget) ? this.target(it.NAME) : it;
     const entity = bitmake.InstallEntity.create(this, iter, params);
     this[GLOBAL].INSTALL_LIST.push(entity);
   }
@@ -185,8 +189,7 @@ UserContext.prototype.install = function(value, params) {
 UserContext.prototype.addStaticLibrary = function(name, ...sources) {
   this.logDebug(currentFunctionName(), name);
 
-  const newScope = this[SCOPE].clone();
-  const target = bitmake.StaticLibrary.create(newScope, name);
+  const target = bitmake.StaticLibrary.create(this[SCOPE], name);
   target.addSources(...sources);
 
   this[GLOBAL].TARGETS.set(name, target);
@@ -196,8 +199,7 @@ UserContext.prototype.addStaticLibrary = function(name, ...sources) {
 UserContext.prototype.addObjectLibrary = function(name, ...sources) {
   this.logDebug(currentFunctionName(), name);
 
-  const newScope = this[SCOPE].clone();
-  const target = bitmake.ObjectLibrary.create(newScope, name);
+  const target = bitmake.ObjectLibrary.create(this[SCOPE], name);
   target.addSources(...sources);
 
   this[GLOBAL].TARGETS.set(name, target);
@@ -207,8 +209,7 @@ UserContext.prototype.addObjectLibrary = function(name, ...sources) {
 UserContext.prototype.addSharedLibrary = function(name, ...sources) {
   this.logDebug(currentFunctionName(), name);
 
-  const newScope = this[SCOPE].clone();
-  const target = bitmake.SharedLibrary.create(newScope, name);
+  const target = bitmake.SharedLibrary.create(this[SCOPE], name);
   target.addSources(...sources);
 
   this[GLOBAL].TARGETS.set(name, target);
@@ -218,8 +219,7 @@ UserContext.prototype.addSharedLibrary = function(name, ...sources) {
 UserContext.prototype.addExecutable = function(name, ...sources) {
   this.logDebug(currentFunctionName(), name);
 
-  const newScope = this[SCOPE].clone();
-  const target = bitmake.Executable.create(newScope, name);
+  const target = bitmake.Executable.create(this[SCOPE], name);
   target.addSources(...sources);
 
   this[GLOBAL].TARGETS.set(name, target);

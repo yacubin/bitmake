@@ -3,7 +3,7 @@
 const { ensureString } = require("###/bitmake/StrictType.js");
 const { SourceFile } = require("###/bitmake/SourceFile.js");
 const { SourceFileList } = require("###/bitmake/SourceFileList.js");
-const { IncludeDirectory } = require("###/bitmake/IncludeDirectory.js");
+const { IncludeDirectory } = require("./IncludeDirectory.js");
 const { InterfaceTarget } = require("###/bitmake/InterfaceTarget.js");
 const { InterfaceIncludes } = require("./InterfaceIncludes.js");
 const { InterfaceObjects } = require("./InterfaceObjects.js");
@@ -31,7 +31,7 @@ function ensureTargetName(name) {
 
 function BaseTarget(scope, name) {
   this[NAME] = ensureTargetName(name);
-  this[TARGET_SCOPE] = scope;
+  this[TARGET_SCOPE] = scope.clone();
   this[OUTPUT_NAME] = ensureString(name);
   this[COMPILE_OPTIONS] = [];
   this[PREFIX] = "";
@@ -118,7 +118,7 @@ BaseTarget.prototype.addIncludes = function(...includes) {
   for (const it of includes.flat(1)) {
     let VALUE;
     if (typeof it === "string" || AbsolutePath.isAbsolute(it))
-      VALUE = IncludeDirectory.create(this[TARGET_SCOPE], it);
+      VALUE = IncludeDirectory.create(it, this[TARGET_SCOPE].SOURCE_DIR);
     else
       VALUE = InterfaceIncludes.ensureInstance(it);
     this[INCLUDES].push({VALUE}); // IncludeDirectory[]
@@ -207,7 +207,7 @@ BaseLibrary.prototype.addPublicIncludes = function(...includes) {
   for (const it of includes.flat(1)) {
     let VALUE;
     if (typeof it === "string" || AbsolutePath.isAbsolute(it))
-      VALUE = IncludeDirectory.create(this[TARGET_SCOPE], it);
+      VALUE = IncludeDirectory.create(it, this[TARGET_SCOPE].SOURCE_DIR);
     else
       VALUE = InterfaceIncludes.ensureInstance(it);
     this[INCLUDES].push({VALUE, PUBLIC_ONLY: true}); // IncludeDirectory[]
@@ -317,6 +317,7 @@ Executable.create = (scope, name) => {
 
 module.exports = {
   BaseTarget,
+  BaseLibrary,
   ObjectLibrary,
   StaticLibrary,
   SharedLibrary,

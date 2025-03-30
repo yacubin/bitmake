@@ -3,13 +3,13 @@
 const NAME         = Symbol("NAME");
 const PATH         = Symbol("PATH");
 
-function IncludeDirectory(scope, dir) {
-  this[NAME] = dir.toString();
-  this[PATH] = scope.SOURCE_DIR.resolve(dir);
+function IncludeDirectory(dirname, baseDir) {
+  this[NAME] = dirname.toString();
+  this[PATH] = baseDir.resolve(dirname);
 }
 
-IncludeDirectory.create = function(scope, dir) {
-  return Object.seal(new IncludeDirectory(scope, dir));
+IncludeDirectory.create = function(dirname, baseDir) {
+  return Object.seal(new IncludeDirectory(dirname, baseDir));
 }
 
 IncludeDirectory.prototype = Object.create(Object.prototype, {

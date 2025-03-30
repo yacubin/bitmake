@@ -21,7 +21,7 @@ InterfaceIncludes.prototype = Object.create(Object.prototype, {
     value: InterfaceIncludes,
     enumerable: false,
   },
-  NAME: {
+  targetName: {
     get () { return this[NAME]; },
     enumerable: true,
   },

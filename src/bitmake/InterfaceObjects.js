@@ -21,7 +21,7 @@ InterfaceObjects.prototype = Object.create(Object.prototype, {
     value: InterfaceObjects,
     enumerable: false,
   },
-  NAME: {
+  targetName: {
     get () { return this[NAME]; },
     enumerable: false,
   },

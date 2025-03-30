@@ -30,10 +30,7 @@ function InstallEntity(scope, value, params) {
     value = FilePath.create(value.toString());
     baseDir = baseDir || value.dirname();
   }
-  else if (value instanceof BaseTarget || value instanceof InterfaceTarget) {
-    value = InterfaceTarget.create(value.NAME);
-  }
-  else {
+  else if (!(value instanceof InterfaceTarget)) {
     throw new Error(`Not supportet value of ${value}`);
   }
 

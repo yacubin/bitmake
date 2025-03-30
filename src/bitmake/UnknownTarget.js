@@ -3,11 +3,17 @@
 const NAME     = Symbol("NAME");
 const INCLUDES = Symbol("INCLUDES");
 const SOURCES  = Symbol("SOURCES");
+const DEFINITIONS = Symbol("DEFINITIONS");
+const COMPILE_OPTIONS = Symbol("COMPILE_OPTIONS");
+const LINK_OPTIONS = Symbol("LINK_OPTIONS");
 
 function UnknownTarget(name) {
   this[NAME] = name;
-  this[SOURCES] = [];
   this[INCLUDES] = [];
+  this[SOURCES] = [];
+  this[DEFINITIONS] = [];
+  this[COMPILE_OPTIONS] = [];
+  this[LINK_OPTIONS] = [];
 }
 
 UnknownTarget.create = (name) => {
@@ -31,11 +37,19 @@ UnknownTarget.prototype = Object.create(Object.prototype, {
   },
   INCLUDES: {
     get () { return this[INCLUDES]; },
-    enumerable: false,
+    enumerable: true,
   },
   SOURCES: {
     get () { return this[SOURCES]; },
-    enumerable: false,
+    enumerable: true,
+  },
+  DEFINITIONS: {
+    get () { return this[DEFINITIONS]; },
+    enumerable: true,
+  },
+  COMPILE_OPTIONS: {
+    get () { return this[COMPILE_OPTIONS]; },
+    enumerable: true,
   },
 });
 

@@ -170,9 +170,9 @@ GlobalContext.prototype.writeCacheVariables = function(filename) {
 GlobalContext.prototype.__getAllIncludes = function(includes, targetSet, list) {
   for (const iter of list) {
     if (iter instanceof InterfaceIncludes || iter instanceof InterfaceTarget) {
-      if (!targetSet.has(iter.NAME)) {
-        targetSet.add(iter.NAME);
-        const target = this[TARGETS].get(iter.NAME);
+      if (!targetSet.has(iter.targetName)) {
+        targetSet.add(iter.targetName);
+        const target = this[TARGETS].get(iter.targetName);
         this.__getAllIncludes(includes, targetSet, target.getPublicIncludes());
         this.__getAllIncludes(includes, targetSet, target.getPublicLibraries());
       }
@@ -198,9 +198,9 @@ GlobalContext.prototype.getAllIncludes = function(target) {
 GlobalContext.prototype.__getAllHeaders = function(headers, targetSet, list) {
   for (const iter of list) {
     if (iter instanceof InterfaceIncludes || iter instanceof InterfaceTarget) {
-      if (!targetSet.has(iter.NAME)) {
-        targetSet.add(iter.NAME);
-        const target = this[TARGETS].get(iter.NAME);
+      if (!targetSet.has(iter.targetName)) {
+        targetSet.add(iter.targetName);
+        const target = this[TARGETS].get(iter.targetName);
         for (const header of target.getHeaders().map(i => i.FILE.toString())) {
           if (!headers.includes(header.toString()))
             headers.push(header.toString());
@@ -223,9 +223,9 @@ GlobalContext.prototype.getAllHeaders = function(target) {
 GlobalContext.prototype.__getAllLibraries = function(libraries, targetSet, list) {
   for (const iter of list) {
     console.assert(iter instanceof InterfaceTarget);
-    if (!targetSet.has(iter.NAME)) {
-      targetSet.add(iter.NAME);
-      const target = this[TARGETS].get(iter.NAME);
+    if (!targetSet.has(iter.targetName)) {
+      targetSet.add(iter.targetName);
+      const target = this[TARGETS].get(iter.targetName);
       libraries.push(target.FILE.toString());
       this.__getAllLibraries(libraries, targetSet, target.getPublicLibraries());
     }
@@ -275,12 +275,7 @@ GlobalContext.prototype.createGoals = function(scope) {
   for (const iter of Object.values(this[UNKNOWN_TARGETS])) {
     const target = this[TARGETS].get(iter.NAME);
     target.addSources(iter.SOURCES);
-    for (const it of iter.INCLUDES) {
-      if (it.PUBLIC_ONLY)
-        target.addPublicIncludes(it.VALUE);
-      else
-        target.addIncludes(it.VALUE);
-    }
+    iter.INCLUDES.forEach(i => target.INCLUDES.push(i));
   }
 
   for (const iter of Object.values(this[INTERFACE_SCRIPTS])) {
@@ -303,7 +298,7 @@ GlobalContext.prototype.createGoals = function(scope) {
     const depends = [];
     for (const s of target.SOURCES) {
       if (s instanceof InterfaceObjects) {
-        const t = this[TARGETS].get(s.NAME);
+        const t = this[TARGETS].get(s.targetName);
         for (const f of t.SOURCES) {
           if (f instanceof SourceFile && f.OBJECT_FILE)
             depends.push(f.OBJECT_FILE.toString());
@@ -400,7 +395,7 @@ GlobalContext.prototype.createGoals = function(scope) {
       dest = iter.DESTINATION.join(rfile);
     }
     else if (iter.VALUE instanceof InterfaceTarget) {
-      const target = this[TARGETS].get(iter.VALUE.NAME);
+      const target = this[TARGETS].get(iter.VALUE.targetName);
       src = target.FILE.toString();
       dest = iter.DESTINATION.join(target.FILE_NAME);
     }

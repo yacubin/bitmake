@@ -8,9 +8,6 @@ const { fileExistsSync } = require("###/utils/FileSystem.js");
 const { AbsolutePath } = require("###/utils/AbsolutePath.js");
 const bitmake = require("###/bitmake/index.js");
 
-const MAKE_SCRIPT = "MakeScript.js";
-const MAKE_CACHE = "MakeCache.json";
-
 const currentFunctionName = () => {
   const stack = new Error().stack.split("\n")[2];
   return stack.match(/at (\S+)/)?.[1];
@@ -148,23 +145,20 @@ UserContext.prototype.__applyDirectory = function(sourceDir, binaryDir) {
   this.logDebug(currentFunctionName(), scopeValueAsPrimitives(sourceDir), scopeValueAsPrimitives(binaryDir));
 
   const newScope = this[SCOPE].clone();
+  newScope.setCurrentDirectory(sourceDir, binaryDir);
 
   const newContex = UserContext.create(newScope, this[GLOBAL]);
   for (const [key, val] of Object.entries(this)) {
-    newContex[key] = val;
+    if (!Object.hasOwn(newScope, key))
+      newContex[key] = val;
   }
-
-  newContex.SOURCE_DIR = sourceDir;
-  newContex.BINARY_DIR = binaryDir;
-  newContex.SCRIPT_FILE = newContex.SOURCE_DIR.join(MAKE_SCRIPT);
 
   this[GLOBAL].copyCacheVariables(newContex);
   const module = require(newContex.SCRIPT_FILE.toString());
 
   module(newContex);
 
-  const filename = this.PROJECT_BINARY_DIR.join(MAKE_CACHE).toString();
-  this[GLOBAL].writeCacheVariables(filename);
+  this[GLOBAL].writeCacheVariables(newScope.CACHE_FILE.toString());
 }
 
 UserContext.prototype.addCustomScript = function(name, params) {

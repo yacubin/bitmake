@@ -1,9 +1,14 @@
 "use strict";
 
-const { DirPath } = require("./Path.js");
+const { DirPath, FilePath } = require("./Path.js");
 const { AbsolutePath } = require("###/utils/AbsolutePath.js");
 
+const PACKAGE_JSON = "package.json";
+const MAKE_SCRIPT = "MakeScript.js";
+const MAKE_CACHE = "MakeCache.json";
+
 const SYSTEM_NAME           = Symbol("SYSTEM_NAME");
+const SYSTEM_PROCESSOR      = Symbol("SYSTEM_PROCESSOR");
 const PROJECT_NAME          = Symbol("PROJECT_NAME");
 const PROJECT_VERSION       = Symbol("PROJECT_VERSION");
 const PROJECT_DESCRIPTION   = Symbol("PROJECT_DESCRIPTION");
@@ -14,6 +19,8 @@ const BUILD_TYPE            = Symbol("BUILD_TYPE");
 const DESTDIR               = Symbol("DESTDIR");
 const INSTALL_PREFIX        = Symbol("INSTALL_PREFIX");
 const SCRIPT_FILE           = Symbol("SCRIPT_FILE");
+const PACKAGE_FILE          = Symbol("PACKAGE_FILE");
+const CACHE_FILE            = Symbol("CACHE_FILE");
 const SOURCE_DIR            = Symbol("SOURCE_DIR");
 const BINARY_DIR            = Symbol("BINARY_DIR");
 const MODULE_PATH           = Symbol("MODULE_PATH");
@@ -49,20 +56,23 @@ const SHARED_LINKER_FLAGS   = Symbol("SHARED_LINKER_FLAGS");
 const EXECUTABLE_SUFFIX     = Symbol("EXECUTABLE_SUFFIX");
 const EXE_LINKER_FLAGS      = Symbol("EXE_LINKER_FLAGS");
 
-function Scope() {
+function Scope(sourceDir, binaryDir) {
   this[SYSTEM_NAME]           = "Linux";
+  this[SYSTEM_PROCESSOR]      = "wasm32";
   this[PROJECT_NAME]          = "";
   this[PROJECT_VERSION]       = "";
   this[PROJECT_DESCRIPTION]   = "";
   this[PROJECT_HOMEPAGE_URL]  = "";
-  this[PROJECT_SOURCE_DIR]    = null;
-  this[PROJECT_BINARY_DIR]    = null;
+  this[PROJECT_SOURCE_DIR]    = AbsolutePath.create(sourceDir);
+  this[PROJECT_BINARY_DIR]    = AbsolutePath.create(binaryDir);
   this[BUILD_TYPE]            = "Debug";
-  this[DESTDIR]               = "";
+  this[DESTDIR]               = null;
   this[INSTALL_PREFIX]        = DirPath.create("/usr");
-  this[SCRIPT_FILE]           = null;
-  this[SOURCE_DIR]            = null;
-  this[BINARY_DIR]            = null;
+  this[SCRIPT_FILE]           = FilePath.create(this[PROJECT_SOURCE_DIR].join(MAKE_SCRIPT).toString());
+  this[PACKAGE_FILE]          = FilePath.create(this[PROJECT_SOURCE_DIR].join(PACKAGE_JSON).toString());
+  this[CACHE_FILE]            = FilePath.create(this[PROJECT_SOURCE_DIR].join(MAKE_CACHE).toString());
+  this[SOURCE_DIR]            = this[PROJECT_SOURCE_DIR];
+  this[BINARY_DIR]            = this[PROJECT_BINARY_DIR];
   this[MODULE_PATH]           = [];
   this[INCLUDES]              = [];
   this[ASM_COMPILER]          = "clang";
@@ -97,8 +107,8 @@ function Scope() {
   this[EXE_LINKER_FLAGS]      = [];
 }
 
-Scope.create = function() {
-  return new Scope;
+Scope.create = function(sourceDir, binaryDir) {
+  return Object.seal(new Scope(sourceDir, binaryDir));
 }
 
 Scope.prototype = Object.create(Object.prototype, {
@@ -109,6 +119,11 @@ Scope.prototype = Object.create(Object.prototype, {
   SYSTEM_NAME: {
     get () { return this[SYSTEM_NAME]; },
     set(value) { this[SYSTEM_NAME] = value; },
+    enumerable: true,
+  },
+  SYSTEM_PROCESSOR: {
+    get () { return this[SYSTEM_PROCESSOR]; },
+    set(value) { this[SYSTEM_PROCESSOR] = value; },
     enumerable: true,
   },
   PROJECT_NAME: {
@@ -159,6 +174,16 @@ Scope.prototype = Object.create(Object.prototype, {
   SCRIPT_FILE: {
     get () { return this[SCRIPT_FILE]; },
     set(value) { this[SCRIPT_FILE] = value; },
+    enumerable: true,
+  },
+  PACKAGE_FILE: {
+    get () { return this[PACKAGE_FILE]; },
+    set(value) { this[PACKAGE_FILE] = value; },
+    enumerable: true,
+  },
+  CACHE_FILE: {
+    get () { return this[CACHE_FILE]; },
+    set(value) { this[CACHE_FILE] = value; },
     enumerable: true,
   },
   SOURCE_DIR: {
@@ -340,56 +365,65 @@ Scope.prototype.toJSON = function() {
   return json;
 }
 
-Scope.prototype.clone = function() {
-  const o = new Scope;
+Scope.prototype.setCurrentDirectory = function(sourceDir, binaryDir) {
+  this[SOURCE_DIR] = AbsolutePath.create(sourceDir);
+  this[BINARY_DIR] = AbsolutePath.create(binaryDir);
+  this[SCRIPT_FILE] = this[SOURCE_DIR].join(MAKE_SCRIPT);
+}
 
-  o[SYSTEM_NAME]           = this.SYSTEM_NAME;
-  o[PROJECT_NAME]          = this.PROJECT_NAME;
-  o[PROJECT_VERSION]       = this.PROJECT_VERSION;
+Scope.prototype.clone = function() {
+  const o = Object.create(Scope.prototype);
+
+  o[SYSTEM_NAME]           = this[SYSTEM_NAME];
+  o[SYSTEM_PROCESSOR]      = this[SYSTEM_PROCESSOR];
+  o[PROJECT_NAME]          = this[PROJECT_NAME];
+  o[PROJECT_VERSION]       = this[PROJECT_VERSION];
   o[PROJECT_DESCRIPTION]   = this[PROJECT_DESCRIPTION]
   o[PROJECT_HOMEPAGE_URL]  = this[PROJECT_HOMEPAGE_URL]
-  o[PROJECT_SOURCE_DIR]    = AbsolutePath.create(this.PROJECT_SOURCE_DIR);
-  o[PROJECT_BINARY_DIR]    = AbsolutePath.create(this.PROJECT_BINARY_DIR);
-  o[BUILD_TYPE]            = this.BUILD_TYPE;
-  o[DESTDIR]               = AbsolutePath.create(this.DESTDIR);
-  o[INSTALL_PREFIX]        = this.INSTALL_PREFIX;
-  o[SCRIPT_FILE]           = this.SCRIPT_FILE ? AbsolutePath.create(this.SCRIPT_FILE) : this.SCRIPT_FILE;
-  o[SOURCE_DIR]            = AbsolutePath.create(this.SOURCE_DIR);
-  o[BINARY_DIR]            = AbsolutePath.create(this.BINARY_DIR);
-  o[MODULE_PATH]           = this.MODULE_PATH;
-  o[INCLUDES]              = this.INCLUDES;
-  o[ASM_COMPILER]          = this.ASM_COMPILER;
-  o[ASM_FLAGS]             = this.ASM_FLAGS;
-  o[ASM_FLAGS_DEBUG]       = this.ASM_FLAGS_DEBUG;
-  o[ASM_FLAGS_RELEASE]     = this.ASM_FLAGS_RELEASE;
-  o[C_COMPILER]            = this.C_COMPILER;
-  o[C_FLAGS]               = this.C_FLAGS;
-  o[C_FLAGS_DEBUG]         = this.C_FLAGS_DEBUG;
-  o[C_FLAGS_RELEASE]       = this.C_FLAGS_RELEASE;
-  o[CXX_COMPILER]          = this.CXX_COMPILER;
-  o[CXX_FLAGS]             = this.CXX_FLAGS;
-  o[CXX_FLAGS_DEBUG]       = this.CXX_FLAGS_DEBUG;
-  o[CXX_FLAGS_RELEASE]     = this.CXX_FLAGS_RELEASE;
-  o[AR]                    = this.AR;
-  o[RANLIB]                = this.RANLIB;
-  o[LINKER]                = this.LINKER;
-  o[NM]                    = this.NM;
-  o[OBJCOPY]               = this.OBJCOPY;
-  o[OBJDUMP]               = this.OBJDUMP;
-  o[STRIP]                 = this.STRIP;
-  o[OBJECT_LIBRARY_PREFIX] = this.OBJECT_LIBRARY_PREFIX;
-  o[OBJECT_LIBRARY_SUFFIX] = this.OBJECT_LIBRARY_SUFFIX;
-  o[OBJECT_LINKER_FLAGS]   = this.OBJECT_LINKER_FLAGS;
-  o[STATIC_LIBRARY_PREFIX] = this.STATIC_LIBRARY_PREFIX;
-  o[STATIC_LIBRARY_SUFFIX] = this.STATIC_LIBRARY_SUFFIX;
-  o[STATIC_LINKER_FLAGS]   = this.STATIC_LINKER_FLAGS;
-  o[SHARED_LIBRARY_PREFIX] = this.SHARED_LIBRARY_PREFIX;
-  o[SHARED_LIBRARY_SUFFIX] = this.SHARED_LIBRARY_SUFFIX;
-  o[SHARED_LINKER_FLAGS]   = this.SHARED_LINKER_FLAGS;
-  o[EXECUTABLE_SUFFIX]     = this.EXECUTABLE_SUFFIX;
-  o[EXE_LINKER_FLAGS]      = this.EXE_LINKER_FLAGS;
+  o[PROJECT_SOURCE_DIR]    = this[PROJECT_SOURCE_DIR];
+  o[PROJECT_BINARY_DIR]    = this[PROJECT_BINARY_DIR];
+  o[BUILD_TYPE]            = this[BUILD_TYPE];
+  o[DESTDIR]               = this[DESTDIR];
+  o[INSTALL_PREFIX]        = this[INSTALL_PREFIX];
+  o[SOURCE_DIR]            = this[SOURCE_DIR];
+  o[BINARY_DIR]            = this[BINARY_DIR];
+  o[SCRIPT_FILE]           = this[SCRIPT_FILE];
+  o[PACKAGE_FILE]          = this[PACKAGE_FILE];
+  o[CACHE_FILE]            = this[CACHE_FILE];
+  o[MODULE_PATH]           = this[MODULE_PATH];
+  o[INCLUDES]              = this[INCLUDES];
+  o[ASM_COMPILER]          = this[ASM_COMPILER];
+  o[ASM_FLAGS]             = this[ASM_FLAGS];
+  o[ASM_FLAGS_DEBUG]       = this[ASM_FLAGS_DEBUG];
+  o[ASM_FLAGS_RELEASE]     = this[ASM_FLAGS_RELEASE];
+  o[C_COMPILER]            = this[C_COMPILER];
+  o[C_FLAGS]               = this[C_FLAGS];
+  o[C_FLAGS_DEBUG]         = this[C_FLAGS_DEBUG];
+  o[C_FLAGS_RELEASE]       = this[C_FLAGS_RELEASE];
+  o[CXX_COMPILER]          = this[CXX_COMPILER];
+  o[CXX_FLAGS]             = this[CXX_FLAGS];
+  o[CXX_FLAGS_DEBUG]       = this[CXX_FLAGS_DEBUG];
+  o[CXX_FLAGS_RELEASE]     = this[CXX_FLAGS_RELEASE];
+  o[AR]                    = this[AR];
+  o[RANLIB]                = this[RANLIB];
+  o[LINKER]                = this[LINKER];
+  o[NM]                    = this[NM];
+  o[OBJCOPY]               = this[OBJCOPY];
+  o[OBJDUMP]               = this[OBJDUMP];
+  o[STRIP]                 = this[STRIP];
+  o[OBJECT_LIBRARY_PREFIX] = this[OBJECT_LIBRARY_PREFIX];
+  o[OBJECT_LIBRARY_SUFFIX] = this[OBJECT_LIBRARY_SUFFIX];
+  o[OBJECT_LINKER_FLAGS]   = this[OBJECT_LINKER_FLAGS];
+  o[STATIC_LIBRARY_PREFIX] = this[STATIC_LIBRARY_PREFIX];
+  o[STATIC_LIBRARY_SUFFIX] = this[STATIC_LIBRARY_SUFFIX];
+  o[STATIC_LINKER_FLAGS]   = this[STATIC_LINKER_FLAGS];
+  o[SHARED_LIBRARY_PREFIX] = this[SHARED_LIBRARY_PREFIX];
+  o[SHARED_LIBRARY_SUFFIX] = this[SHARED_LIBRARY_SUFFIX];
+  o[SHARED_LINKER_FLAGS]   = this[SHARED_LINKER_FLAGS];
+  o[EXECUTABLE_SUFFIX]     = this[EXECUTABLE_SUFFIX];
+  o[EXE_LINKER_FLAGS]      = this[EXE_LINKER_FLAGS];
 
-  return o;
+  return Object.seal(o);
 }
 
 module.exports = {

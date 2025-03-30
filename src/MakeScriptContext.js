@@ -3,38 +3,31 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
-const { AbsolutePath } = require("###/utils/AbsolutePath.js");
 const { UserContext } = require("./bitmake/UserContext.js");
+const { GlobalContext } = require("./bitmake/GlobalContext.js");
+const { Scope } = require("./bitmake/Scope.js");
 const bitmake = require("###/bitmake/index.js");
-
-const PACKAGE_JSON = "package.json";
-const MAKE_CACHE = "MakeCache.json";
 
 async function actionMakeScript(config, environment, settings)
 {
   process.env = environment;
 
-  const global = bitmake.GlobalContext.create();
-  global.loadCacheVariables(AbsolutePath.create(config.binaryDir).join(MAKE_CACHE));
+  const scope = Scope.create(config.sourceDir, config.binaryDir);
 
-  const scope = bitmake.Scope.create();
+  const global = GlobalContext.create();
+  global.loadCacheVariables(scope.CACHE_FILE.toString());
+
+  const pkg = require(scope.PACKAGE_FILE.toString());
+
+  scope.BUILD_TYPE = config.buildType;
+  scope.PROJECT_NAME = pkg.name;
+  scope.PROJECT_VERSION = pkg.version;
+  scope.PROJECT_DESCRIPTION = pkg.description;
+  scope.PROJECT_HOMEPAGE_URL = pkg.homepage;
+  scope.DESTDIR = config.destDir ? bitmake.DirPath.create(config.destDir) : null;
+  scope.INSTALL_PREFIX = bitmake.DirPath.create("/usr");
+
   const root = UserContext.create(scope, global);
-
-  root.PROJECT_SOURCE_DIR = new AbsolutePath(config.sourceDir);
-  root.PROJECT_BINARY_DIR = new AbsolutePath(config.binaryDir);
-  root.BUILD_TYPE = config.buildType;
-  root.SOURCE_DIR = root.PROJECT_SOURCE_DIR;
-  root.BINARY_DIR = root.PROJECT_BINARY_DIR;
-
-  const pkg = require(root.SOURCE_DIR.join(PACKAGE_JSON).toString());
-
-  root.PROJECT_NAME = pkg.name;
-  root.PROJECT_VERSION = pkg.version;
-  root.PROJECT_DESCRIPTION = pkg.description;
-  root.PROJECT_HOMEPAGE_URL = pkg.homepage;
-
-  root.DESTDIR = config.destDir || "";
-  root.INSTALL_PREFIX = bitmake.DirPath.create("/usr");
 
   if (config.variables) {
     for (const [key, val] of Object.entries(config.variables)) {

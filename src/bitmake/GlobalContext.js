@@ -203,6 +203,8 @@ GlobalContext.prototype.createGoals = function(scope) {
     target.addSources(iter.SOURCES);
     target.INCLUDES.push(...iter.INCLUDES);
     target.DEFINES.push(...iter.DEFINES);
+    target.COMPILE_OPTIONS.push(...iter.COMPILE_OPTIONS);
+    target.LINK_OPTIONS.push(...iter.LINK_OPTIONS);
   }
 
   for (const iter of Object.values(this[INTERFACE_SCRIPTS])) {
@@ -246,10 +248,10 @@ GlobalContext.prototype.createGoals = function(scope) {
       const args = [];
       args.push(...target.TARGET_SCOPE[s.LANGUAGE + "_FLAGS"]);
       args.push(...target.TARGET_SCOPE[s.LANGUAGE + "_FLAGS_" + target.TARGET_SCOPE.BUILD_TYPE.toUpperCase()]);
-      args.push(...target.COMPILE_OPTIONS);
-      args.push(...s.COMPILE_FLAGS);
       args.push(...this[TARGETS].allDefinitionsOf(target).map(i => "-D" + i));
       args.push(...this[TARGETS].allIncludesOf(target).map(i => "-I" + i));
+      args.push(...this[TARGETS].allCompileOptionsOf(target));
+      args.push(...s.COMPILE_FLAGS);
       args.push("-o", relativeObject);
       args.push("-c", s.FILE);
       const cwd = target.TARGET_SCOPE.BINARY_DIR.toString();
@@ -261,10 +263,16 @@ GlobalContext.prototype.createGoals = function(scope) {
       goalList.addExec(output, [ ...headers, s.FILE ], command, args, cwd, msg);
     }
 
+    const linkOptions = this[TARGETS].allLinkOptionsOf(target);
     if (target instanceof ObjectLibrary) {
       const objs = depends.filter(i => i.endsWith(".o") || i.endsWith(".obj")).map(i => target.FILE_DIR.relative(i));
       if (objs.length) {
-        const args = [ ...target.LINK_OPTIONS, "-r", "-o", target.FILE_NAME, ...objs ];
+        const args = [
+          ...linkOptions,
+          "-r",
+          "-o", target.FILE_NAME,
+          ...objs
+        ];
         const cwd = target.FILE_DIR.toString();
         const msg = `Linking CXX object library ${target.FILE_NAME}`;
         goalList.addExec(target.FILE.toString(), depends, scope.LINKER, args, cwd, msg);
@@ -297,7 +305,7 @@ GlobalContext.prototype.createGoals = function(scope) {
         const libs = this[TARGETS].allLibrariesOf(target);
         const args = [
           ...target.TARGET_SCOPE.CXX_FLAGS,
-          ...target.LINK_OPTIONS,
+          ...linkOptions,
           ...objs,
           "-o", target.FILE_NAME,
           ...libs.map(i => target.FILE_DIR.relative(i)),

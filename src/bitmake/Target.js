@@ -139,13 +139,13 @@ BaseTarget.prototype.addLibraries = function(...libraries) {
 
 BaseTarget.prototype.addCompileOptions = function(...options) {
   for (const it of options.flat(1)) {
-    this.COMPILE_OPTIONS.push(it);
+    this[COMPILE_OPTIONS].push({ VALUE: it });
   }
 }
 
 BaseTarget.prototype.addLinkOptions = function(...options) {
   for (const it of options.flat(1)) {
-    this.LINK_OPTIONS.push(it);
+    this[LINK_OPTIONS].push({ VALUE: it });
   }
 }
 
@@ -224,15 +224,23 @@ BaseLibrary.prototype.addPublicLibraries = function(...libraries) {
   }
 }
 
-BaseLibrary.prototype.getPrivateLibraries = function() {
-  return this[LIBRARIES].filter(i => !i.PUBLIC_ONLY).map(i => i.VALUE);
+BaseLibrary.prototype.addPublicCompileOptions = function(...options) {
+  for (const it of options.flat(1)) {
+    this[COMPILE_OPTIONS].push({ VALUE: it, PUBLIC_ONLY: true });
+  }
+}
+
+BaseLibrary.prototype.addPublicLinkOptions = function(...options) {
+  for (const it of options.flat(1)) {
+    this[LINK_OPTIONS].push({ VALUE: it, PUBLIC_ONLY: true });
+  }
 }
 
 function ObjectLibrary(scope, name) {
   BaseLibrary.call(this, scope, name);
-  this.PREFIX = this[TARGET_SCOPE].OBJECT_LIBRARY_PREFIX;
-  this.SUFFIX = this[TARGET_SCOPE].OBJECT_LIBRARY_SUFFIX;
-  this.LINK_OPTIONS.push(...this[TARGET_SCOPE].OBJECT_LINKER_FLAGS);
+  this.PREFIX = scope.OBJECT_LIBRARY_PREFIX;
+  this.SUFFIX = scope.OBJECT_LIBRARY_SUFFIX;
+  this.LINK_OPTIONS.push(...scope.OBJECT_LINKER_FLAGS.map(VALUE => { return { VALUE } }));
 }
 
 ObjectLibrary.prototype = Object.create(BaseLibrary.prototype, {
@@ -250,9 +258,9 @@ ObjectLibrary.create = (scope, name) => {
 
 function StaticLibrary(scope, name) {
   BaseLibrary.call(this, scope, name);
-  this.PREFIX = this[TARGET_SCOPE].STATIC_LIBRARY_PREFIX;
-  this.SUFFIX = this[TARGET_SCOPE].STATIC_LIBRARY_SUFFIX;
-  this.LINK_OPTIONS.push(...this[TARGET_SCOPE].STATIC_LINKER_FLAGS);
+  this.PREFIX = scope.STATIC_LIBRARY_PREFIX;
+  this.SUFFIX = scope.STATIC_LIBRARY_SUFFIX;
+  this.LINK_OPTIONS.push(...scope.STATIC_LINKER_FLAGS.map(VALUE => { return { VALUE } }));
 }
 
 StaticLibrary.prototype = Object.create(BaseLibrary.prototype, {
@@ -270,9 +278,9 @@ StaticLibrary.create = (scope, name) => {
 
 function SharedLibrary(scope, name) {
   BaseLibrary.call(this, scope, name);
-  this.PREFIX = this[TARGET_SCOPE].SHARED_LIBRARY_PREFIX;
-  this.SUFFIX = this[TARGET_SCOPE].SHARED_LIBRARY_SUFFIX;
-  this.LINK_OPTIONS.push(...this[TARGET_SCOPE].SHARED_LINKER_FLAGS);
+  this.PREFIX = scope.SHARED_LIBRARY_PREFIX;
+  this.SUFFIX = scope.SHARED_LIBRARY_SUFFIX;
+  this.LINK_OPTIONS.push(...scope.SHARED_LINKER_FLAGS.map(VALUE => { return { VALUE } }));
 }
 
 SharedLibrary.prototype = Object.create(BaseLibrary.prototype, {
@@ -290,8 +298,8 @@ SharedLibrary.create = (scope, name) => {
 
 function Executable(scope, name) {
   BaseTarget.call(this, scope, name);
-  this.SUFFIX = this[TARGET_SCOPE].EXECUTABLE_SUFFIX;
-  this.LINK_OPTIONS.push(...this[TARGET_SCOPE].EXE_LINKER_FLAGS);
+  this.SUFFIX = scope.EXECUTABLE_SUFFIX;
+  this.LINK_OPTIONS.push(...scope.EXE_LINKER_FLAGS.map(VALUE => { return { VALUE } }));
 }
 
 Executable.prototype = Object.create(BaseTarget.prototype, {

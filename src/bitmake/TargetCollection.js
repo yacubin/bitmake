@@ -69,6 +69,22 @@ function getPublicDefinitions(target) {
   return target.DEFINES.filter(i => i.PUBLIC_ONLY).map(i => i.VALUE);
 }
 
+function getCompileOptions(target) {
+  return target.COMPILE_OPTIONS.map(i => i.VALUE);
+}
+
+function getPublicCompileOptions(target) {
+  return target.COMPILE_OPTIONS.filter(i => i.PUBLIC_ONLY).map(i => i.VALUE);
+}
+
+function getLinkOptions(target) {
+  return target.LINK_OPTIONS.map(i => i.VALUE);
+}
+
+function getPublicLinkOptions(target) {
+  return target.LINK_OPTIONS.filter(i => i.PUBLIC_ONLY).map(i => i.VALUE);
+}
+
 TargetCollection.prototype.__getAllIncludes = function(includes, targetSet, list) {
   for (const iter of list) {
     if (iter instanceof InterfaceIncludes || iter instanceof InterfaceTarget) {
@@ -151,6 +167,7 @@ TargetCollection.prototype.__getAllDefinitions = function(definitions, targetSet
         targetSet.add(iter.targetName);
         const target = this.get(iter.targetName);
         this.__getAllDefinitions(definitions, targetSet, getPublicDefinitions(target));
+        this.__getAllDefinitions(definitions, targetSet, getPublicLibraries(target));
       }
     }
     else if (typeof iter === "string") {
@@ -168,7 +185,74 @@ TargetCollection.prototype.allDefinitionsOf = function(params) {
   const definitions = [];
   const targetSet = new Set([ target.NAME ]);
   this.__getAllDefinitions(definitions, targetSet, getDefinitions(target));
+  this.__getAllDefinitions(definitions, targetSet, getPublicLibraries(target));
   return definitions;
+}
+
+TargetCollection.prototype.__getAllCompileOptions = function(options, targetSet, list) {
+  for (const iter of list) {
+    if (iter instanceof InterfaceTarget) {
+      if (!targetSet.has(iter.targetName)) {
+        targetSet.add(iter.targetName);
+        const target = this.get(iter.targetName);
+        this.__getAllCompileOptions(options, targetSet, getPublicCompileOptions(target));
+        this.__getAllCompileOptions(options, targetSet, getPublicLibraries(target));
+      }
+    }
+    else if (typeof iter === "string") {
+      if (!options.includes(iter))
+        options.push(iter);
+    }
+    else if (Array.isArray(iter)) {
+      // TODO: Add compare for same array in options
+      options.push(iter);
+    }
+    else {
+      throw new Error(`Not support instance ${iter}`);
+    }
+  }
+}
+
+TargetCollection.prototype.allCompileOptionsOf = function(params) {
+  const target = (typeof params === "string") ? this.get(params) : params;
+  const options = [];
+  const targetSet = new Set([ target.NAME ]);
+  this.__getAllCompileOptions(options, targetSet, getCompileOptions(target));
+  this.__getAllCompileOptions(options, targetSet, getPublicLibraries(target));
+  return options.flat();
+}
+
+TargetCollection.prototype.__getLinkOptions = function(options, targetSet, list) {
+  for (const iter of list) {
+    if (iter instanceof InterfaceTarget) {
+      if (!targetSet.has(iter.targetName)) {
+        targetSet.add(iter.targetName);
+        const target = this.get(iter.targetName);
+        this.__getLinkOptions(options, targetSet, getPublicLinkOptions(target));
+        this.__getLinkOptions(options, targetSet, getPublicLibraries(target));
+      }
+    }
+    else if (typeof iter === "string") {
+      if (!options.includes(iter))
+        options.push(iter);
+    }
+    else if (Array.isArray(iter)) {
+      // TODO: Add compare for same array in options
+      options.push(iter);
+    }
+    else {
+      throw new Error(`Not support instance ${iter}`);
+    }
+  }
+}
+
+TargetCollection.prototype.allLinkOptionsOf = function(params) {
+  const target = (typeof params === "string") ? this.get(params) : params;
+  const options = [];
+  const targetSet = new Set([ target.NAME ]);
+  this.__getLinkOptions(options, targetSet, getLinkOptions(target));
+  this.__getLinkOptions(options, targetSet, getPublicLibraries(target));
+  return options.flat();
 }
 
 module.exports = {

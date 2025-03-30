@@ -51,6 +51,10 @@ UnknownTarget.prototype = Object.create(Object.prototype, {
     get () { return this[COMPILE_OPTIONS]; },
     enumerable: true,
   },
+  LINK_OPTIONS: {
+    get () { return this[LINK_OPTIONS]; },
+    enumerable: true,
+  },
 });
 
 UnknownTarget.prototype.toJSON = function() {

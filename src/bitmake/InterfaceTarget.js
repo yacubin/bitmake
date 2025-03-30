@@ -46,13 +46,16 @@ InterfaceTarget.prototype.toJSON = function() {
   return this.toString();
 }
 
-InterfaceObjects.prototype.toString = function() {
+InterfaceTarget.prototype.toString = function() {
   return "${" + this.targetName + "}";
 }
 
-InterfaceTarget.prototype.addSource = function(...sources) {
+InterfaceTarget.prototype.addSources = function(...sources) {
   for (const iter of sources.flat(1)) {
-    this[UNKNOWN_TARGET].SOURCES.push(this[BASE_DIR].resolve(iter));
+    if (iter instanceof InterfaceObjects)
+      this[UNKNOWN_TARGET].SOURCES.push(iter);
+    else
+      this[UNKNOWN_TARGET].SOURCES.push(this[BASE_DIR].resolve(iter));
   }
 }
 
@@ -88,16 +91,28 @@ InterfaceTarget.prototype.addPublicDefinitions = function(...definitions) {
     this[UNKNOWN_TARGET].DEFINES.push({ VALUE, PUBLIC_ONLY: true });
 }
 
-InterfaceTarget.prototype.addCompileOptions = function(options) {
+InterfaceTarget.prototype.addCompileOptions = function(...options) {
+  for (const it of options.flat(1)) {
+    this[UNKNOWN_TARGET].COMPILE_OPTIONS.push({ VALUE: it });
+  }
 }
 
-InterfaceTarget.prototype.addPublicCompileOptions = function(options) {
+InterfaceTarget.prototype.addLinkOptions = function(...options) {
+  for (const it of options.flat(1)) {
+    this[UNKNOWN_TARGET].LINK_OPTIONS.push({ VALUE: it });
+  }
 }
 
-InterfaceTarget.prototype.addLinkOptions = function(options) {
+InterfaceTarget.prototype.addPublicCompileOptions = function(...options) {
+  for (const it of options.flat(1)) {
+    this[UNKNOWN_TARGET].COMPILE_OPTIONS.push({ VALUE: it, PUBLIC_ONLY: true });
+  }
 }
 
-InterfaceTarget.prototype.addPublicLinkOptions = function(options) {
+InterfaceTarget.prototype.addPublicLinkOptions = function(...options) {
+  for (const it of options.flat(1)) {
+    this[UNKNOWN_TARGET].LINK_OPTIONS.push({ VALUE: it, PUBLIC_ONLY: true });
+  }
 }
 
 module.exports = {

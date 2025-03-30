@@ -8,6 +8,7 @@ const { fileExistsSync } = require("###/utils/FileSystem.js");
 const { AbsolutePath } = require("###/utils/AbsolutePath.js");
 const { InterfaceTarget } = require("./InterfaceTarget.js");
 const { BaseTarget } = require("./Target.js");
+const { IncludeDirectory } = require("./IncludeDirectory.js");
 const { DirPath } = require("./Path.js");
 const bitmake = require("###/bitmake/index.js");
 
@@ -115,10 +116,8 @@ UserContext.prototype.addCacheVariables = function(params) {
 }
 
 UserContext.prototype.addIncludeDirectories = function(...dirs) {
-  this.logDebug(currentFunctionName());
-
   for (const iter of dirs.flat(1)) {
-    this.INCLUDES.push(iter);
+    this.INCLUDES.push(IncludeDirectory.create(iter, this.SOURCE_DIR));
   }
 }
 

@@ -33,13 +33,16 @@ function BaseTarget(scope, name) {
   this[NAME] = ensureTargetName(name);
   this[TARGET_SCOPE] = scope.clone();
   this[OUTPUT_NAME] = ensureString(name);
-  this[COMPILE_OPTIONS] = [];
   this[PREFIX] = "";
   this[SUFFIX] = "";
+  this[COMPILE_OPTIONS] = [];
   this[LINK_OPTIONS] = [];
   this[INCLUDES] = [];
   this[SOURCES] = [];
   this[LIBRARIES] = [];
+
+  for (const VALUE of scope.INCLUDES)
+    this[INCLUDES].push({VALUE});
 }
 
 BaseTarget.prototype = Object.create(Object.prototype, {

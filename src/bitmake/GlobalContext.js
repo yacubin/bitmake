@@ -188,7 +188,7 @@ GlobalContext.prototype.__getAllIncludes = function(includes, targetSet, list) {
 }
 
 GlobalContext.prototype.getAllIncludes = function(target) {
-  const includes = target.TARGET_SCOPE.INCLUDES.map(i => i.toString());
+  const includes = [];
   const targetSet = new Set([ target.NAME ]);
   this.__getAllIncludes(includes, targetSet, target.getIncludes());
   this.__getAllIncludes(includes, targetSet, target.getLibraries());
@@ -275,7 +275,7 @@ GlobalContext.prototype.createGoals = function(scope) {
   for (const iter of Object.values(this[UNKNOWN_TARGETS])) {
     const target = this[TARGETS].get(iter.NAME);
     target.addSources(iter.SOURCES);
-    iter.INCLUDES.forEach(i => target.INCLUDES.push(i));
+    target.INCLUDES.push(...iter.INCLUDES);
   }
 
   for (const iter of Object.values(this[INTERFACE_SCRIPTS])) {

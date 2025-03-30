@@ -9,7 +9,6 @@ const { TargetCollection } = require("./TargetCollection.js");
 const { ScriptCollection } = require("./ScriptCollection.js");
 const { InterfaceIncludes } = require("./InterfaceIncludes.js");
 const { InterfaceTarget } = require("./InterfaceTarget.js");
-const { IncludeDirectory } = require("./IncludeDirectory.js");
 const { UnknownTarget } = require("./UnknownTarget.js");
 const { GoalCollection } = require("./GoalCollection.js");
 const { InterfaceObjects } = require("./InterfaceObjects.js");
@@ -167,78 +166,6 @@ GlobalContext.prototype.writeCacheVariables = function(filename) {
   fs.writeFileSync(filename, json, "utf-8");
 }
 
-GlobalContext.prototype.__getAllIncludes = function(includes, targetSet, list) {
-  for (const iter of list) {
-    if (iter instanceof InterfaceIncludes || iter instanceof InterfaceTarget) {
-      if (!targetSet.has(iter.targetName)) {
-        targetSet.add(iter.targetName);
-        const target = this[TARGETS].get(iter.targetName);
-        this.__getAllIncludes(includes, targetSet, target.getPublicIncludes());
-        this.__getAllIncludes(includes, targetSet, target.getPublicLibraries());
-      }
-    }
-    else if (iter instanceof IncludeDirectory) {
-      if (!includes.includes(iter.toString()))
-        includes.push(iter.toString());
-    }
-    else {
-      throw new Error(`Not support instance ${iter}`);
-    }
-  }
-}
-
-GlobalContext.prototype.getAllIncludes = function(target) {
-  const includes = [];
-  const targetSet = new Set([ target.NAME ]);
-  this.__getAllIncludes(includes, targetSet, target.getIncludes());
-  this.__getAllIncludes(includes, targetSet, target.getLibraries());
-  return includes;
-}
-
-GlobalContext.prototype.__getAllHeaders = function(headers, targetSet, list) {
-  for (const iter of list) {
-    if (iter instanceof InterfaceIncludes || iter instanceof InterfaceTarget) {
-      if (!targetSet.has(iter.targetName)) {
-        targetSet.add(iter.targetName);
-        const target = this[TARGETS].get(iter.targetName);
-        for (const header of target.getHeaders().map(i => i.FILE.toString())) {
-          if (!headers.includes(header.toString()))
-            headers.push(header.toString());
-        }
-        this.__getAllHeaders(headers, targetSet, target.getPublicIncludes());
-        this.__getAllHeaders(headers, targetSet, target.getPublicLibraries());
-      }
-    }
-  }
-}
-
-GlobalContext.prototype.getAllHeaders = function(target) {
-  const headers = target.getHeaders().map(i => i.FILE.toString());
-  const targetSet = new Set([ target.NAME ]);
-  this.__getAllHeaders(headers, targetSet, target.getIncludes());
-  this.__getAllHeaders(headers, targetSet, target.getLibraries());
-  return headers;
-}
-
-GlobalContext.prototype.__getAllLibraries = function(libraries, targetSet, list) {
-  for (const iter of list) {
-    console.assert(iter instanceof InterfaceTarget);
-    if (!targetSet.has(iter.targetName)) {
-      targetSet.add(iter.targetName);
-      const target = this[TARGETS].get(iter.targetName);
-      libraries.push(target.FILE.toString());
-      this.__getAllLibraries(libraries, targetSet, target.getPublicLibraries());
-    }
-  }
-}
-
-GlobalContext.prototype.getAllLibraries = function(target) {
-  const libraries = [];
-  const targetSet = new Set([ target.NAME ]);
-  this.__getAllLibraries(libraries, targetSet, target.getLibraries());
-  return libraries;
-}
-
 function scopeValueAsPrimitives(o) {
   if (typeof o === "undefined")
     return o;
@@ -271,11 +198,11 @@ function scopeValueAsPrimitives(o) {
 }
 
 GlobalContext.prototype.createGoals = function(scope) {
-  const goalList = GoalCollection.create();
   for (const iter of Object.values(this[UNKNOWN_TARGETS])) {
     const target = this[TARGETS].get(iter.NAME);
     target.addSources(iter.SOURCES);
     target.INCLUDES.push(...iter.INCLUDES);
+    target.DEFINES.push(...iter.DEFINES);
   }
 
   for (const iter of Object.values(this[INTERFACE_SCRIPTS])) {
@@ -284,6 +211,7 @@ GlobalContext.prototype.createGoals = function(scope) {
       script.addProperty(key, ...vals);
   }
 
+  const goalList = GoalCollection.create();
   for (const [name, script] of Object.entries(this[SCRIPTS].ENTRIES)) {   
     const depends = [ script.FILE.toString() ];
     if (script.INPUT)
@@ -294,7 +222,7 @@ GlobalContext.prototype.createGoals = function(scope) {
   }
 
   for (const [name, target] of Object.entries(this[TARGETS].ENTRIES)) {
-    const headers = this.getAllHeaders(target);
+    const headers = this[TARGETS].allTargetHeaders(target);
     const depends = [];
     for (const s of target.SOURCES) {
       if (s instanceof InterfaceObjects) {
@@ -320,7 +248,7 @@ GlobalContext.prototype.createGoals = function(scope) {
       args.push(...target.TARGET_SCOPE[s.LANGUAGE + "_FLAGS_" + target.TARGET_SCOPE.BUILD_TYPE.toUpperCase()]);
       args.push(...target.COMPILE_OPTIONS);
       args.push(...s.COMPILE_FLAGS);
-      args.push(...this.getAllIncludes(target).map(i => "-I" + i));
+      args.push(...this[TARGETS].allTargetIncludes(target).map(i => "-I" + i));
       args.push("-o", relativeObject);
       args.push("-c", s.FILE);
       const cwd = target.TARGET_SCOPE.BINARY_DIR.toString();
@@ -365,7 +293,7 @@ GlobalContext.prototype.createGoals = function(scope) {
     if (target instanceof Executable) {
       const objs = depends.filter(i => i.endsWith(".o") || i.endsWith(".obj")).map(i => target.FILE_DIR.relative(i));
       if (objs.length) {
-        const libs = this.getAllLibraries(target);
+        const libs = this[TARGETS].allTargetLibraries(target);
         const args = [
           ...target.TARGET_SCOPE.CXX_FLAGS,
           ...target.LINK_OPTIONS,

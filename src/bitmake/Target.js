@@ -17,6 +17,7 @@ const PREFIX              = Symbol("PREFIX");
 const SUFFIX              = Symbol("SUFFIX");
 const LINK_OPTIONS        = Symbol("LINK_OPTIONS");
 const INCLUDES            = Symbol("INCLUDES");
+const DEFINES             = Symbol("DEFINES");
 const SOURCES             = Symbol("SOURCES");
 const LIBRARIES           = Symbol("LIBRARIES");
 
@@ -37,12 +38,10 @@ function BaseTarget(scope, name) {
   this[SUFFIX] = "";
   this[COMPILE_OPTIONS] = [];
   this[LINK_OPTIONS] = [];
-  this[INCLUDES] = [];
   this[SOURCES] = [];
   this[LIBRARIES] = [];
-
-  for (const VALUE of scope.INCLUDES)
-    this[INCLUDES].push({VALUE});
+  this[INCLUDES] = scope.INCLUDES.map(VALUE => { return {VALUE} });
+  this[DEFINES] = [];
 }
 
 BaseTarget.prototype = Object.create(Object.prototype, {
@@ -83,6 +82,10 @@ BaseTarget.prototype = Object.create(Object.prototype, {
   },
   INCLUDES: {
     get() { return this[INCLUDES]; },
+    enumerable: true,
+  },
+  DEFINES: {
+    get() { return this[DEFINES]; },
     enumerable: true,
   },
   SOURCES: {
@@ -184,6 +187,16 @@ BaseTarget.prototype.getLibraries = function() {
 
 BaseTarget.prototype.getHeaders = function() {
   return this[SOURCES].filter(i => i.HEADER_FILE_ONLY);
+}
+
+BaseTarget.prototype.addDefinitions = function(...definitions) {
+  for (const VALUE of definitions.flat(1))
+    this[DEFINES].push({ VALUE });
+}
+
+BaseTarget.prototype.addPublicDefinitions = function(...definitions) {
+  for (const VALUE of definitions.flat(1))
+    this[DEFINES].push({ VALUE, PUBLIC_ONLY: true });
 }
 
 BaseTarget.prototype.toJSON = function() {

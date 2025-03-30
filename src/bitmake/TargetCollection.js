@@ -1,5 +1,9 @@
 "use strict";
 
+const { IncludeDirectory } = require("./IncludeDirectory.js");
+const { InterfaceIncludes } = require("./InterfaceIncludes.js");
+const { InterfaceTarget } = require("./InterfaceTarget.js");
+
 const ENTRIES = Symbol("ENTRIES");
 
 function TargetCollection() {
@@ -37,20 +41,79 @@ TargetCollection.prototype.set = function(name, target) {
   this[ENTRIES][name] = target;
 }
 
-TargetCollection.prototype.dump = function() {
-  for (const [name, target] of Object.entries(this[ENTRIES])) {
-    console.info(`${name}:`);
-    for (const [key, entry] of Object.entries(target)) {
-      if (entry && typeof entry === "object") {
-        console.info(`  ${key}:`);
-        for (const [k, v] of Object.entries(entry))
-          console.info(`    ${k}: ${JSON.stringify(v)}`);
+TargetCollection.prototype.__getAllIncludes = function(includes, targetSet, list) {
+  for (const iter of list) {
+    if (iter instanceof InterfaceIncludes || iter instanceof InterfaceTarget) {
+      if (!targetSet.has(iter.targetName)) {
+        targetSet.add(iter.targetName);
+        const target = this.get(iter.targetName);
+        this.__getAllIncludes(includes, targetSet, target.getPublicIncludes());
+        this.__getAllIncludes(includes, targetSet, target.getPublicLibraries());
       }
-      else {
-        console.info(`  ${key}: ${JSON.stringify(entry)}`);
+    }
+    else if (iter instanceof IncludeDirectory) {
+      if (!includes.includes(iter.toString()))
+        includes.push(iter.toString());
+    }
+    else {
+      throw new Error(`Not support instance ${iter}`);
+    }
+  }
+}
+
+TargetCollection.prototype.allTargetIncludes = function(params) {
+  const target = (typeof params === "string") ? this.get(params) : params;
+  const includes = [];
+  const targetSet = new Set([ target.NAME ]);
+  this.__getAllIncludes(includes, targetSet, target.getIncludes());
+  this.__getAllIncludes(includes, targetSet, target.getLibraries());
+  return includes;
+}
+
+TargetCollection.prototype.__getAllHeaders = function(headers, targetSet, list) {
+  for (const iter of list) {
+    if (iter instanceof InterfaceIncludes || iter instanceof InterfaceTarget) {
+      if (!targetSet.has(iter.targetName)) {
+        targetSet.add(iter.targetName);
+        const target = this.get(iter.targetName);
+        for (const header of target.getHeaders().map(i => i.FILE.toString())) {
+          if (!headers.includes(header.toString()))
+            headers.push(header.toString());
+        }
+        this.__getAllHeaders(headers, targetSet, target.getPublicIncludes());
+        this.__getAllHeaders(headers, targetSet, target.getPublicLibraries());
       }
     }
   }
+}
+
+TargetCollection.prototype.allTargetHeaders = function(params) {
+  const target = (typeof params === "string") ? this.get(params) : params;
+  const headers = target.getHeaders().map(i => i.FILE.toString());
+  const targetSet = new Set([ target.NAME ]);
+  this.__getAllHeaders(headers, targetSet, target.getIncludes());
+  this.__getAllHeaders(headers, targetSet, target.getLibraries());
+  return headers;
+}
+
+TargetCollection.prototype.__getAllLibraries = function(libraries, targetSet, list) {
+  for (const iter of list) {
+    console.assert(iter instanceof InterfaceTarget);
+    if (!targetSet.has(iter.targetName)) {
+      targetSet.add(iter.targetName);
+      const target = this.get(iter.targetName);
+      libraries.push(target.FILE.toString());
+      this.__getAllLibraries(libraries, targetSet, target.getPublicLibraries());
+    }
+  }
+}
+
+TargetCollection.prototype.allTargetLibraries = function(params) {
+  const target = (typeof params === "string") ? this.get(params) : params;
+  const libraries = [];
+  const targetSet = new Set([ target.NAME ]);
+  this.__getAllLibraries(libraries, targetSet, target.getLibraries());
+  return libraries;
 }
 
 module.exports = {

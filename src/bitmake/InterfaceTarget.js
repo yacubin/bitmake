@@ -78,10 +78,14 @@ InterfaceTarget.prototype.addPublicIncludes = function(...includes) {
   }
 }
 
-InterfaceTarget.prototype.addDefinitions = function(definitions) {
+InterfaceTarget.prototype.addDefinitions = function(...definitions) {
+  for (const VALUE of definitions.flat(1))
+    this[UNKNOWN_TARGET].DEFINES.push({ VALUE });
 }
 
-InterfaceTarget.prototype.addPublicDefinitions = function(definitions) {
+InterfaceTarget.prototype.addPublicDefinitions = function(...definitions) {
+  for (const VALUE of definitions.flat(1))
+    this[UNKNOWN_TARGET].DEFINES.push({ VALUE, PUBLIC_ONLY: true });
 }
 
 InterfaceTarget.prototype.addCompileOptions = function(options) {

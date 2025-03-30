@@ -6,6 +6,7 @@ const path = require("node:path");
 const { copyValue } = require("###/utils/Primitives.js");
 const { fileExistsSync } = require("###/utils/FileSystem.js");
 const { AbsolutePath } = require("###/utils/AbsolutePath.js");
+const { InterfaceTarget } = require("./InterfaceTarget.js");
 const bitmake = require("###/bitmake/index.js");
 
 const currentFunctionName = () => {
@@ -158,15 +159,8 @@ UserContext.prototype.addCustomScript = function(name, params) {
 }
 
 UserContext.prototype.target = function(name) {
-  this.logDebug(currentFunctionName(), name);
-
-  let target = this[GLOBAL].INTERFACE_TARGETS[name];
-  if (!target) {
-    target = bitmake.InterfaceTarget.create(name);
-    this[GLOBAL].INTERFACE_TARGETS[name] = target;
-  }
-
-  return target.forUser(this);
+  const target = this[GLOBAL].getUknownTarget(name);
+  return InterfaceTarget.create(this[SCOPE], target);
 }
 
 UserContext.prototype.script = function(name) {

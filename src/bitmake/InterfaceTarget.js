@@ -2,49 +2,18 @@
 
 const { InterfaceIncludes } = require("###/bitmake/InterfaceIncludes.js");
 const { InterfaceObjects } = require("###/bitmake/InterfaceObjects.js");
+const { DirPath } = require("./Path.js");
 
-const NAME     = Symbol("NAME");
-const SCOPE    = Symbol("SCOPE");
-const PROTO    = Symbol("PROTO");
-const INCLUDES = Symbol("INCLUDES");
-const SOURCES  = Symbol("SOURCES");
+const UNKNOWN_TARGET = Symbol("UNKNOWN_TARGET");
+const SOURCE_DIR = Symbol("SOURCE_DIR");
 
-function InterfaceTarget(name) {
-  this[NAME] = name;
-  this[SOURCES] = [];
-  this[INCLUDES] = [];
-
-  const includes = InterfaceIncludes.create(name);
-  const objects = InterfaceObjects.create(name);
-
-  this[PROTO] = Object.create(this, {
-    includes: {
-      get () { return includes; },
-      enumerable: false,
-    },
-    objects: {
-      get () { return objects; },
-      enumerable: false,
-    },
-  });
-  this[PROTO].addSource = function(...sources) {
-    for (const iter of sources.flat(1)) {
-      this[SOURCES].push(this[SCOPE].SOURCE_DIR.resolve(iter));
-    }
-  }
-  this[PROTO].addIncludes = function(...includes) {
-    for (const it of includes.flat(1)) {
-      this[INCLUDES].push({ VALUE: (it instanceof InterfaceIncludes) ? it : this[SCOPE].SOURCE_DIR.resolve(it), PUBLIC_ONLY: false });
-    }
-  }
-  this[PROTO].addPublicIncludes = function(...includes) {
-    for (const it of includes.flat(1))
-      this[INCLUDES].push({ VALUE: (it instanceof InterfaceIncludes) ? it : this[SCOPE].SOURCE_DIR.resolve(it), PUBLIC_ONLY: true });
-  }
+function InterfaceTarget(scope, utarget) {
+  this[SOURCE_DIR] = DirPath.create(scope.SOURCE_DIR.toString());
+  this[UNKNOWN_TARGET] = utarget;
 }
 
-InterfaceTarget.create = (name) => {
-  return Object.seal(new InterfaceTarget(name));
+InterfaceTarget.create = (scope, target) => {
+  return Object.seal(new InterfaceTarget(scope, target));
 }
 
 InterfaceTarget.ensureInstance = (value) => {
@@ -58,35 +27,43 @@ InterfaceTarget.prototype = Object.create(Object.prototype, {
     value: InterfaceTarget,
     enumerable: false,
   },
-  NAME: {
-    get () { return this[NAME]; },
+  name: {
+    get () { return this[UNKNOWN_TARGET].NAME; },
     enumerable: true,
   },
-  INCLUDES: {
-    get () { return this[INCLUDES]; },
-    enumerable: false,
+  includes: {
+    get () { return InterfaceIncludes.create(this.name); },
+    enumerable: true,
   },
-  SOURCES: {
-    get () { return this[SOURCES]; },
-    enumerable: false,
+  objects: {
+    get () { return InterfaceObjects.create(this.name); },
+    enumerable: true,
   },
 });
 
 InterfaceTarget.prototype.toJSON = function() {
-  const json = {};
-  for (const key in this)
-    json[key] = this[key];
-  return json;
+  return this.toString();
 }
 
-InterfaceTarget.prototype.toString = function() {
-  return "${" + this[NAME] + "}";
+InterfaceObjects.prototype.toString = function() {
+  return "${" + this[NAME] + ".objects}";
 }
 
-InterfaceTarget.prototype.forUser = function(scope) {
-  const o = Object.create(this[PROTO]);
-  o[SCOPE] = scope;
-  return Object.seal(o);
+InterfaceTarget.prototype.addSource = function(...sources) {
+  for (const iter of sources.flat(1)) {
+    this[UNKNOWN_TARGET].SOURCES.push(this[SOURCE_DIR].resolve(iter));
+  }
+}
+
+InterfaceTarget.prototype.addIncludes = function(...includes) {
+  for (const it of includes.flat(1)) {
+    this[UNKNOWN_TARGET].INCLUDES.push({ VALUE: (it instanceof InterfaceIncludes) ? it : this[SOURCE_DIR].resolve(it), PUBLIC_ONLY: false });
+  }
+}
+
+InterfaceTarget.prototype.addPublicIncludes = function(...includes) {
+  for (const it of includes.flat(1))
+    this[UNKNOWN_TARGET].INCLUDES.push({ VALUE: (it instanceof InterfaceIncludes) ? it : this[SOURCE_DIR].resolve(it), PUBLIC_ONLY: true });
 }
 
 module.exports = {

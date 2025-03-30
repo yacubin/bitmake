@@ -23,19 +23,16 @@ InterfaceObjects.prototype = Object.create(Object.prototype, {
   },
   NAME: {
     get () { return this[NAME]; },
-    enumerable: true,
+    enumerable: false,
   },
 });
 
 InterfaceObjects.prototype.toJSON = function() {
-  const json = {};
-  for (const key in this)
-    json[key] = (typeof this[key].toJSON === "function") ? this[key].toJSON() : this[key];
-  return json;
+  return this.toString();
 }
 
 InterfaceObjects.prototype.toString = function() {
-  return "${" + this[NAME] + ".OBJECTS}";
+  return "${" + this[NAME] + ".objects}";
 }
 
 module.exports = {

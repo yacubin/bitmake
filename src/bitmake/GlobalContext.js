@@ -10,6 +10,7 @@ const { ScriptCollection } = require("./ScriptCollection.js");
 const { InterfaceIncludes } = require("./InterfaceIncludes.js");
 const { InterfaceTarget } = require("./InterfaceTarget.js");
 const { IncludeDirectory } = require("./IncludeDirectory.js");
+const { UnknownTarget } = require("./UnknownTarget.js");
 const { GoalCollection } = require("./GoalCollection.js");
 const { InterfaceObjects } = require("./InterfaceObjects.js");
 const { SourceFile } = require("./SourceFile.js");
@@ -19,7 +20,7 @@ const { FilePath, DirPath } = require("./Path.js");
 const TARGETS = Symbol("TARGETS");
 const SCRIPTS = Symbol("SCRIPTS");
 const CACHE = Symbol("CACHE");
-const INTERFACE_TARGETS = Symbol("INTERFACE_TARGETS");
+const UNKNOWN_TARGETS = Symbol("UNKNOWN_TARGETS");
 const INTERFACE_SCRIPTS = Symbol("INTERFACE_SCRIPTS");
 const INSTALL_LIST = Symbol("INSTALL_LIST");
 const SCRIPT_VARIABLES_MAP = Symbol("SCRIPT_VARIABLES_MAP");
@@ -29,7 +30,7 @@ function GlobalContext() {
   this[TARGETS] = TargetCollection.create();
   this[SCRIPTS] = ScriptCollection.create();
   this[CACHE] = {};
-  this[INTERFACE_TARGETS] = {};
+  this[UNKNOWN_TARGETS] = {};
   this[INTERFACE_SCRIPTS] = {};
   this[INSTALL_LIST] = [];
   this[SCRIPT_VARIABLES_MAP] = {};
@@ -57,8 +58,8 @@ GlobalContext.prototype = Object.create(Object.prototype, {
     get() { return this[CACHE]; },
     enumerable: true,
   },
-  INTERFACE_TARGETS: {
-    get() { return this[INTERFACE_TARGETS]; },
+  UNKNOWN_TARGETS: {
+    get() { return this[UNKNOWN_TARGETS]; },
     enumerable: true,
   },
   INTERFACE_SCRIPTS: {
@@ -84,6 +85,14 @@ GlobalContext.prototype.toJSON = function() {
   for (const key in this)
     json[key] = this[key];
   return json;
+}
+
+GlobalContext.prototype.getUknownTarget = function(name) {
+  let target = this[UNKNOWN_TARGETS][name];
+  if (!target) {
+    this[UNKNOWN_TARGETS][name] = target = UnknownTarget.create(name);
+  }
+  return target;
 }
 
 GlobalContext.prototype.addSystemVariables = function(variables) {
@@ -263,7 +272,7 @@ function scopeValueAsPrimitives(o) {
 
 GlobalContext.prototype.createGoals = function(scope) {
   const goalList = GoalCollection.create();
-  for (const iter of Object.values(this[INTERFACE_TARGETS])) {
+  for (const iter of Object.values(this[UNKNOWN_TARGETS])) {
     const target = this[TARGETS].get(iter.NAME);
     target.addSources(iter.SOURCES);
     for (const it of iter.INCLUDES) {

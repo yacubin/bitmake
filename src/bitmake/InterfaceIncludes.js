@@ -28,14 +28,11 @@ InterfaceIncludes.prototype = Object.create(Object.prototype, {
 });
 
 InterfaceIncludes.prototype.toJSON = function() {
-  const json = {};
-  for (const key in this)
-    json[key] = (typeof this[key].toJSON === "function") ? this[key].toJSON() : this[key];
-  return json;
+  return this.toString();
 }
 
 InterfaceIncludes.prototype.toString = function() {
-  return "${" + this[NAME] + ".INCLUDES}";
+  return "${" + this[NAME] + ".includes}";
 }
 
 module.exports = {

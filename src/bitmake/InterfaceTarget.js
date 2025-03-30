@@ -33,12 +33,13 @@ function InterfaceTarget(name) {
     }
   }
   this[PROTO].addIncludes = function(...includes) {
-    for (const iter of includes.flat(1))
-      this[INCLUDES].push({ VALUE: this[SCOPE].SOURCE_DIR.resolve(iter), PUBLIC_ONLY: false });
+    for (const it of includes.flat(1)) {
+      this[INCLUDES].push({ VALUE: (it instanceof InterfaceIncludes) ? it : this[SCOPE].SOURCE_DIR.resolve(it), PUBLIC_ONLY: false });
+    }
   }
   this[PROTO].addPublicIncludes = function(...includes) {
-    for (const iter of includes.flat(1))
-      this[INCLUDES].push({ VALUE: this[SCOPE].SOURCE_DIR.resolve(iter), PUBLIC_ONLY: true });
+    for (const it of includes.flat(1))
+      this[INCLUDES].push({ VALUE: (it instanceof InterfaceIncludes) ? it : this[SCOPE].SOURCE_DIR.resolve(it), PUBLIC_ONLY: true });
   }
 }
 

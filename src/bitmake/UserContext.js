@@ -124,11 +124,12 @@ UserContext.prototype.addSubdirectory = function(sourceDir, binaryDir) {
 
   binaryDir = binaryDir || path.isAbsolute(sourceDir) ? undefined : sourceDir;
 
-  const SOURCE_DIR = path.isAbsolute(sourceDir) ? new AbsolutePath(sourceDir) : this.SOURCE_DIR.join(sourceDir);
-  const BINARY_DIR = path.isAbsolute(binaryDir) ? new AbsolutePath(binaryDir) : this.BINARY_DIR.join(binaryDir);
+  const SOURCE_DIR = path.isAbsolute(sourceDir) ? AbsolutePath.create(sourceDir) : this.SOURCE_DIR.join(sourceDir);
+  const BINARY_DIR = path.isAbsolute(binaryDir) ? AbsolutePath.create(binaryDir) : this.BINARY_DIR.join(binaryDir);
 
   const newScope = this[SCOPE].clone();
-  newScope.setCurrentDirectory(SOURCE_DIR, BINARY_DIR);
+  const resolvedSourceDir = AbsolutePath.create(this[GLOBAL].resolveSubdirectory(SOURCE_DIR).toString());
+  newScope.setCurrentDirectory(resolvedSourceDir, BINARY_DIR);
   const newContex = UserContext.create(newScope, this[GLOBAL]);
   for (const [key, val] of Object.entries(this)) {
     newContex[key] = val;

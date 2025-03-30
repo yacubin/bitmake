@@ -1,5 +1,7 @@
 "use strict";
 
+const { DirPath } = require("./Path.js");
+
 const GLOBAL = Symbol("GLOBAL");
 const SCOPE = Symbol("SCOPE");
 
@@ -9,7 +11,7 @@ function PluginContext(scope, global) {
 }
 
 PluginContext.prototype.addSubdirectoryAlias = function(src, dest) {
-  console.log(`addSubdirectoryAlias(${src}, ${dest})`);
+  this[GLOBAL].addSubdirectoryAlias(DirPath.create(src.toString()), DirPath.create(dest.toString()));
 }
 
 PluginContext.prototype.toJSON = function() {

@@ -23,6 +23,7 @@ const INTERFACE_TARGETS = Symbol("INTERFACE_TARGETS");
 const INTERFACE_SCRIPTS = Symbol("INTERFACE_SCRIPTS");
 const INSTALL_LIST = Symbol("INSTALL_LIST");
 const SCRIPT_VARIABLES_MAP = Symbol("SCRIPT_VARIABLES_MAP");
+const SUBDIR_ALIAS = Symbol("SUBDIR_ALIAS");
 
 function GlobalContext() {
   this[TARGETS] = TargetCollection.create();
@@ -32,6 +33,7 @@ function GlobalContext() {
   this[INTERFACE_SCRIPTS] = {};
   this[INSTALL_LIST] = [];
   this[SCRIPT_VARIABLES_MAP] = {};
+  this[SUBDIR_ALIAS] = {};
 }
 
 GlobalContext.create = () => {
@@ -71,6 +73,10 @@ GlobalContext.prototype = Object.create(Object.prototype, {
     get() { return this[SCRIPT_VARIABLES_MAP]; },
     enumerable: true,
   },
+  SUBDIR_ALIAS: {
+    get() { return this[SUBDIR_ALIAS]; },
+    enumerable: true,
+  },
 });
 
 GlobalContext.prototype.toJSON = function() {
@@ -85,6 +91,15 @@ GlobalContext.prototype.addSystemVariables = function(variables) {
   if (this[SCRIPT_VARIABLES_MAP][script])
     throw `SystemVariables exists for ${script}`;
   this[SCRIPT_VARIABLES_MAP][script] = variables;
+}
+
+GlobalContext.prototype.resolveSubdirectory = function(path) {
+  const resolvedPath = this[SUBDIR_ALIAS][path.toString()];
+  return resolvedPath || path;
+}
+
+GlobalContext.prototype.addSubdirectoryAlias = function(src, dest) {
+  this[SUBDIR_ALIAS][src.toString()] = dest;
 }
 
 GlobalContext.prototype.loadCacheVariables = function(filename) {

@@ -61,6 +61,14 @@ function getPublicLibraries(target) {
   return target.LIBRARIES.filter(i => i.PUBLIC_ONLY).map(i => i.VALUE);
 }
 
+function getDefinitions(target) {
+  return target.DEFINES.map(i => i.VALUE);
+}
+
+function getPublicDefinitions(target) {
+  return target.DEFINES.filter(i => i.PUBLIC_ONLY).map(i => i.VALUE);
+}
+
 TargetCollection.prototype.__getAllIncludes = function(includes, targetSet, list) {
   for (const iter of list) {
     if (iter instanceof InterfaceIncludes || iter instanceof InterfaceTarget) {
@@ -134,6 +142,33 @@ TargetCollection.prototype.allLibrariesOf = function(params) {
   const targetSet = new Set([ target.NAME ]);
   this.__getAllLibraries(libraries, targetSet, getLibraries(target));
   return libraries;
+}
+
+TargetCollection.prototype.__getAllDefinitions = function(definitions, targetSet, list) {
+  for (const iter of list) {
+    if (iter instanceof InterfaceTarget) {
+      if (!targetSet.has(iter.targetName)) {
+        targetSet.add(iter.targetName);
+        const target = this.get(iter.targetName);
+        this.__getAllDefinitions(definitions, targetSet, getPublicDefinitions(target));
+      }
+    }
+    else if (typeof iter === "string") {
+      if (!definitions.includes(iter))
+        definitions.push(iter);
+    }
+    else {
+      throw new Error(`Not support instance ${iter}`);
+    }
+  }
+}
+
+TargetCollection.prototype.allDefinitionsOf = function(params) {
+  const target = (typeof params === "string") ? this.get(params) : params;
+  const definitions = [];
+  const targetSet = new Set([ target.NAME ]);
+  this.__getAllDefinitions(definitions, targetSet, getDefinitions(target));
+  return definitions;
 }
 
 module.exports = {

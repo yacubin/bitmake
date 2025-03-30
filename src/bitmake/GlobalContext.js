@@ -248,6 +248,7 @@ GlobalContext.prototype.createGoals = function(scope) {
       args.push(...target.TARGET_SCOPE[s.LANGUAGE + "_FLAGS_" + target.TARGET_SCOPE.BUILD_TYPE.toUpperCase()]);
       args.push(...target.COMPILE_OPTIONS);
       args.push(...s.COMPILE_FLAGS);
+      args.push(...this[TARGETS].allDefinitionsOf(target).map(i => "-D" + i));
       args.push(...this[TARGETS].allIncludesOf(target).map(i => "-I" + i));
       args.push("-o", relativeObject);
       args.push("-c", s.FILE);

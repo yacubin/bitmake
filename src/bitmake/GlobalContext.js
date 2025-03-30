@@ -222,7 +222,7 @@ GlobalContext.prototype.createGoals = function(scope) {
   }
 
   for (const [name, target] of Object.entries(this[TARGETS].ENTRIES)) {
-    const headers = this[TARGETS].allTargetHeaders(target);
+    const headers = this[TARGETS].allHeadersOf(target);
     const depends = [];
     for (const s of target.SOURCES) {
       if (s instanceof InterfaceObjects) {
@@ -248,7 +248,7 @@ GlobalContext.prototype.createGoals = function(scope) {
       args.push(...target.TARGET_SCOPE[s.LANGUAGE + "_FLAGS_" + target.TARGET_SCOPE.BUILD_TYPE.toUpperCase()]);
       args.push(...target.COMPILE_OPTIONS);
       args.push(...s.COMPILE_FLAGS);
-      args.push(...this[TARGETS].allTargetIncludes(target).map(i => "-I" + i));
+      args.push(...this[TARGETS].allIncludesOf(target).map(i => "-I" + i));
       args.push("-o", relativeObject);
       args.push("-c", s.FILE);
       const cwd = target.TARGET_SCOPE.BINARY_DIR.toString();
@@ -293,7 +293,7 @@ GlobalContext.prototype.createGoals = function(scope) {
     if (target instanceof Executable) {
       const objs = depends.filter(i => i.endsWith(".o") || i.endsWith(".obj")).map(i => target.FILE_DIR.relative(i));
       if (objs.length) {
-        const libs = this[TARGETS].allTargetLibraries(target);
+        const libs = this[TARGETS].allLibrariesOf(target);
         const args = [
           ...target.TARGET_SCOPE.CXX_FLAGS,
           ...target.LINK_OPTIONS,

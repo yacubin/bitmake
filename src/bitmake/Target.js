@@ -177,26 +177,9 @@ BaseTarget.prototype.setOutputName = function(outputName) {
   this[OUTPUT_NAME] = outputName;
 }
 
-BaseTarget.prototype.getIncludes = function() {
-  return this[INCLUDES].map(i => i.VALUE);
-}
-
-BaseTarget.prototype.getLibraries = function() {
-  return this[LIBRARIES].map(i => i.VALUE);
-}
-
-BaseTarget.prototype.getHeaders = function() {
-  return this[SOURCES].filter(i => i.HEADER_FILE_ONLY);
-}
-
 BaseTarget.prototype.addDefinitions = function(...definitions) {
   for (const VALUE of definitions.flat(1))
     this[DEFINES].push({ VALUE });
-}
-
-BaseTarget.prototype.addPublicDefinitions = function(...definitions) {
-  for (const VALUE of definitions.flat(1))
-    this[DEFINES].push({ VALUE, PUBLIC_ONLY: true });
 }
 
 BaseTarget.prototype.toJSON = function() {
@@ -230,12 +213,9 @@ BaseLibrary.prototype.addPublicIncludes = function(...includes) {
   }
 }
 
-BaseLibrary.prototype.getPrivateIncludes = function() {
-  return this[INCLUDES].filter(i => !i.PUBLIC_ONLY).map(i => i.VALUE);
-}
-
-BaseLibrary.prototype.getPublicIncludes = function() {
-  return this[INCLUDES].filter(i => i.PUBLIC_ONLY).map(i => i.VALUE);
+BaseLibrary.prototype.addPublicDefinitions = function(...definitions) {
+  for (const VALUE of definitions.flat(1))
+    this[DEFINES].push({ VALUE, PUBLIC_ONLY: true });
 }
 
 BaseLibrary.prototype.addPublicLibraries = function(...libraries) {
@@ -246,10 +226,6 @@ BaseLibrary.prototype.addPublicLibraries = function(...libraries) {
 
 BaseLibrary.prototype.getPrivateLibraries = function() {
   return this[LIBRARIES].filter(i => !i.PUBLIC_ONLY).map(i => i.VALUE);
-}
-
-BaseLibrary.prototype.getPublicLibraries = function() {
-  return this[LIBRARIES].filter(i => i.PUBLIC_ONLY).map(i => i.VALUE);
 }
 
 function ObjectLibrary(scope, name) {

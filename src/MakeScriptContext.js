@@ -58,7 +58,7 @@ async function actionMakeScript(config, environment, settings)
     module.pluginEntry(pluginContext);
   }
 
-  root.__applyDirectory(root.PROJECT_SOURCE_DIR, root.PROJECT_BINARY_DIR);
+  root.__doSubdirectory();
   root.logInfo("Configuring done");
 
   if (root.GLOBAL_CONTEXT_JSON) {

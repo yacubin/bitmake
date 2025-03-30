@@ -127,25 +127,24 @@ UserContext.prototype.addSubdirectory = function(sourceDir, binaryDir) {
   const SOURCE_DIR = path.isAbsolute(sourceDir) ? new AbsolutePath(sourceDir) : this.SOURCE_DIR.join(sourceDir);
   const BINARY_DIR = path.isAbsolute(binaryDir) ? new AbsolutePath(binaryDir) : this.BINARY_DIR.join(binaryDir);
 
-  this.__applyDirectory(SOURCE_DIR, BINARY_DIR);
-}
-
-UserContext.prototype.__applyDirectory = function(sourceDir, binaryDir) {
-  this.logDebug(currentFunctionName(), scopeValueAsPrimitives(sourceDir), scopeValueAsPrimitives(binaryDir));
-
   const newScope = this[SCOPE].clone();
-  newScope.setCurrentDirectory(sourceDir, binaryDir);
+  newScope.setCurrentDirectory(SOURCE_DIR, BINARY_DIR);
   const newContex = UserContext.create(newScope, this[GLOBAL]);
   for (const [key, val] of Object.entries(this)) {
     newContex[key] = val;
   }
 
-  this[GLOBAL].copyCacheVariables(newContex);
-  const module = require(newContex.SCRIPT_FILE.toString());
+  newContex.__doSubdirectory();
+}
 
-  module(newContex);
+UserContext.prototype.__doSubdirectory = function() {
+  this[GLOBAL].addSystemVariables(this[SCOPE]);
+  this[GLOBAL].copyCacheVariables(this);
 
-  this[GLOBAL].writeCacheVariables(newContex.CACHE_FILE.toString());
+  const module = require(this.SCRIPT_FILE.toString());
+  module(this);
+
+  this[GLOBAL].writeCacheVariables(this.CACHE_FILE.toString());
 }
 
 UserContext.prototype.addCustomScript = function(name, params) {

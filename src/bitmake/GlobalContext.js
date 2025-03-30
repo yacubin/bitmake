@@ -22,6 +22,7 @@ const CACHE = Symbol("CACHE");
 const INTERFACE_TARGETS = Symbol("INTERFACE_TARGETS");
 const INTERFACE_SCRIPTS = Symbol("INTERFACE_SCRIPTS");
 const INSTALL_LIST = Symbol("INSTALL_LIST");
+const SCRIPT_VARIABLES_MAP = Symbol("SCRIPT_VARIABLES_MAP");
 
 function GlobalContext() {
   this[TARGETS] = TargetCollection.create();
@@ -30,6 +31,7 @@ function GlobalContext() {
   this[INTERFACE_TARGETS] = {};
   this[INTERFACE_SCRIPTS] = {};
   this[INSTALL_LIST] = [];
+  this[SCRIPT_VARIABLES_MAP] = {};
 }
 
 GlobalContext.create = () => {
@@ -65,6 +67,10 @@ GlobalContext.prototype = Object.create(Object.prototype, {
     get() { return this[INSTALL_LIST]; },
     enumerable: true,
   },
+  SCRIPT_VARIABLES_MAP: {
+    get() { return this[SCRIPT_VARIABLES_MAP]; },
+    enumerable: true,
+  },
 });
 
 GlobalContext.prototype.toJSON = function() {
@@ -72,6 +78,13 @@ GlobalContext.prototype.toJSON = function() {
   for (const key in this)
     json[key] = this[key];
   return json;
+}
+
+GlobalContext.prototype.addSystemVariables = function(variables) {
+  const script = variables.SCRIPT_FILE.toString();
+  if (this[SCRIPT_VARIABLES_MAP][script])
+    throw `SystemVariables exists for ${script}`;
+  this[SCRIPT_VARIABLES_MAP][script] = variables;
 }
 
 GlobalContext.prototype.loadCacheVariables = function(filename) {

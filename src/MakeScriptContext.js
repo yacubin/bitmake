@@ -4,15 +4,16 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const { UserContext } = require("./bitmake/UserContext.js");
+const { PluginContext } = require("./bitmake/PluginContext.js");
 const { GlobalContext } = require("./bitmake/GlobalContext.js");
-const { Scope } = require("./bitmake/Scope.js");
+const { SystemVariables } = require("./bitmake/SystemVariables.js");
 const bitmake = require("###/bitmake/index.js");
 
 async function actionMakeScript(config, environment, settings)
 {
   process.env = environment;
 
-  const scope = Scope.create(config.sourceDir, config.binaryDir);
+  const scope = SystemVariables.create(config.sourceDir, config.binaryDir);
 
   const global = GlobalContext.create();
   global.loadCacheVariables(scope.CACHE_FILE.toString());
@@ -48,12 +49,13 @@ async function actionMakeScript(config, environment, settings)
     toolchain(root);
   }
 
+  const pluginContext = PluginContext.create(scope, global);
   for (const plugin of (root.MAKE_PLUGIN_LIST || [])) {
     const filename = bitmake.FilePath.create(plugin);
     const module = require(filename.toString());
     if (!module.pluginEntry)
       throw new Error(`Plugin ${filename.basename()} not contain pluginEntry function`);
-    console.log("Hello Plugin");
+    module.pluginEntry(pluginContext);
   }
 
   root.__applyDirectory(root.PROJECT_SOURCE_DIR, root.PROJECT_BINARY_DIR);

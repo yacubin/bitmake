@@ -1,6 +1,6 @@
 "use strict";
 
-const { Scope } = require("./Scope.js");
+const { SystemVariables } = require("./SystemVariables.js");
 const { SourceFile } = require("./SourceFile.js");
 const { SourceFileList } = require("./SourceFileList.js");
 const { IncludeDirectory } = require("./IncludeDirectory.js");
@@ -18,7 +18,7 @@ const { GoalCollection } = require("./GoalCollection.js");
 const { GlobalContext } = require("./GlobalContext.js");
 
 module.exports = {
-  Scope,
+  SystemVariables,
   SourceFile,
   SourceFileList,
   IncludeDirectory,

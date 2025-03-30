@@ -50,17 +50,6 @@ const SCOPE = Symbol("SCOPE");
 function UserContext(scope, global) {
   this[SCOPE] = scope;
   this[GLOBAL] = global;
-
-  const descriptors = Object.getOwnPropertyDescriptors(Object.getPrototypeOf(scope));
-  for (const [key, desc] of Object.entries(descriptors)) {
-    const newDesc = { enumerable: true };
-    if (typeof desc.get === "function")
-      newDesc.get = function() { return scope[key]; };
-    if (typeof desc.set === "function")
-      newDesc.set = function(value) { scope[key] = value; };
-    if (newDesc.get || newDesc.set)
-      Object.defineProperty(this, key, newDesc);
-  }
 }
 
 function makeLogger(loggerFunc, withTag) {
@@ -146,11 +135,9 @@ UserContext.prototype.__applyDirectory = function(sourceDir, binaryDir) {
 
   const newScope = this[SCOPE].clone();
   newScope.setCurrentDirectory(sourceDir, binaryDir);
-
   const newContex = UserContext.create(newScope, this[GLOBAL]);
   for (const [key, val] of Object.entries(this)) {
-    if (!Object.hasOwn(newScope, key))
-      newContex[key] = val;
+    newContex[key] = val;
   }
 
   this[GLOBAL].copyCacheVariables(newContex);
@@ -158,7 +145,7 @@ UserContext.prototype.__applyDirectory = function(sourceDir, binaryDir) {
 
   module(newContex);
 
-  this[GLOBAL].writeCacheVariables(newScope.CACHE_FILE.toString());
+  this[GLOBAL].writeCacheVariables(newContex.CACHE_FILE.toString());
 }
 
 UserContext.prototype.addCustomScript = function(name, params) {
@@ -275,8 +262,12 @@ UserContext.prototype.toJSON = function() {
   return json;
 }
 
-UserContext.create = (scope, global) => {
-  return new UserContext(scope, global);
+UserContext.create = (protoScope, global) => {
+  const ctx = Object.create(protoScope);
+  UserContext.call(ctx, protoScope, global);
+  for (const [key, val] of Object.entries(UserContext.prototype))
+    ctx[key] = val;
+  return ctx;
 }
 
 module.exports = {

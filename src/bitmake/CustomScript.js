@@ -1,6 +1,5 @@
 "use strict";
 
-const { Scope } = require("###/bitmake/Scope.js");
 const { ensureString } = require("###/bitmake/StrictType.js");
 const { AbsolutePath } = require("###/utils/AbsolutePath.js");
 

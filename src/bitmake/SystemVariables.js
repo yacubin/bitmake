@@ -56,7 +56,7 @@ const SHARED_LINKER_FLAGS   = Symbol("SHARED_LINKER_FLAGS");
 const EXECUTABLE_SUFFIX     = Symbol("EXECUTABLE_SUFFIX");
 const EXE_LINKER_FLAGS      = Symbol("EXE_LINKER_FLAGS");
 
-function Scope(sourceDir, binaryDir) {
+function SystemVariables(sourceDir, binaryDir) {
   this[SYSTEM_NAME]           = "Linux";
   this[SYSTEM_PROCESSOR]      = "wasm32";
   this[PROJECT_NAME]          = "";
@@ -107,13 +107,13 @@ function Scope(sourceDir, binaryDir) {
   this[EXE_LINKER_FLAGS]      = [];
 }
 
-Scope.create = function(sourceDir, binaryDir) {
-  return Object.seal(new Scope(sourceDir, binaryDir));
+SystemVariables.create = function(sourceDir, binaryDir) {
+  return Object.seal(new SystemVariables(sourceDir, binaryDir));
 }
 
-Scope.prototype = Object.create(Object.prototype, {
+SystemVariables.prototype = Object.create(Object.prototype, {
   constructor: {
-    value: Scope,
+    value: SystemVariables,
     enumerable: false,
   },
   SYSTEM_NAME: {
@@ -358,21 +358,21 @@ Scope.prototype = Object.create(Object.prototype, {
   },
 });
 
-Scope.prototype.toJSON = function() {
+SystemVariables.prototype.toJSON = function() {
   const json = {};
   for (const key in this)
     json[key] = this[key];
   return json;
 }
 
-Scope.prototype.setCurrentDirectory = function(sourceDir, binaryDir) {
+SystemVariables.prototype.setCurrentDirectory = function(sourceDir, binaryDir) {
   this[SOURCE_DIR] = AbsolutePath.create(sourceDir);
   this[BINARY_DIR] = AbsolutePath.create(binaryDir);
   this[SCRIPT_FILE] = this[SOURCE_DIR].join(MAKE_SCRIPT);
 }
 
-Scope.prototype.clone = function() {
-  const o = Object.create(Scope.prototype);
+SystemVariables.prototype.clone = function() {
+  const o = Object.create(SystemVariables.prototype);
 
   o[SYSTEM_NAME]           = this[SYSTEM_NAME];
   o[SYSTEM_PROCESSOR]      = this[SYSTEM_PROCESSOR];
@@ -427,5 +427,5 @@ Scope.prototype.clone = function() {
 }
 
 module.exports = {
-  Scope,
+  SystemVariables,
 };

@@ -7,7 +7,6 @@ const { AbsolutePath } = require("###/utils/AbsolutePath.js");
 const { fileExistsSync } = require("###/utils/FileSystem.js");
 const { TargetCollection } = require("./TargetCollection.js");
 const { ScriptCollection } = require("./ScriptCollection.js");
-const { InterfaceIncludes } = require("./InterfaceIncludes.js");
 const { InterfaceTarget } = require("./InterfaceTarget.js");
 const { UnknownTarget } = require("./UnknownTarget.js");
 const { GoalCollection } = require("./GoalCollection.js");
@@ -246,8 +245,6 @@ GlobalContext.prototype.createGoals = function(scope) {
       const msg = "\x1b[32m" + `Building ${s.LANGUAGE} object ${relativeBinaryDir}/${relativeObject}` + "\x1b[0m";
 
       const args = [];
-      args.push(...target.TARGET_SCOPE[s.LANGUAGE + "_FLAGS"]);
-      args.push(...target.TARGET_SCOPE[s.LANGUAGE + "_FLAGS_" + target.TARGET_SCOPE.BUILD_TYPE.toUpperCase()]);
       args.push(...this[TARGETS].allDefinitionsOf(target).map(i => "-D" + i));
       args.push(...this[TARGETS].allIncludesOf(target).map(i => "-I" + i));
       args.push(...this[TARGETS].allCompileOptionsOf(target));

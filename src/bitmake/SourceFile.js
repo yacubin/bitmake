@@ -2,7 +2,6 @@
 
 const { ensureBoolean } = require("###/bitmake/StrictType.js");
 
-const TARGET_SCOPE        = Symbol("TARGET_SCOPE");
 const NAME                = Symbol("NAME");
 const LANGUAGE            = Symbol("LANGUAGE");
 const HEADER_FILE_ONLY    = Symbol("HEADER_FILE_ONLY");
@@ -38,16 +37,18 @@ function makeLanguage(value) {
 }
 
 function SourceFile(scope, filename) {
-  this[TARGET_SCOPE] = scope;
-
   this[NAME] = filename.toString();
   const fname = scope.SOURCE_DIR.resolve(filename);
 
-  this[LANGUAGE] = getFileLanguage(fname);
-  this[HEADER_FILE_ONLY] = !this[LANGUAGE];
-  this[COMPILE_FLAGS] = [];
+  const language = getFileLanguage(fname);
+  this[LANGUAGE] = language;
+  this[HEADER_FILE_ONLY] = !language;
   this[FILE] = fname;
   this[OBJECT_FILE] = null;
+  this[COMPILE_FLAGS] = !language ? [] : [
+    ...scope[language + "_FLAGS"],
+    ...scope[language + "_FLAGS_" + scope.BUILD_TYPE.toUpperCase()],
+  ];
 }
 
 SourceFile.create = (target, filename) => {
@@ -65,7 +66,6 @@ SourceFile.prototype = Object.create(Object.prototype, {
   },
   LANGUAGE: {
     get () { return this[LANGUAGE]; },
-    set(value) { this[LANGUAGE] = makeLanguage(value); },
     enumerable: true,
   },
   HEADER_FILE_ONLY: {

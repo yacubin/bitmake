@@ -144,8 +144,11 @@ UserContext.prototype.__doSubdirectory = function() {
   this[GLOBAL].addSystemVariables(this[SCOPE]);
   this[GLOBAL].copyCacheVariables(this);
 
+  const cwdSave = process.cwd();
+  process.chdir(this.SCRIPT_FILE.dirname().toString());
   const module = require(this.SCRIPT_FILE.toString());
   module(this);
+  process.chdir(cwdSave);
 
   this[GLOBAL].writeCacheVariables(this.CACHE_FILE.toString());
 }

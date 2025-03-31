@@ -160,9 +160,8 @@ UserContext.prototype.addCustomScript = function(name, params) {
 }
 
 UserContext.prototype.target = function(name) {
-  const sourceDir = DirPath.create(this[SCOPE].SOURCE_DIR.toString());
   const utarget = this[GLOBAL].getUknownTarget(name);
-  return InterfaceTarget.create(utarget, sourceDir);
+  return InterfaceTarget.create(this[SCOPE], utarget);
 }
 
 UserContext.prototype.script = function(name) {

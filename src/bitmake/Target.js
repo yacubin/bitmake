@@ -113,9 +113,17 @@ BaseTarget.prototype = Object.create(Object.prototype, {
 BaseTarget.prototype.addSources = function(...sources) {
   for (let it of sources.flat(1)) {
     if (typeof it === "string" || AbsolutePath.isAbsolute(it))
-      it = SourceFile.create(this, it);
-    else
-      it = InterfaceObjects.ensureInstance(it);
+      it = SourceFile.create(this[TARGET_SCOPE], it);
+    else if (!(it instanceof InterfaceObjects || it instanceof SourceFile))
+      throw new Error(`Not support instance ${it}`);
+
+    if (it instanceof SourceFile && it.LANGUAGE) {
+      const rfile1 = this[TARGET_SCOPE].BINARY_DIR.relative(it.FILE);
+      const rfile2 = this[TARGET_SCOPE].SOURCE_DIR.relative(it.FILE);
+      const rfile = (rfile2.length < rfile1.length ? rfile2 : rfile1).replace("../", "__/");
+      it.OBJECT_FILE = this[TARGET_SCOPE].BINARY_DIR.join("MakeFiles", this[NAME] + ".dir",  rfile + ".obj");
+    }
+
     this[SOURCES].push(it);
   }
 }

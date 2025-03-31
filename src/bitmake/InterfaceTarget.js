@@ -4,17 +4,18 @@ const { AbsolutePath } = require("###/utils/AbsolutePath.js");
 const { InterfaceIncludes } = require("./InterfaceIncludes.js");
 const { InterfaceObjects } = require("./InterfaceObjects.js");
 const { IncludeDirectory } = require("./IncludeDirectory.js");
+const { SourceFile } = require("./SourceFile.js");
 
 const UNKNOWN_TARGET = Symbol("UNKNOWN_TARGET");
-const BASE_DIR = Symbol("BASE_DIR");
+const SCOPE = Symbol("SCOPE");
 
-function InterfaceTarget(utarget, baseDir) {
+function InterfaceTarget(scope, utarget) {
+  this[SCOPE] = scope.clone();
   this[UNKNOWN_TARGET] = utarget;
-  this[BASE_DIR] = baseDir;
 }
 
-InterfaceTarget.create = (utarget, baseDir) => {
-  return Object.seal(new InterfaceTarget(utarget, baseDir));
+InterfaceTarget.create = (scope, utarget) => {
+  return Object.seal(new InterfaceTarget(scope, utarget));
 }
 
 InterfaceTarget.ensureInstance = (value) => {
@@ -51,11 +52,12 @@ InterfaceTarget.prototype.toString = function() {
 }
 
 InterfaceTarget.prototype.addSources = function(...sources) {
-  for (const iter of sources.flat(1)) {
-    if (iter instanceof InterfaceObjects)
-      this[UNKNOWN_TARGET].SOURCES.push(iter);
-    else
-      this[UNKNOWN_TARGET].SOURCES.push(this[BASE_DIR].resolve(iter));
+  for (let it of sources.flat(1)) {
+    if (typeof it === "string" || AbsolutePath.isAbsolute(it))
+      it = SourceFile.create(this[SCOPE], it);
+    else if (!(it instanceof InterfaceObjects || it instanceof SourceFile))
+      throw new Error(`Not support instance ${it}`);
+    this[UNKNOWN_TARGET].SOURCES.push(it);
   }
 }
 
@@ -63,7 +65,7 @@ InterfaceTarget.prototype.addIncludes = function(...includes) {
   for (const it of includes.flat(1)) {
     let VALUE;
     if (typeof it === "string" || AbsolutePath.isAbsolute(it))
-      VALUE = IncludeDirectory.create(it, this[BASE_DIR]);
+      VALUE = IncludeDirectory.create(it, this[SCOPE].SOURCE_DIR);
     else
       VALUE = InterfaceIncludes.ensureInstance(it);
     this[UNKNOWN_TARGET].INCLUDES.push({ VALUE, PUBLIC_ONLY: false });
@@ -74,7 +76,7 @@ InterfaceTarget.prototype.addPublicIncludes = function(...includes) {
   for (const it of includes.flat(1)) {
     let VALUE;
     if (typeof it === "string" || AbsolutePath.isAbsolute(it))
-      VALUE = IncludeDirectory.create(it, this[BASE_DIR]);
+      VALUE = IncludeDirectory.create(it, this[SCOPE].SOURCE_DIR);
     else
       VALUE = InterfaceIncludes.ensureInstance(it);
     this[UNKNOWN_TARGET].INCLUDES.push({ VALUE, PUBLIC_ONLY: true });

@@ -37,33 +37,21 @@ function makeLanguage(value) {
   throw new Error(`Language "${value}" is not supported`);
 }
 
-function SourceFile(target, filename) {
-  this[TARGET_SCOPE] = target.TARGET_SCOPE;
+function SourceFile(scope, filename) {
+  this[TARGET_SCOPE] = scope;
 
   this[NAME] = filename.toString();
-  const fname = this[TARGET_SCOPE].SOURCE_DIR.resolve(filename);
+  const fname = scope.SOURCE_DIR.resolve(filename);
 
   this[LANGUAGE] = getFileLanguage(fname);
   this[HEADER_FILE_ONLY] = !this[LANGUAGE];
   this[COMPILE_FLAGS] = [];
   this[FILE] = fname;
+  this[OBJECT_FILE] = null;
+}
 
-  if (this[LANGUAGE]) {
-    let rfile;
-    if (this[FILE].isParentDir(this[TARGET_SCOPE].BINARY_DIR))
-      rfile = this[TARGET_SCOPE].BINARY_DIR.relative(this[FILE]);
-    else if (this[FILE].isParentDir(this[TARGET_SCOPE].SOURCE_DIR))
-      rfile = this[TARGET_SCOPE].SOURCE_DIR.relative(this[FILE]);
-    else {
-      const rfile1 = this[TARGET_SCOPE].BINARY_DIR.relative(this[FILE]);
-      const rfile2 = this[TARGET_SCOPE].SOURCE_DIR.relative(this[FILE]);
-      rfile = (rfile2.length < rfile1.length ? rfile2 : rfile1).replace("../", "__/");
-    }
-    this[OBJECT_FILE] = this[TARGET_SCOPE].BINARY_DIR.join("MakeFiles", target.NAME + ".dir",  rfile + ".obj");
-  }
-  else {
-    this[OBJECT_FILE] = null;
-  }
+SourceFile.create = (target, filename) => {
+  return Object.seal(new SourceFile(target, filename));
 }
 
 SourceFile.prototype = Object.create(Object.prototype, {
@@ -103,6 +91,7 @@ SourceFile.prototype = Object.create(Object.prototype, {
   },
   OBJECT_FILE: {
     get() { return this[OBJECT_FILE]; },
+    set(value) { this[OBJECT_FILE] = value; },
     enumerable: true,
   },
   OBJECT_FILE_DIR: {
@@ -120,10 +109,6 @@ SourceFile.prototype.toJSON = function() {
   for (const key in this)
     json[key] = this[key];
   return json;
-}
-
-SourceFile.create = function(target, filename) {
-  return Object.seal(new SourceFile(target, filename));
 }
 
 module.exports = {

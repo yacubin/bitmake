@@ -12,6 +12,10 @@ function requestGet(url) {
     const options = {
       method: 'GET',
       timeout: 5000,
+      headers: {
+        "User-Agent": "bitmake/0.0.1-develop.1",
+        "Accept": "*/*",
+      },
     };
 
     const onError = (err) => {

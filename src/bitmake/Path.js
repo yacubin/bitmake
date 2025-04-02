@@ -36,6 +36,10 @@ BasePath.prototype.toJSON = function() {
   return this[PATH];
 }
 
+BasePath.prototype.match = function(regexp) {
+  return this._filepath.match(regexp);
+}
+
 BasePath.prototype.join = function(...paths) {
   return path.posix.join(this[PATH], ...paths.map(i => i.toString()));
 }

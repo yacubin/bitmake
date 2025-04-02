@@ -96,7 +96,7 @@ GlobalContext.prototype.getUknownTarget = function(name) {
 GlobalContext.prototype.addSystemVariables = function(variables) {
   const script = variables.SCRIPT_FILE.toString();
   if (this[SCRIPT_VARIABLES_MAP][script])
-    throw `SystemVariables exists for ${script}`;
+    throw new Error(`SystemVariables exists for ${script}`);
   this[SCRIPT_VARIABLES_MAP][script] = variables;
 }
 

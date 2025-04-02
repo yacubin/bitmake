@@ -5,7 +5,15 @@ const https = require('https');
 function downloadFile(url, file, options)
 {
   return new Promise((resolve, reject) => {
-    const method = 'GET';
+    const httpOptions = {
+      method: 'GET',
+      timeout: 5000,
+      headers: {
+        "User-Agent": "bitmake/0.0.1-develop.1",
+        "Accept": "*/*",
+      },
+    };
+
     const filename = path.basename(url);
 
     const client = (() => {
@@ -35,7 +43,7 @@ function downloadFile(url, file, options)
     })();
   
     const startRequest = (url, callback) => {
-      const request = https.request(url, {method}, callback);
+      const request = https.request(url, httpOptions, callback);
       if (request) {
         request.on('error', (error) => reject(error));
         request.end(); 

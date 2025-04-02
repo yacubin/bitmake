@@ -26,7 +26,6 @@ async function actionMakeScript(config, environment, settings)
   scope.PROJECT_DESCRIPTION = pkg.description;
   scope.PROJECT_HOMEPAGE_URL = pkg.homepage;
   scope.DESTDIR = config.destDir ? bitmake.DirPath.create(config.destDir) : null;
-  scope.INSTALL_PREFIX = bitmake.DirPath.create("/usr");
 
   const root = UserContext.create(scope, global);
 

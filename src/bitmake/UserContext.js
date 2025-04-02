@@ -9,7 +9,7 @@ const { AbsolutePath } = require("###/utils/AbsolutePath.js");
 const { InterfaceTarget } = require("./InterfaceTarget.js");
 const { BaseTarget } = require("./Target.js");
 const { IncludeDirectory } = require("./IncludeDirectory.js");
-const { DirPath } = require("./Path.js");
+const { SystemVariables } = require("./SystemVariables.js");
 const bitmake = require("###/bitmake/index.js");
 
 const currentFunctionName = () => {
@@ -54,6 +54,22 @@ const SCOPE = Symbol("SCOPE");
 function UserContext(scope, global) {
   this[SCOPE] = scope;
   this[GLOBAL] = global;
+
+  const props = Object.getOwnPropertyDescriptors(SystemVariables.prototype);
+  for (const [name, desc] of Object.entries(props)) {
+    if (desc.get && desc.set) {
+      const newDesc = { enumerable: desc.enumerable, configurable: false };
+      if (desc.get)
+        newDesc.get = function() { return this[SCOPE][name]; }
+      if (desc.set)
+        newDesc.set = function(value) { this[SCOPE][name] = value; }
+      Object.defineProperty(this, name, newDesc);
+    }
+  }
+}
+
+UserContext.create = (scope, global) => {
+  return new UserContext(scope, global);
 }
 
 function makeLogger(loggerFunc, withTag) {
@@ -134,7 +150,8 @@ UserContext.prototype.addSubdirectory = function(sourceDir, binaryDir) {
   newScope.setCurrentDirectory(resolvedSourceDir, BINARY_DIR);
   const newContex = UserContext.create(newScope, this[GLOBAL]);
   for (const [key, val] of Object.entries(this)) {
-    newContex[key] = val;
+    if (!Object.hasOwn(SystemVariables.prototype, key))
+      newContex[key] = val;
   }
 
   newContex.__doSubdirectory();
@@ -255,14 +272,6 @@ UserContext.prototype.toJSON = function() {
   for (const key in this)
     json[key] = this[key];
   return json;
-}
-
-UserContext.create = (protoScope, global) => {
-  const ctx = Object.create(protoScope);
-  UserContext.call(ctx, protoScope, global);
-  for (const [key, val] of Object.entries(UserContext.prototype))
-    ctx[key] = val;
-  return ctx;
 }
 
 module.exports = {

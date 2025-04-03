@@ -1,21 +1,21 @@
 "use strict";
 
 const { DirPath, FilePath } = require("./Path.js");
+const { ensureBoolean, ensureString } = require("./StrictType.js");
 const { AbsolutePath } = require("###/utils/AbsolutePath.js");
 
 const PACKAGE_JSON = "package.json";
 const MAKE_SCRIPT = "MakeScript.js";
 const MAKE_CACHE = "MakeCache.json";
 
-const SYSTEM_NAME           = Symbol("SYSTEM_NAME");
-const SYSTEM_PROCESSOR      = Symbol("SYSTEM_PROCESSOR");
+const DEFINE_MAP            = Symbol("DEFINE_MAP");
+
 const PROJECT_NAME          = Symbol("PROJECT_NAME");
 const PROJECT_VERSION       = Symbol("PROJECT_VERSION");
 const PROJECT_DESCRIPTION   = Symbol("PROJECT_DESCRIPTION");
 const PROJECT_HOMEPAGE_URL  = Symbol("PROJECT_HOMEPAGE_URL");
 const PROJECT_SOURCE_DIR    = Symbol("PROJECT_SOURCE_DIR");
 const PROJECT_BINARY_DIR    = Symbol("PROJECT_BINARY_DIR");
-const BUILD_TYPE            = Symbol("BUILD_TYPE");
 const DESTDIR               = Symbol("DESTDIR");
 const INSTALL_PREFIX        = Symbol("INSTALL_PREFIX");
 const SCRIPT_FILE           = Symbol("SCRIPT_FILE");
@@ -57,15 +57,12 @@ const EXECUTABLE_SUFFIX     = Symbol("EXECUTABLE_SUFFIX");
 const EXE_LINKER_FLAGS      = Symbol("EXE_LINKER_FLAGS");
 
 function SystemVariables(sourceDir, binaryDir) {
-  this[SYSTEM_NAME]           = "Linux";
-  this[SYSTEM_PROCESSOR]      = "wasm32";
   this[PROJECT_NAME]          = "";
   this[PROJECT_VERSION]       = "";
   this[PROJECT_DESCRIPTION]   = "";
   this[PROJECT_HOMEPAGE_URL]  = "";
   this[PROJECT_SOURCE_DIR]    = AbsolutePath.create(sourceDir);
   this[PROJECT_BINARY_DIR]    = AbsolutePath.create(binaryDir);
-  this[BUILD_TYPE]            = "Release";
   this[DESTDIR]               = null;
   this[INSTALL_PREFIX]        = DirPath.create("/usr");
   this[SCRIPT_FILE]           = FilePath.create(this[PROJECT_SOURCE_DIR].join(MAKE_SCRIPT).toString());
@@ -104,7 +101,11 @@ function SystemVariables(sourceDir, binaryDir) {
   this[SHARED_LIBRARY_SUFFIX] = ".so";
   this[SHARED_LINKER_FLAGS]   = [];
   this[EXECUTABLE_SUFFIX]     = "";
-  this[EXE_LINKER_FLAGS]      = [];
+  this[EXE_LINKER_FLAGS]          = [];
+
+  for (const { symbol, initValue } of Object.values(this[DEFINE_MAP] || {})) {
+    this[symbol] = initValue;
+  }
 }
 
 SystemVariables.create = function(sourceDir, binaryDir) {
@@ -115,16 +116,6 @@ SystemVariables.prototype = Object.create(Object.prototype, {
   constructor: {
     value: SystemVariables,
     enumerable: false,
-  },
-  SYSTEM_NAME: {
-    get () { return this[SYSTEM_NAME]; },
-    set(value) { this[SYSTEM_NAME] = value; },
-    enumerable: true,
-  },
-  SYSTEM_PROCESSOR: {
-    get () { return this[SYSTEM_PROCESSOR]; },
-    set(value) { this[SYSTEM_PROCESSOR] = value; },
-    enumerable: true,
   },
   PROJECT_NAME: {
     get () { return this[PROJECT_NAME]; },
@@ -154,11 +145,6 @@ SystemVariables.prototype = Object.create(Object.prototype, {
   PROJECT_BINARY_DIR: {
     get () { return this[PROJECT_BINARY_DIR]; },
     set(value) { this[PROJECT_BINARY_DIR] = value; },
-    enumerable: true,
-  },
-  BUILD_TYPE: {
-    get () { return this[BUILD_TYPE]; },
-    set(value) { this[BUILD_TYPE] = value; },
     enumerable: true,
   },
   DESTDIR: {
@@ -358,6 +344,69 @@ SystemVariables.prototype = Object.create(Object.prototype, {
   },
 });
 
+SystemVariables.defineVariable = function(scope, name, descriptor) {
+  if (!scope[DEFINE_MAP])
+    scope[DEFINE_MAP] = {};
+
+  let type = descriptor.type || typeof descriptor.value;
+
+  let defineEntry = scope[DEFINE_MAP][name];
+  if (!defineEntry) {
+    defineEntry = {};
+    scope[DEFINE_MAP][name] = defineEntry;
+  }
+
+  if (!Object.hasOwn(defineEntry, name) || defineEntry.type !== type) {
+    defineEntry.symbol = Symbol(name);
+  }
+
+  defineEntry.type = type;
+  defineEntry.description = descriptor.description || "";
+  defineEntry.initValue = descriptor.value;
+
+  let ensureValue;
+  if (Array.isArray(type)) {
+    let itemType;
+    for (const iter of type) {
+      const it = typeof iter;
+      if (!itemType)
+        itemType = it;
+      else if (itemType !== it)
+        throw new Error(`All elements for ${name} must be of the same type`);
+    }
+    if (itemType !== "boolean" && itemType !== "string")
+      throw new Error(`Unknown ${itemType} element type of ${name} variable`);
+    ensureValue = (value) => {
+      if (type.includes(value))
+        return value;
+      throw new Error(`The '${value}' is not a ${type}`);
+    }
+  }
+  else if (type === "boolean")
+    ensureValue = ensureBoolean;
+  else if (type === "string")
+    ensureValue = ensureString;
+  else
+    throw new Error(`Unknown ${type} type of ${name} variable`);
+
+  ensureValue(defineEntry.initValue);
+
+  const { symbol } = defineEntry;
+  const desc = {
+    configurable: true,
+    enumerable: true,
+    get() { return this[symbol] },
+    set(value) { this[symbol] = ensureValue(value) },
+  };
+
+  Object.defineProperty(scope, name, desc);
+}
+
+SystemVariables.defineVariables = function(scope, descriptors) {
+  for (const [ name, descriptor ] of Object.entries(descriptors))
+    SystemVariables.defineVariable(scope, name, descriptor);
+}
+
 SystemVariables.prototype.toJSON = function() {
   const json = {};
   for (const key in this)
@@ -374,15 +423,12 @@ SystemVariables.prototype.setCurrentDirectory = function(sourceDir, binaryDir) {
 SystemVariables.prototype.clone = function() {
   const o = Object.create(SystemVariables.prototype);
 
-  o[SYSTEM_NAME]           = this[SYSTEM_NAME];
-  o[SYSTEM_PROCESSOR]      = this[SYSTEM_PROCESSOR];
   o[PROJECT_NAME]          = this[PROJECT_NAME];
   o[PROJECT_VERSION]       = this[PROJECT_VERSION];
   o[PROJECT_DESCRIPTION]   = this[PROJECT_DESCRIPTION]
   o[PROJECT_HOMEPAGE_URL]  = this[PROJECT_HOMEPAGE_URL]
   o[PROJECT_SOURCE_DIR]    = this[PROJECT_SOURCE_DIR];
   o[PROJECT_BINARY_DIR]    = this[PROJECT_BINARY_DIR];
-  o[BUILD_TYPE]            = this[BUILD_TYPE];
   o[DESTDIR]               = this[DESTDIR];
   o[INSTALL_PREFIX]        = this[INSTALL_PREFIX];
   o[SOURCE_DIR]            = this[SOURCE_DIR];
@@ -390,7 +436,7 @@ SystemVariables.prototype.clone = function() {
   o[SCRIPT_FILE]           = this[SCRIPT_FILE];
   o[PACKAGE_FILE]          = this[PACKAGE_FILE];
   o[CACHE_FILE]            = this[CACHE_FILE];
-  o[MODULE_PATH]           = [ ...this[MODULE_PATH] ];
+  o[MODULE_PATH]           = Array.from(this[MODULE_PATH]);
   o[INCLUDES]              = [ ...this[INCLUDES] ];
   o[ASM_COMPILER]          = this[ASM_COMPILER];
   o[ASM_FLAGS]             = [ ...this[ASM_FLAGS] ];
@@ -423,8 +469,39 @@ SystemVariables.prototype.clone = function() {
   o[EXECUTABLE_SUFFIX]     = this[EXECUTABLE_SUFFIX];
   o[EXE_LINKER_FLAGS]      = [ ...this[EXE_LINKER_FLAGS] ];
 
+  for (const { symbol } of Object.values(this[DEFINE_MAP] || {})) {
+    if (Array.isArray(this[symbol]))
+      o[symbol] = Array.from(this[symbol]);
+    else
+      o[symbol] = this[symbol];
+  }
+
   return Object.seal(o);
 }
+
+SystemVariables.defineVariables(SystemVariables.prototype, {
+  SYSTEM_NAME: {
+    description: "Defines the target OS for the build, used in cross-compilation and native builds",
+    value: "Linux",
+  },
+  SYSTEM_PROCESSOR: {
+    description: "Defines the target CPU architecture",
+    value: "wasm32",
+  },
+  BUILD_TYPE: {
+    description: "Specifies the build configuration for controlling optimization levels and debug information in the build process",
+    type: [ "Debug", "Release" ],
+    value: "Release",
+  },
+  POSITION_INDEPENDENT_CODE: {
+    description: "Enables Position-Independent Code (PIC) for building shared libraries",
+    value: false,
+  },
+  PREVENT_INSTALL_FILES: {
+    description: "Prevent installation of files",
+    value: true,
+  }
+});
 
 module.exports = {
   SystemVariables,

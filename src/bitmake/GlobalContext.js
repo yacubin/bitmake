@@ -248,6 +248,8 @@ GlobalContext.prototype.createGoals = function(scope) {
       args.push(...this[TARGETS].allDefinitionsOf(target).map(i => "-D" + i));
       args.push(...this[TARGETS].allIncludesOf(target).map(i => "-I" + i));
       args.push(...this[TARGETS].allCompileOptionsOf(target));
+      if (target.POSITION_INDEPENDENT_CODE)
+        args.push("-fPIC");
       args.push(...s.COMPILE_FLAGS);
       args.push("-o", relativeObject);
       args.push("-c", s.FILE);
@@ -324,6 +326,8 @@ GlobalContext.prototype.createGoals = function(scope) {
   for (const iter of this[INSTALL_LIST]) {
     let src, dest;
     if (iter.VALUE instanceof FilePath) {
+      if (scope.PREVENT_INSTALL_FILES)
+        continue;
       src = iter.VALUE.toString();
       const rfile = iter.BASE_DIR.relative(iter.VALUE);
       dest = iter.DESTINATION.join(rfile);
@@ -342,7 +346,10 @@ GlobalContext.prototype.createGoals = function(scope) {
     install_files.push(dest);
   }
 
-  goalList.addTarget("install", install_files, "");
+  if (install_files.length) {
+    goalList.addTarget("install", install_files, "");
+  }
+
   goalList.addTarget("all", Object.keys(this[TARGETS].ENTRIES), "");
 
   return goalList;

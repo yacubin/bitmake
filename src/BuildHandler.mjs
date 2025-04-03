@@ -119,7 +119,7 @@ function resolveStringWithVariable(config, entryConfig, rootConfig, val) {
       }
     }
     if (sel === undefined)
-      throw `The ${value} variable does not exist"`;
+      throw new Error(`The ${value} variable does not exist"`);
     return sel;
   });
 }

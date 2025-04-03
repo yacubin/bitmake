@@ -20,6 +20,8 @@ const INCLUDES            = Symbol("INCLUDES");
 const DEFINES             = Symbol("DEFINES");
 const SOURCES             = Symbol("SOURCES");
 const LIBRARIES           = Symbol("LIBRARIES");
+const POSITION_INDEPENDENT_CODE = Symbol("POSITION_INDEPENDENT_CODE");
+
 
 const reservedTagetNames = [ "all", "install" ];
 function ensureTargetName(name) {
@@ -42,6 +44,7 @@ function BaseTarget(scope, name) {
   this[LIBRARIES] = [];
   this[INCLUDES] = scope.INCLUDES.map(VALUE => { return {VALUE} });
   this[DEFINES] = [];
+  this[POSITION_INDEPENDENT_CODE] = scope.POSITION_INDEPENDENT_CODE;
 }
 
 BaseTarget.prototype = Object.create(Object.prototype, {
@@ -106,6 +109,11 @@ BaseTarget.prototype = Object.create(Object.prototype, {
   },
   FILE: {
     get() { return this.FILE_DIR.join(this.FILE_NAME); },
+    enumerable: true,
+  },
+  POSITION_INDEPENDENT_CODE: {
+    get() { return this[POSITION_INDEPENDENT_CODE]; },
+    set(value) { this[POSITION_INDEPENDENT_CODE] = value; },
     enumerable: true,
   },
 });

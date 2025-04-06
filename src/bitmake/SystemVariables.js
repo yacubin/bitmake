@@ -1,5 +1,7 @@
 "use strict";
 
+const os = require("node:os");
+
 const { DirPath, FilePath } = require("./Path.js");
 const { ensureBoolean, ensureString } = require("./StrictType.js");
 const { AbsolutePath } = require("###/utils/AbsolutePath.js");
@@ -19,6 +21,7 @@ const PROJECT_BINARY_DIR    = Symbol("PROJECT_BINARY_DIR");
 const DESTDIR               = Symbol("DESTDIR");
 const INSTALL_PREFIX        = Symbol("INSTALL_PREFIX");
 const SCRIPT_FILE           = Symbol("SCRIPT_FILE");
+const SCRIPT_DIR            = Symbol("SCRIPT_DIR");
 const PACKAGE_FILE          = Symbol("PACKAGE_FILE");
 const CACHE_FILE            = Symbol("CACHE_FILE");
 const SOURCE_DIR            = Symbol("SOURCE_DIR");
@@ -66,6 +69,7 @@ function SystemVariables(sourceDir, binaryDir) {
   this[DESTDIR]               = null;
   this[INSTALL_PREFIX]        = DirPath.create("/usr");
   this[SCRIPT_FILE]           = FilePath.create(this[PROJECT_SOURCE_DIR].join(MAKE_SCRIPT).toString());
+  this[SCRIPT_DIR]            = DirPath.create(this[SCRIPT_FILE].dirname().toString());
   this[PACKAGE_FILE]          = FilePath.create(this[PROJECT_SOURCE_DIR].join(PACKAGE_JSON).toString());
   this[CACHE_FILE]            = FilePath.create(this[PROJECT_SOURCE_DIR].join(MAKE_CACHE).toString());
   this[SOURCE_DIR]            = this[PROJECT_SOURCE_DIR];
@@ -160,6 +164,11 @@ SystemVariables.prototype = Object.create(Object.prototype, {
   SCRIPT_FILE: {
     get () { return this[SCRIPT_FILE]; },
     set(value) { this[SCRIPT_FILE] = value; },
+    enumerable: true,
+  },
+  SCRIPT_DIR: {
+    get () { return this[SCRIPT_DIR]; },
+    set(value) { this[SCRIPT_DIR] = value; },
     enumerable: true,
   },
   PACKAGE_FILE: {
@@ -418,6 +427,7 @@ SystemVariables.prototype.setCurrentDirectory = function(sourceDir, binaryDir) {
   this[SOURCE_DIR] = AbsolutePath.create(sourceDir);
   this[BINARY_DIR] = AbsolutePath.create(binaryDir);
   this[SCRIPT_FILE] = this[SOURCE_DIR].join(MAKE_SCRIPT);
+  this[SCRIPT_DIR] = DirPath.create(this[SCRIPT_FILE].dirname().toString());
 }
 
 SystemVariables.prototype.clone = function() {
@@ -434,6 +444,7 @@ SystemVariables.prototype.clone = function() {
   o[SOURCE_DIR]            = this[SOURCE_DIR];
   o[BINARY_DIR]            = this[BINARY_DIR];
   o[SCRIPT_FILE]           = this[SCRIPT_FILE];
+  o[SCRIPT_DIR]            = this[SCRIPT_DIR];
   o[PACKAGE_FILE]          = this[PACKAGE_FILE];
   o[CACHE_FILE]            = this[CACHE_FILE];
   o[MODULE_PATH]           = Array.from(this[MODULE_PATH]);
@@ -500,7 +511,11 @@ SystemVariables.defineVariables(SystemVariables.prototype, {
   PREVENT_INSTALL_FILES: {
     description: "Prevent installation of files",
     value: true,
-  }
+  },
+  HOST_SYSTEM_NAME: {
+    description: "Specifies the OS of the machine running",
+    value: os.type(),
+  },
 });
 
 module.exports = {

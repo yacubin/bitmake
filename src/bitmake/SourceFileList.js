@@ -20,8 +20,14 @@ SourceFileList.prototype = Object.create(Object.prototype, {
   },
 });
 
+SourceFileList.prototype.addDefinitions = function(definitions) {
+  for (const iter of definitions.flat())
+    this[SOURCES].forEach(i => i.DEFINES.push(iter));
+}
+
 SourceFileList.prototype.addCompileFlags = function(flags) {
-  this[SOURCES].forEach(i => i.COMPILE_FLAGS.push(flags));
+  for (const iter of flags.flat())
+    this[SOURCES].forEach(i => i.COMPILE_FLAGS.push(iter));
 }
 
 SourceFileList.prototype.sourceAt = function(index) {

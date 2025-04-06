@@ -244,8 +244,13 @@ GlobalContext.prototype.createGoals = function(scope) {
       const relativeBinaryDir = scope.PROJECT_BINARY_DIR.relative(target.TARGET_SCOPE.BINARY_DIR);
       const msg = "\x1b[32m" + `Building ${s.LANGUAGE} object ${relativeBinaryDir}/${relativeObject}` + "\x1b[0m";
 
+      const definitions = [
+        ...this[TARGETS].allDefinitionsOf(target),
+        ...s.DEFINES,
+      ];
+
       const args = [];
-      args.push(...this[TARGETS].allDefinitionsOf(target).map(i => "-D" + i));
+      args.push(...definitions.map(i => "-D" + i));
       args.push(...this[TARGETS].allIncludesOf(target).map(i => "-I" + i));
       args.push(...this[TARGETS].allCompileOptionsOf(target));
       if (target.POSITION_INDEPENDENT_CODE)

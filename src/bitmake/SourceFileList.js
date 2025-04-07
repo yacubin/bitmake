@@ -20,12 +20,12 @@ SourceFileList.prototype = Object.create(Object.prototype, {
   },
 });
 
-SourceFileList.prototype.addDefinitions = function(definitions) {
+SourceFileList.prototype.addDefinitions = function(...definitions) {
   for (const iter of definitions.flat())
     this[SOURCES].forEach(i => i.DEFINES.push(iter));
 }
 
-SourceFileList.prototype.addCompileFlags = function(flags) {
+SourceFileList.prototype.addCompileFlags = function(...flags) {
   for (const iter of flags.flat())
     this[SOURCES].forEach(i => i.COMPILE_FLAGS.push(iter));
 }

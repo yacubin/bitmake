@@ -255,7 +255,7 @@ GlobalContext.prototype.createGoals = function(scope) {
       args.push(...this[TARGETS].allCompileOptionsOf(target));
       if (target.POSITION_INDEPENDENT_CODE)
         args.push("-fPIC");
-      args.push(...s.COMPILE_FLAGS);
+      args.push(...s.COMPILE_FLAGS.flat());
       args.push("-o", relativeObject);
       args.push("-c", s.FILE);
       const cwd = target.TARGET_SCOPE.BINARY_DIR.toString();

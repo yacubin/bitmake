@@ -1,7 +1,7 @@
 {
   "name": "bitmake",
-  "version": "0.0.1-develop.1",
-  "description": "",
+  "version": "0.0.1-develop.2",
+  "description": "BitMake builds your code with the flexibility of JS-defined rules",
   "author": "Yurii Yakubin",
   "homepage": "https://github.com/ykbin/bitmake#readme",
   "license": "MIT",

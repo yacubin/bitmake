@@ -78,16 +78,16 @@ function SystemVariables(sourceDir, binaryDir) {
   this[INCLUDES]              = [];
   this[ASM_COMPILER]          = "clang";
   this[ASM_FLAGS]             = [];
-  this[ASM_FLAGS_DEBUG]       = [];
-  this[ASM_FLAGS_RELEASE]     = [ "-DNDEBUG" ];
+  this[ASM_FLAGS_DEBUG]       = [ "-g" ];
+  this[ASM_FLAGS_RELEASE]     = [ "-O3", "-DNDEBUG" ];
   this[C_COMPILER]            = "clang";
   this[C_FLAGS]               = [];
-  this[C_FLAGS_DEBUG]         = [];
-  this[C_FLAGS_RELEASE]       = [ "-DNDEBUG" ];
+  this[C_FLAGS_DEBUG]         = [ "-g" ];
+  this[C_FLAGS_RELEASE]       = [ "-O3", "-DNDEBUG" ];
   this[CXX_COMPILER]          = "clang++";
   this[CXX_FLAGS]             = [];
-  this[CXX_FLAGS_DEBUG]       = [];
-  this[CXX_FLAGS_RELEASE]     = [ "-DNDEBUG" ];
+  this[CXX_FLAGS_DEBUG]       = [ "-g" ];
+  this[CXX_FLAGS_RELEASE]     = [ "-O3", "-DNDEBUG" ];
   this[AR]                    = "llvm-ar";
   this[RANLIB]                = "llvm-ranlib";
   this[LINKER]                = "wasm-ld";
@@ -510,7 +510,7 @@ SystemVariables.defineVariables(SystemVariables.prototype, {
   },
   PREVENT_INSTALL_FILES: {
     description: "Prevent installation of files",
-    value: true,
+    value: false,
   },
   HOST_SYSTEM_NAME: {
     description: "Specifies the OS of the machine running",

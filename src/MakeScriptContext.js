@@ -7,8 +7,18 @@ const { UserContext } = require("./bitmake/UserContext.js");
 const { PluginContext } = require("./bitmake/PluginContext.js");
 const { GlobalContext } = require("./bitmake/GlobalContext.js");
 const { SystemVariables } = require("./bitmake/SystemVariables.js");
-const bitmake = require("###/bitmake/index.js");
-const { getPathString }  = require("###/utils/FileSystem.js");
+const bitmake = require("@/bitmake/index.js");
+const { getPathString }  = require("@/utils/FileSystem.js");
+
+const requireImpl = eval("require");
+
+const inlineToolchain =
+{
+  "wasm32": require("./toolchain/wasm32.js"),
+  "wasm64": require("./toolchain/wasm64.js"),
+  "wasm32-wasi": require("./toolchain/wasm32-wasi.js"),
+  "wasm64-wasi": require("./toolchain/wasm64-wasi.js"),
+};
 
 async function actionMakeScript(config, environment, settings)
 {
@@ -19,7 +29,8 @@ async function actionMakeScript(config, environment, settings)
   const global = GlobalContext.create();
   global.loadCacheVariables(scope.CACHE_FILE.toString());
 
-  const pkg = require(scope.PACKAGE_FILE.toString());
+  const packageJson = await fs.promises.readFile(scope.PACKAGE_FILE.toString(), 'utf8');
+  const pkg = JSON.parse(packageJson);
 
   scope.BUILD_TYPE = config.buildType;
   scope.PROJECT_NAME = pkg.name;
@@ -44,15 +55,17 @@ async function actionMakeScript(config, environment, settings)
   }
 
   if (root.TOOLCHAIN_NAME) {
-    const filename = path.posix.join(__dirname, `toolchain/${root.TOOLCHAIN_NAME}.js`);
-    const toolchain = require(filename);
+    let toolchain = inlineToolchain[root.TOOLCHAIN_NAME];
+    if (!toolchain) {
+      toolchain = requireImpl(/* ignore */ root.TOOLCHAIN_NAME);
+    }
     toolchain(root);
   }
 
   const pluginContext = PluginContext.create(scope, global);
   for (const plugin of (root.MAKE_PLUGIN_LIST || [])) {
     const filename = bitmake.FilePath.create(plugin);
-    const module = require(filename.toString());
+    const module = requireImpl(/* ignore */ filename.toString());
     if (!module.pluginEntry)
       throw new Error(`Plugin ${filename.basename()} not contain pluginEntry function`);
     module.pluginEntry(pluginContext);

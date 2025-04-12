@@ -1,5 +1,15 @@
-import path from 'node:path';
-import url from 'node:url';
+/*
+ * MIT License
+ *
+ * Copyright (c) 2025  Yurii Yakubin (yurii.yakubin@gmail.com)
+ *
+ * Permission is granted to use, copy, modify, and distribute this software
+ * under the MIT License. See LICENSE file for details.
+ */
+
+import path from "node:path";
+import url from "node:url";
+import webpack from "webpack";
 
 const __filename = url.fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -7,22 +17,72 @@ const __dirname = path.dirname(__filename);
 export default (env, argv) => {
   const isDevelopment = (argv.mode === "development");
   const mode = isDevelopment ? "development" : "production";
-  const devtool = isDevelopment ? "inline-source-map" : "source-map";
-
-  const config = {
-    mode,
-    devtool,
-    target: 'node',
-    entry: {
-      "bitmake-cli": './src/bitmake-cli.mjs',
-    },
-    output: {
-      path: path.resolve(__dirname, 'dist'),
-      filename: '[name].js',
-      sourceMapFilename: "[name].map",
-      clean: true,
+  const devtool = isDevelopment ? "inline-source-map" : undefined;
+  const tsconfig = isDevelopment ? "tsconfig.dev.json" : "tsconfig.json";
+  const outputPath = path.resolve(__dirname, 'dist');
+  const resolve = {
+    extensions: [ ".ts", ".tsx", ".mjs", ".js" ],
+    alias: {
+      "@": path.resolve(__dirname, "src"),
     },
   };
+  const module = {
+    rules: [
+      {
+        test: /\.tsx?$/,
+        exclude: /node_modules/,
+        use: [
+          {
+            loader: "ts-loader",
+            options: {
+              configFile: path.join(__dirname, tsconfig),
+            }
+          }
+        ],
+      },
+    ],
+  };
 
-  return config;
+  const libConfig = {
+    mode,
+    devtool,
+    resolve,
+    target: 'node',
+    entry: {
+      "bitmake": "./src/index.ts",
+    },
+    output: {
+      path: outputPath,
+      filename: '[name].js',
+      library: {
+        name: "bitmake",
+        type: "commonjs2",
+      },
+      libraryTarget: "umd",
+    },
+    module,
+  };
+
+  const cliConfig = {
+    mode,
+    devtool,
+    resolve,
+    target: 'node',
+    entry: {
+      "bitmake-cli": "./src/main.mjs",
+    },
+    output: {
+      path: outputPath,
+      filename: '[name].js',
+    },
+    plugins: [
+      new webpack.BannerPlugin({
+        banner: "#!/usr/bin/env node",
+        raw: true,
+      }),
+    ],
+    module,
+  };
+
+  return [ libConfig, cliConfig ];
 }

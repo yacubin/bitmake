@@ -1,7 +1,7 @@
 import fs from "node:fs";
 
-import { fileExists } from "###/utils/FileSystem.js";
-import { DEFAULT_PRESET } from "###/Constants.js";
+import { fileExists } from "@/utils/FileSystem.js";
+import { DEFAULT_PRESET } from "@/Constants.js";
 
 export default async function(ctx)
 {

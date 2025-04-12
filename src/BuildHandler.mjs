@@ -1,15 +1,19 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import cmake from "###/utils/CMake.js";
-import { requestGet } from "###/utils/HttpRequest.js";
-import { makePatch } from "###/utils/MakePatch.mjs";
-import { saveIfDifferent, directoryExists, getPathString } from "###/utils/FileSystem.js";
-import { SettingsStorage } from "###/utils/SettingsStorage.js";
-import { spawnAsync } from "###/utils/ChildProcess.js";
-import { actionMakeScript } from "###/MakeScriptContext.js";
-import { arrayWrapper, assignObject } from "###/utils/Primitives.js";
-import constants from "###/Constants.js";
+import cmake from "@/utils/CMake.js";
+import { requestGet } from "@/utils/HttpRequest.js";
+import { makePatch } from "@/utils/MakePatch.mjs";
+import { saveIfDifferent, directoryExists, getPathString } from "@/utils/FileSystem.js";
+import { SettingsStorage } from "@/utils/SettingsStorage.js";
+import { spawnAsync } from "@/utils/ChildProcess.js";
+import { actionMakeScript } from "@/MakeScriptContext.js";
+import { arrayWrapper, assignObject } from "@/utils/Primitives.js";
+import constants from "@/Constants.js";
+import { requireResolve } from "@/utils/Module"
+import { createLogger } from "@/logger";
+
+const logger = createLogger(import.meta.url);
 
 const { BUILD_CONFIG_FILE, BUILD_SETTINGS_FILE } = constants;
 
@@ -110,12 +114,14 @@ function resolveStringWithVariable(config, entryConfig, rootConfig, val) {
         }
         else {
           try {
-            const mainFile = import.meta.resolve(name);
+            const mainFile = requireResolve(name);
             if (mainFile) {
               sel = { mainFile, mainDir: path.posix.dirname(mainFile), };
             }
           } catch(e) {}
         }
+        if (sel === undefined)
+          break;
       }
       else if (sel.hasOwnProperty(name)) {
         sel = sel[name];
@@ -508,14 +514,14 @@ export default async function(ctx) {
       await settings.push(key);
       const completed = await settings.get("completed");
       if (entry.rebuild || !completed) {
-        console.log(`Started action: ${key}`);
+        logger.info(`Started action: ${key}`);
         const environment = mergeEnvironment(entry.environment, process.env);
         if (entry.sourceUrl) {
           await doExtractArchive(ctx, environment, entry, settings);
         }
         await doTargetBuild(ctx, environment, entry, settings);
         await settings.set("completed", true);
-        console.log(`Completed action: ${key}`);
+        logger.info(`Completed action: ${key}`);
       }
       await settings.pop();
     }

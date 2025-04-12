@@ -3,7 +3,7 @@
 const { BaseTarget } = require("./Target.js");
 const { InterfaceTarget } = require("./InterfaceTarget.js");
 const { DirPath, FilePath } = require("./Path.js");
-const { AbsolutePath } = require("###/utils/AbsolutePath.js");
+const { AbsolutePath } = require("@/utils/AbsolutePath.js");
 
 const VALUE       = Symbol("VALUE");
 const DESTINATION = Symbol("DESTINATION");

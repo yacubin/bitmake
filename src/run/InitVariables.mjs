@@ -1,5 +1,5 @@
-import * as CXX from "###/utils/CXX.js";
-import * as CMake from "###/utils/CMake.js";
+import * as CXX from "@/utils/CXX.js";
+import * as CMake from "@/utils/CMake.js";
 
 export const ARGS = {
   INPUT:         { type: "string",  name: "input"        },

@@ -1,7 +1,7 @@
 "use strict";
 
-const { ensureString } = require("###/bitmake/StrictType.js");
-const { AbsolutePath } = require("###/utils/AbsolutePath.js");
+const { ensureString } = require("@/bitmake/StrictType.js");
+const { AbsolutePath } = require("@/utils/AbsolutePath.js");
 
 const TARGET_SCOPE = Symbol("TARGET_SCOPE");
 const NAME         = Symbol("NAME");

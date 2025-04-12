@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { fileList } from "###/utils/FileSystem.js";
+import { fileList } from "@/utils/FileSystem.js";
 
 export async function makePatch(srcDir, destDir)
 {

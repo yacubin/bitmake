@@ -5,16 +5,15 @@
   "author": "Yurii Yakubin",
   "homepage": "https://github.com/ykbin/bitmake#readme",
   "license": "MIT",
-  "imports": {
-    "###/*": "./src/*"
+  "exports": {
+    ".": "./dist/bitmake.js"
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build:debug": "webpack --config webpack.config.mjs --mode development",
     "build:release": "webpack --config webpack.config.mjs --mode production"
-  },
-  "exports": {
-    ".": "./src/main.js",
-    "./*": "./src/*"
   },
   "repository": {
     "type": "git",
@@ -25,9 +24,11 @@
     "email": "yurii.yakubin@gmail.com"
   },
   "bin": {
-    "bitmake": "src/bitmake-cli.mjs"
+    "bitmake": "dist/bitmake-cli.js"
   },
   "devDependencies": {
+    "ts-loader": "^9.5.2",
+    "typescript": "^5.8.3",
     "webpack": "^5.99.5",
     "webpack-cli": "^6.0.1"
   }

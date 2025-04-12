@@ -3,14 +3,16 @@
 const os = require("node:os");
 const path = require("node:path");
 
-const { copyValue } = require("###/utils/Primitives.js");
-const { fileExistsSync } = require("###/utils/FileSystem.js");
-const { AbsolutePath } = require("###/utils/AbsolutePath.js");
+const { copyValue } = require("@/utils/Primitives.js");
+const { fileExistsSync } = require("@/utils/FileSystem.js");
+const { AbsolutePath } = require("@/utils/AbsolutePath.js");
 const { InterfaceTarget } = require("./InterfaceTarget.js");
 const { BaseTarget } = require("./Target.js");
 const { IncludeDirectory } = require("./IncludeDirectory.js");
 const { SystemVariables } = require("./SystemVariables.js");
-const bitmake = require("###/bitmake/index.js");
+const bitmake = require("@/bitmake/index.js");
+
+const requireImpl = eval("require");
 
 const currentFunctionName = () => {
   const stack = new Error().stack.split("\n")[2];
@@ -163,7 +165,7 @@ UserContext.prototype.__doSubdirectory = function() {
 
   const cwdSave = process.cwd();
   process.chdir(this.SCRIPT_FILE.dirname().toString());
-  const module = require(this.SCRIPT_FILE.toString());
+  const module = requireImpl(this.SCRIPT_FILE.toString());
   module(this);
   process.chdir(cwdSave);
 
@@ -263,7 +265,7 @@ UserContext.prototype.findProgram = function(name) {
 UserContext.prototype.executeScript = function(script, options) {
   this.logDebug(currentFunctionName(), script);
   const scriptPath = this.SOURCE_DIR.resolve(script);
-  const module = require(scriptPath.toString());
+  const module = requireImpl(scriptPath.toString());
   module(scopeValueAsPrimitives(options));
 }
 

@@ -8,6 +8,10 @@
   "imports": {
     "###/*": "./src/*"
   },
+  "scripts": {
+    "build:debug": "webpack --config webpack.config.mjs --mode development",
+    "build:release": "webpack --config webpack.config.mjs --mode production"
+  },
   "exports": {
     ".": "./src/main.js",
     "./*": "./src/*"
@@ -23,6 +27,8 @@
   "bin": {
     "bitmake": "src/bitmake-cli.mjs"
   },
-  "dependencies": {
+  "devDependencies": {
+    "webpack": "^5.99.5",
+    "webpack-cli": "^6.0.1"
   }
 }

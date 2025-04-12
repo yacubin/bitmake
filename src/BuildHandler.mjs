@@ -109,6 +109,12 @@ function resolveStringWithVariable(config, entryConfig, rootConfig, val) {
         else if (config !== rootConfig && rootConfig.hasOwnProperty(name)) {
           sel = rootConfig[name];
         }
+        else {
+          const main = import.meta.resolve(name);
+          if (main) {
+            sel = { main, rootDir: path.posix.dirname(main), };
+          }
+        }
       }
       else if (sel.hasOwnProperty(name)) {
         sel = sel[name];
@@ -159,11 +165,6 @@ function resolveConfigStrings(config) {
   }
 }
 
-function wasmuxRoot() {
-  const require = createRequire(import.meta.url);
-  return path.dirname(require.resolve("wasmux"));
-}
-
 function makeBuildConfig(ctx, config) {
   for (const key of [ "sourceRoot", "wasmuxDir" ]) {
     if (config[key]) {
@@ -174,7 +175,6 @@ function makeBuildConfig(ctx, config) {
   const rootConfig = rebaseConfig(config);
 
   rootConfig.buildType = rootConfig.buildType || ctx.buildType;
-  rootConfig.wasmuxRoot = rootConfig.wasmuxRoot || wasmuxRoot();
   rootConfig.sourceRoot = rootConfig.sourceRoot || ctx.workDir;
   rootConfig.binaryRoot = rootConfig.binaryRoot || path.posix.resolve(ctx.workDir,"build");
 

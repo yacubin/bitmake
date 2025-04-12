@@ -510,7 +510,7 @@ SystemVariables.defineVariables(SystemVariables.prototype, {
   },
   PREVENT_INSTALL_FILES: {
     description: "Prevent installation of files",
-    value: true,
+    value: false,
   },
   HOST_SYSTEM_NAME: {
     description: "Specifies the OS of the machine running",

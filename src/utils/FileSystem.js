@@ -1,5 +1,6 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require("node:fs");
+const path = require("node:path");
+const url = require("node:url");
 
 async function pathExists(path)
 {
@@ -99,6 +100,10 @@ async function saveIfDifferent(filename, content)
   return true;
 }
 
+function getPathString(str) {
+  return str.startsWith("file://") ? url.fileURLToPath(str) : str;
+}
+
 module.exports = {
   pathExists,
   pathExistsSync,
@@ -109,4 +114,5 @@ module.exports = {
   extname,
   fileList,
   saveIfDifferent,
+  getPathString,
 };

@@ -8,12 +8,13 @@ const { PluginContext } = require("./bitmake/PluginContext.js");
 const { GlobalContext } = require("./bitmake/GlobalContext.js");
 const { SystemVariables } = require("./bitmake/SystemVariables.js");
 const bitmake = require("###/bitmake/index.js");
+const { getPathString }  = require("###/utils/FileSystem.js");
 
 async function actionMakeScript(config, environment, settings)
 {
   process.env = environment;
 
-  const scope = SystemVariables.create(config.sourceDir, config.binaryDir);
+  const scope = SystemVariables.create(getPathString(config.sourceDir), getPathString(config.binaryDir));
 
   const global = GlobalContext.create();
   global.loadCacheVariables(scope.CACHE_FILE.toString());

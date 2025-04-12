@@ -1,11 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
-import { createRequire } from 'node:module';
 
 import cmake from "###/utils/CMake.js";
 import { requestGet } from "###/utils/HttpRequest.js";
 import { makePatch } from "###/utils/MakePatch.mjs";
-import { saveIfDifferent, directoryExists } from "###/utils/FileSystem.js";
+import { saveIfDifferent, directoryExists, getPathString } from "###/utils/FileSystem.js";
 import { SettingsStorage } from "###/utils/SettingsStorage.js";
 import { spawnAsync } from "###/utils/ChildProcess.js";
 import { actionMakeScript } from "###/MakeScriptContext.js";
@@ -110,10 +109,12 @@ function resolveStringWithVariable(config, entryConfig, rootConfig, val) {
           sel = rootConfig[name];
         }
         else {
-          const main = import.meta.resolve(name);
-          if (main) {
-            sel = { main, rootDir: path.posix.dirname(main), };
-          }
+          try {
+            const mainFile = import.meta.resolve(name);
+            if (mainFile) {
+              sel = { mainFile, mainDir: path.posix.dirname(mainFile), };
+            }
+          } catch(e) {}
         }
       }
       else if (sel.hasOwnProperty(name)) {
@@ -316,6 +317,8 @@ const actionHandlers = {
     /* do nothing */
   },
   cmake: async (config, environment, settings) => {
+    const sourceDir = getPathString(config.sourceDir);
+    const binaryDir = getPathString(config.binaryDir);
     const cmakeArgs = {
       environment: {
         ...environment,
@@ -323,8 +326,8 @@ const actionHandlers = {
       },
       generator: config.generator || "Unix Makefiles",
       cacheVariables: config.cacheVariables,
-      sourceDir: config.sourceDir,
-      binaryDir: config.binaryDir,
+      sourceDir,
+      binaryDir,
     };
 
     if (!cmakeArgs.cacheVariables.CMAKE_BUILD_TYPE) {
@@ -336,9 +339,11 @@ const actionHandlers = {
     await cmake.install(cmakeArgs);
   },
   configure: async (config, environment, settings) => {
+    const sourceDir = getPathString(config.sourceDir);
+    const binaryDir = getPathString(config.binaryDir);
     let step = await settings.get("configure") || "config";
     if (step === "config") {
-      const command = path.resolve(config.sourceDir, "configure");
+      const command = path.resolve(sourceDir, "configure");
       const params = [];
       if (Array.isArray(config.variables)) {
         for (const iter of config.variables)
@@ -361,7 +366,7 @@ const actionHandlers = {
           params.push(`--${key}`);
       }
       const res1 = await spawnAsync(command, params, {
-        cwd: config.binaryDir,
+        cwd: binaryDir,
         env: environment,
         extra: {
           output: `ac.config.log`,
@@ -379,7 +384,7 @@ const actionHandlers = {
         args.push(`DESTDIR=${config.destDir}`);
       }
       const res2 = await spawnAsync("make", args, {
-        cwd: config.binaryDir,
+        cwd: binaryDir,
         env: environment,
         extra: {
           output: `ac.build.log`,
@@ -393,12 +398,13 @@ const actionHandlers = {
     }
   },
   make: async (config, environment, settings) => {
+    const binaryDir = getPathString(config.binaryDir);
     const args = config.args || [];
     if (config.destDir) {
       args.push(`DESTDIR=${config.destDir}`);
     }
     const res2 = await spawnAsync("make", args, {
-      cwd: config.binaryDir,
+      cwd: binaryDir,
       env: environment,
       extra: {
         output: `make.log`,
@@ -411,12 +417,14 @@ const actionHandlers = {
   process: async (config, environment, settings) => {
     if (!config.command)
       throw "Required command field for process action";
+    const sourceDir = getPathString(config.sourceDir);
+    const binaryDir = getPathString(config.binaryDir);
     let { command } = config;
     if (!path.isAbsolute(command) && (command.includes(path.posix.delimiter) || command.includes(path.win32.delimiter))) {
-      command = path.resolve(config.sourceDir, command);
+      command = path.resolve(sourceDir, command);
     }
     const res = await spawnAsync(command, config.args || [], {
-      cwd: config.binaryDir,
+      cwd: binaryDir,
       env: environment,
       extra: {
         output: `process.log`,

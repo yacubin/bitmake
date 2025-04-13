@@ -9,10 +9,12 @@
 
 const requireImpl = eval("require");
 
-export function requireResolve(name: string): string {
+export function requireResolve(name: string) {
   if (typeof import.meta.resolve === 'function')
     return import.meta.resolve(name);
   if (typeof requireImpl !== 'undefined')
     return requireImpl.resolve(name);
   throw new Error("No compatible module resolver found");
 }
+
+export { importModule } from "./ImportModule.mjs";

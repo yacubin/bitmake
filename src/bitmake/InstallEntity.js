@@ -1,9 +1,8 @@
 "use strict";
 
-const { BaseTarget } = require("./Target.js");
 const { InterfaceTarget } = require("./InterfaceTarget.js");
-const { DirPath, FilePath } = require("./Path.js");
 const { AbsolutePath } = require("@/utils/AbsolutePath.js");
+const { FilePath, DirPath } = require("@/core/Path");
 
 const VALUE       = Symbol("VALUE");
 const DESTINATION = Symbol("DESTINATION");

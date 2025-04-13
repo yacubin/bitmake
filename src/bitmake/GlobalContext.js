@@ -13,7 +13,7 @@ const { GoalCollection } = require("./GoalCollection.js");
 const { InterfaceObjects } = require("./InterfaceObjects.js");
 const { SourceFile } = require("./SourceFile.js");
 const { ObjectLibrary, StaticLibrary, SharedLibrary, Executable } = require("./Target.js");
-const { FilePath, DirPath } = require("./Path.js");
+const { FilePath, DirPath } = require("@/core/Path");
 
 const requireImpl = eval("require");
 

@@ -8,24 +8,41 @@
  */
 
 import path from "node:path";
+import fs from "node:fs";
 import url from "node:url";
+
 import webpack from "webpack";
 
 const __filename = url.fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export default (env, argv) => {
+async function readJSON(filename) {
+  const content = await fs.promises.readFile(filename, "utf8");
+  return JSON.parse(content);
+}
+
+export default async (env, argv) => {
   const isDevelopment = (argv.mode === "development");
   const mode = isDevelopment ? "development" : "production";
   const devtool = isDevelopment ? "inline-source-map" : undefined;
   const tsconfig = isDevelopment ? "tsconfig.dev.json" : "tsconfig.json";
-  const outputPath = path.resolve(__dirname, 'dist');
+
+  const pkg = await readJSON(path.join(__dirname, "package.json"));
+  const globalVariables = {
+    PROJECT_NAME: JSON.stringify(pkg.name || ""),
+    PROJECT_VERSION: JSON.stringify(pkg.version || ""),
+    PROJECT_DESCRIPTION: JSON.stringify(pkg.description || ""),
+    PROJECT_HOMEPAGE_URL: JSON.stringify(pkg.homepage || ""),
+  };
+
+  const outputPath = path.resolve(__dirname, "dist");
   const resolve = {
     extensions: [ ".ts", ".tsx", ".mjs", ".js" ],
     alias: {
       "@": path.resolve(__dirname, "src"),
     },
   };
+
   const module = {
     rules: [
       {
@@ -61,6 +78,9 @@ export default (env, argv) => {
       libraryTarget: "umd",
     },
     module,
+    plugins: [
+      new webpack.DefinePlugin(globalVariables),
+    ],
   };
 
   const cliConfig = {
@@ -73,9 +93,10 @@ export default (env, argv) => {
     },
     output: {
       path: outputPath,
-      filename: '[name].js',
+      filename: "[name].js",
     },
     plugins: [
+      new webpack.DefinePlugin(globalVariables),
       new webpack.BannerPlugin({
         banner: "#!/usr/bin/env node",
         raw: true,

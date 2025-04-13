@@ -3,14 +3,18 @@
 const os = require("node:os");
 const path = require("node:path");
 
-const { copyValue } = require("@/utils/Primitives.js");
+const { copyValue } = require("@/utils/Primitives");
 const { fileExistsSync } = require("@/utils/FileSystem.js");
 const { AbsolutePath } = require("@/utils/AbsolutePath.js");
 const { InterfaceTarget } = require("./InterfaceTarget.js");
 const { BaseTarget } = require("./Target.js");
-const { IncludeDirectory } = require("./IncludeDirectory.js");
+const { IncludeDirectory } = require("@/core/IncludeDirectory");
 const { SystemVariables } = require("./SystemVariables.js");
 const bitmake = require("@/bitmake/index.js");
+const { DirPath, FilePath } = require("@/core/Path");
+const { importModule } = require("@/utils/Module");
+
+const MAKE_SCRIPT = "MakeScript.js";
 
 const requireImpl = eval("require");
 
@@ -148,8 +152,10 @@ UserContext.prototype.addSubdirectory = function(sourceDir, binaryDir) {
   const BINARY_DIR = path.isAbsolute(binaryDir) ? AbsolutePath.create(binaryDir) : this.BINARY_DIR.join(binaryDir);
 
   const newScope = this[SCOPE].clone();
-  const resolvedSourceDir = AbsolutePath.create(this[GLOBAL].resolveSubdirectory(SOURCE_DIR).toString());
-  newScope.setCurrentDirectory(resolvedSourceDir, BINARY_DIR);
+
+  newScope.SOURCE_DIR = AbsolutePath.create(this[GLOBAL].resolveSubdirectory(SOURCE_DIR).toString());
+  newScope.BINARY_DIR = BINARY_DIR;
+  
   const newContex = UserContext.create(newScope, this[GLOBAL]);
   for (const [key, val] of Object.entries(this)) {
     if (!Object.hasOwn(SystemVariables.prototype, key))
@@ -160,16 +166,20 @@ UserContext.prototype.addSubdirectory = function(sourceDir, binaryDir) {
 }
 
 UserContext.prototype.__doSubdirectory = function() {
+  this[SCOPE].SCRIPT_FILE = FilePath.create(this[SCOPE].SOURCE_DIR.join(MAKE_SCRIPT).toString());
+  this[SCOPE].SCRIPT_DIR = DirPath.create(this[SCOPE].SCRIPT_FILE.dirname());
+
   this[GLOBAL].addSystemVariables(this[SCOPE]);
   this[GLOBAL].copyCacheVariables(this);
 
+  const module = requireImpl(this.SCRIPT_FILE.toString());
+  
   const cwdSave = process.cwd();
   process.chdir(this.SCRIPT_FILE.dirname().toString());
-  const module = requireImpl(this.SCRIPT_FILE.toString());
   module(this);
   process.chdir(cwdSave);
 
-  this[GLOBAL].writeCacheVariables(this.CACHE_FILE.toString());
+  // this[GLOBAL].writeCacheVariables(this.CACHE_FILE.toString());
 }
 
 UserContext.prototype.addCustomScript = function(name, params) {

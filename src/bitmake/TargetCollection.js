@@ -1,6 +1,6 @@
 "use strict";
 
-const { IncludeDirectory } = require("./IncludeDirectory.js");
+const { IncludeDirectory } = require("@/core/IncludeDirectory");
 const { InterfaceIncludes } = require("./InterfaceIncludes.js");
 const { InterfaceTarget } = require("./InterfaceTarget.js");
 

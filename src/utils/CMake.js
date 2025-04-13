@@ -1,48 +1,30 @@
 const os = require('node:os');
 const fs = require('node:fs');
 const path = require('node:path');
+
 const { spawnAsync } = require('./ChildProcess.js');
-const { CMakeConstants } = require("@/cmake/Constants");
+const { CMAKE_LISTS_TXT, ValueType } = require("@/cmake/Constants");
+const { convertToValue } = require("@/cmake/Helper");
 
-function toVarValue(obj)
-{
-  let val = '';
-  if (Array.isArray(obj)) {
-    for (const iter of obj) {
-      if (val.length)
-        val += ';';
-      val += toVarValue(iter);
-    }
-  }
-  else if (typeof obj === "boolean") {
-    val = obj ? CMakeConstants.BOOLEAN_ON : CMakeConstants.BOOLEAN_OFF;
-  }
-  else {
-    val = obj.toString();
-  }
-  return val;
-}
-
-function toVarType(key, val)
-{
+function toVarType(key, val) {
   const map = {
-    CMAKE_INSTALL_PREFIX: CMakeConstants.PATH_TYPE,
-    CMAKE_TOOLCHAIN_FILE: CMakeConstants.FILEPATH_TYPE,
+    CMAKE_INSTALL_PREFIX: ValueType.PATH,
+    CMAKE_TOOLCHAIN_FILE: ValueType.FILEPATH,
   };
 
   if (typeof val === "boolean")
-    return CMakeConstants.BOOL_TYPE;
+    return ValueType.BOOL;
 
   if (map.hasOwnProperty(key))
     return map[key];
 
-  return CMakeConstants.STRING_TYPE;
+  return ValueType.STRING;
 }
 
 function toCacheEntry(name, val)
 {
   const type = toVarType(name, val);
-  const value = toVarValue(val);
+  const value = convertToValue(val);
   return `${name}:${type}=${value}`;
 }
 
@@ -146,7 +128,7 @@ async function getProjectInfo(source)
 {
   const stat = await fs.promises.stat(source);
   if (stat.isDirectory())
-    source = path.resolve(source, 'CMakeLists.txt');
+    source = path.resolve(source, CMAKE_LISTS_TXT);
   const content = await fs.promises.readFile(source, { encoding: 'utf8' });
 
   const projectPattern = /project *\( *([^ ]+) *([^)]*)\)/;

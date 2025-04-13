@@ -2,16 +2,16 @@ import fs from "node:fs";
 import path from "node:path";
 
 import cmake from "@/utils/CMake.js";
-import { requestGet } from "@/utils/HttpRequest.js";
 import { makePatch } from "@/utils/MakePatch.mjs";
 import { saveIfDifferent, directoryExists, getPathString } from "@/utils/FileSystem.js";
 import { SettingsStorage } from "@/utils/SettingsStorage.js";
 import { spawnAsync } from "@/utils/ChildProcess.js";
 import { actionMakeScript } from "@/MakeScriptContext.js";
-import { arrayWrapper, assignObject } from "@/utils/Primitives.js";
+import { arrayWrapper, assignObject } from "@/utils/Primitives";
 import constants from "@/Constants.js";
 import { requireResolve } from "@/utils/Module"
 import { createLogger } from "@/logger";
+import { requestGet } from "@/utils/HttpRequest";
 
 const logger = createLogger(import.meta.url);
 

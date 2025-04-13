@@ -1,6 +1,6 @@
 "use strict";
 
-const { ensureBoolean } = require("@/bitmake/StrictType.js");
+const { ensureBoolean } = require("@/utils/StrictType");
 
 const NAME                = Symbol("NAME");
 const LANGUAGE            = Symbol("LANGUAGE");

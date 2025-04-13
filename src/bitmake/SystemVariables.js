@@ -2,20 +2,16 @@
 
 const os = require("node:os");
 
-const { DirPath, FilePath } = require("./Path.js");
-const { ensureBoolean, ensureString } = require("./StrictType.js");
+const { ensureBoolean, ensureString } = require("@/utils/StrictType");
 const { AbsolutePath } = require("@/utils/AbsolutePath.js");
+const { DEBUG_BUILD_TYPE, RELEASE_BUILD_TYPE } = require("@/core/Types");
+const { FilePath, DirPath } = require("@/core/Path");
 
 const PACKAGE_JSON = "package.json";
-const MAKE_SCRIPT = "MakeScript.js";
 const MAKE_CACHE = "MakeCache.json";
 
 const DEFINE_MAP            = Symbol("DEFINE_MAP");
 
-const PROJECT_NAME          = Symbol("PROJECT_NAME");
-const PROJECT_VERSION       = Symbol("PROJECT_VERSION");
-const PROJECT_DESCRIPTION   = Symbol("PROJECT_DESCRIPTION");
-const PROJECT_HOMEPAGE_URL  = Symbol("PROJECT_HOMEPAGE_URL");
 const PROJECT_SOURCE_DIR    = Symbol("PROJECT_SOURCE_DIR");
 const PROJECT_BINARY_DIR    = Symbol("PROJECT_BINARY_DIR");
 const DESTDIR               = Symbol("DESTDIR");
@@ -60,16 +56,12 @@ const EXECUTABLE_SUFFIX     = Symbol("EXECUTABLE_SUFFIX");
 const EXE_LINKER_FLAGS      = Symbol("EXE_LINKER_FLAGS");
 
 function SystemVariables(sourceDir, binaryDir) {
-  this[PROJECT_NAME]          = "";
-  this[PROJECT_VERSION]       = "";
-  this[PROJECT_DESCRIPTION]   = "";
-  this[PROJECT_HOMEPAGE_URL]  = "";
   this[PROJECT_SOURCE_DIR]    = AbsolutePath.create(sourceDir);
   this[PROJECT_BINARY_DIR]    = AbsolutePath.create(binaryDir);
   this[DESTDIR]               = null;
   this[INSTALL_PREFIX]        = DirPath.create("/usr");
-  this[SCRIPT_FILE]           = FilePath.create(this[PROJECT_SOURCE_DIR].join(MAKE_SCRIPT).toString());
-  this[SCRIPT_DIR]            = DirPath.create(this[SCRIPT_FILE].dirname().toString());
+  this[SCRIPT_FILE]           = null;
+  this[SCRIPT_DIR]            = null;
   this[PACKAGE_FILE]          = FilePath.create(this[PROJECT_SOURCE_DIR].join(PACKAGE_JSON).toString());
   this[CACHE_FILE]            = FilePath.create(this[PROJECT_SOURCE_DIR].join(MAKE_CACHE).toString());
   this[SOURCE_DIR]            = this[PROJECT_SOURCE_DIR];
@@ -105,7 +97,7 @@ function SystemVariables(sourceDir, binaryDir) {
   this[SHARED_LIBRARY_SUFFIX] = ".so";
   this[SHARED_LINKER_FLAGS]   = [];
   this[EXECUTABLE_SUFFIX]     = "";
-  this[EXE_LINKER_FLAGS]          = [];
+  this[EXE_LINKER_FLAGS]      = [];
 
   for (const { symbol, initValue } of Object.values(this[DEFINE_MAP] || {})) {
     this[symbol] = initValue;
@@ -120,26 +112,6 @@ SystemVariables.prototype = Object.create(Object.prototype, {
   constructor: {
     value: SystemVariables,
     enumerable: false,
-  },
-  PROJECT_NAME: {
-    get () { return this[PROJECT_NAME]; },
-    set(value) { this[PROJECT_NAME] = value; },
-    enumerable: true,
-  },
-  PROJECT_VERSION: {
-    get () { return this[PROJECT_VERSION]; },
-    set(value) { this[PROJECT_VERSION] = value; },
-    enumerable: true,
-  },
-  PROJECT_DESCRIPTION: {
-    get () { return this[PROJECT_DESCRIPTION]; },
-    set(value) { this[PROJECT_DESCRIPTION] = value; },
-    enumerable: true,
-  },
-  PROJECT_HOMEPAGE_URL: {
-    get () { return this[PROJECT_HOMEPAGE_URL]; },
-    set(value) { this[PROJECT_HOMEPAGE_URL] = value; },
-    enumerable: true,
   },
   PROJECT_SOURCE_DIR: {
     get () { return this[PROJECT_SOURCE_DIR]; },
@@ -423,20 +395,9 @@ SystemVariables.prototype.toJSON = function() {
   return json;
 }
 
-SystemVariables.prototype.setCurrentDirectory = function(sourceDir, binaryDir) {
-  this[SOURCE_DIR] = AbsolutePath.create(sourceDir);
-  this[BINARY_DIR] = AbsolutePath.create(binaryDir);
-  this[SCRIPT_FILE] = this[SOURCE_DIR].join(MAKE_SCRIPT);
-  this[SCRIPT_DIR] = DirPath.create(this[SCRIPT_FILE].dirname().toString());
-}
-
 SystemVariables.prototype.clone = function() {
   const o = Object.create(SystemVariables.prototype);
 
-  o[PROJECT_NAME]          = this[PROJECT_NAME];
-  o[PROJECT_VERSION]       = this[PROJECT_VERSION];
-  o[PROJECT_DESCRIPTION]   = this[PROJECT_DESCRIPTION]
-  o[PROJECT_HOMEPAGE_URL]  = this[PROJECT_HOMEPAGE_URL]
   o[PROJECT_SOURCE_DIR]    = this[PROJECT_SOURCE_DIR];
   o[PROJECT_BINARY_DIR]    = this[PROJECT_BINARY_DIR];
   o[DESTDIR]               = this[DESTDIR];
@@ -491,6 +452,22 @@ SystemVariables.prototype.clone = function() {
 }
 
 SystemVariables.defineVariables(SystemVariables.prototype, {
+  PROJECT_NAME: {
+    description: "Name of the current project",
+    value: "",
+  },
+  PROJECT_VERSION: {
+    description: "Version of the current project",
+    value: "",
+  },
+  PROJECT_DESCRIPTION: {
+    description: "Description of the current project",
+    value: "",
+  },
+  PROJECT_HOMEPAGE_URL: {
+    description: "Homepage URL of the current project",
+    value: "",
+  },
   SYSTEM_NAME: {
     description: "Defines the target OS for the build, used in cross-compilation and native builds",
     value: "Linux",
@@ -501,8 +478,8 @@ SystemVariables.defineVariables(SystemVariables.prototype, {
   },
   BUILD_TYPE: {
     description: "Specifies the build configuration for controlling optimization levels and debug information in the build process",
-    type: [ "Debug", "Release" ],
-    value: "Release",
+    type: [ DEBUG_BUILD_TYPE, RELEASE_BUILD_TYPE ],
+    value: RELEASE_BUILD_TYPE,
   },
   POSITION_INDEPENDENT_CODE: {
     description: "Enables Position-Independent Code (PIC) for building shared libraries",

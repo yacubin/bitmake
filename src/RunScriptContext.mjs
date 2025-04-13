@@ -3,6 +3,8 @@ import url from "node:url";
 
 import { fileExists } from "@/utils/FileSystem.js";
 import constants from "@/Constants.js";
+import { DEBUG_BUILD_TYPE, RELEASE_BUILD_TYPE } from "@/core/Types";
+import { importModule } from "@/utils/Module";
 
 const { USER_CONFIG, DEFAULT_PRESET, REQUEST_ATTEMPTS } = constants;
 
@@ -71,7 +73,7 @@ export class RunScriptContext {
 
   get buildType()
   {
-    return this._env.buildType == "Debug" ? this._env.buildType : "Release";
+    return this._env.buildType == DEBUG_BUILD_TYPE ? this._env.buildType : RELEASE_BUILD_TYPE;
   }
 
   async getUserConfig()
@@ -95,7 +97,7 @@ export class RunScriptContext {
 
       if (configPath) {
         const configUrl = url.pathToFileURL(configPath);
-        const configModule = await import(/* webpackIgnore: true */ configUrl);
+        const configModule = await importModule(configUrl);
         switch (typeof configModule.default) {
         case "function":
           userConfig = configModule.default(this._env, {});

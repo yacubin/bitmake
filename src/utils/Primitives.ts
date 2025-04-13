@@ -1,4 +1,13 @@
-function equalValue(a, b) {
+/*
+ * MIT License
+ *
+ * Copyright (c) 2025  Yurii Yakubin (yurii.yakubin@gmail.com)
+ *
+ * Permission is granted to use, copy, modify, and distribute this software
+ * under the MIT License. See LICENSE file for details.
+ */
+
+export function equalValue(a: any, b: any): boolean {
   if (a === b)
     return true;
 
@@ -22,24 +31,24 @@ function equalValue(a, b) {
   return true;
 }
 
-function copyObject(o) {
-  if (!o || typeof o !== 'object')
+export function copyValue(o: any): any {
+  if (!o || typeof o !== "object")
     return o;
   if (Array.isArray(o)) {
     const result = [];
     for (const iter of o)
-      result.push(copyObject(iter));
+      result.push(copyValue(iter));
     return result;
   }
   else {
-    const result = {};
+    const result = {} as any;
     for (const [key,val] of Object.entries(o))
-      result[key] = copyObject(val);
+      result[key] = copyValue(val);
     return result;
   }
 }
 
-function assignObject(target, source) {
+export function assignObject(target: any, source: any) {
   if (Array.isArray(target) && Array.isArray(source)) {
     for (const iter of source)
       target.push(iter);
@@ -50,21 +59,13 @@ function assignObject(target, source) {
       if (a && typeof a === "object" && b && typeof b === "object")
         assignObject(a, b);
       else
-        target[key] = copyObject(b);
+        target[key] = copyValue(b);
     }
   }
 }
 
-function arrayWrapper(value) {
+export function arrayWrapper(value: any) {
   if (value === undefined || Array.isArray(value))
     return value;
   return [ value ];
 }
-
-module.exports = {
-  equalValue,
-  copyValue: copyObject,
-  copyObject,
-  assignObject,
-  arrayWrapper,
-};

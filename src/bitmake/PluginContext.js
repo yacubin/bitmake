@@ -1,6 +1,6 @@
 "use strict";
 
-const { DirPath } = require("./Path.js");
+const { FilePath, DirPath } = require("@/core/Path");
 
 const GLOBAL = Symbol("GLOBAL");
 const SCOPE = Symbol("SCOPE");

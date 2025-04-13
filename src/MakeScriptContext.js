@@ -9,16 +9,8 @@ const { GlobalContext } = require("./bitmake/GlobalContext.js");
 const { SystemVariables } = require("./bitmake/SystemVariables.js");
 const bitmake = require("@/bitmake/index.js");
 const { getPathString }  = require("@/utils/FileSystem.js");
-
-const requireImpl = eval("require");
-
-const inlineToolchain =
-{
-  "wasm32": require("./toolchain/wasm32.js"),
-  "wasm64": require("./toolchain/wasm64.js"),
-  "wasm32-wasi": require("./toolchain/wasm32-wasi.js"),
-  "wasm64-wasi": require("./toolchain/wasm64-wasi.js"),
-};
+const { FilePath, DirPath } = require("@/core/Path");
+const { importModule }  = require("@/utils/Module");
 
 async function actionMakeScript(config, environment, settings)
 {
@@ -37,35 +29,34 @@ async function actionMakeScript(config, environment, settings)
   scope.PROJECT_VERSION = pkg.version;
   scope.PROJECT_DESCRIPTION = pkg.description;
   scope.PROJECT_HOMEPAGE_URL = pkg.homepage;
-  scope.DESTDIR = config.destDir ? bitmake.DirPath.create(config.destDir) : null;
+  scope.DESTDIR = config.destDir ? DirPath.create(config.destDir) : null;
 
   const root = UserContext.create(scope, global);
 
   if (config.variables) {
     for (const [key, val] of Object.entries(config.variables)) {
       if (key === "INSTALL_PREFIX")
-        root.INSTALL_PREFIX = bitmake.DirPath.create(val);
+        root.INSTALL_PREFIX = DirPath.create(val);
       else if (key === "GLOBAL_CONTEXT_JSON")
-        root.GLOBAL_CONTEXT_JSON = bitmake.FilePath.create(val);
+        root.GLOBAL_CONTEXT_JSON = FilePath.create(val);
       else if (key === "TARGET_GOALS_JSON")
-        root.TARGET_GOALS_JSON = bitmake.FilePath.create(val);
+        root.TARGET_GOALS_JSON = FilePath.create(val);
       else
         root[key] = val;
     }
   }
 
-  if (root.TOOLCHAIN_NAME) {
-    let toolchain = inlineToolchain[root.TOOLCHAIN_NAME];
-    if (!toolchain) {
-      toolchain = requireImpl(/* ignore */ root.TOOLCHAIN_NAME);
-    }
-    toolchain(root);
+  if (root.TOOLCHAIN_FILE) {
+    const toolchain = await importModule(root.TOOLCHAIN_FILE);
+    if (!toolchain.default)
+      throw new Error("Toolchain module has no default export");
+    toolchain.default(root);
   }
 
   const pluginContext = PluginContext.create(scope, global);
   for (const plugin of (root.MAKE_PLUGIN_LIST || [])) {
-    const filename = bitmake.FilePath.create(plugin);
-    const module = requireImpl(/* ignore */ filename.toString());
+    const filename = FilePath.create(plugin);
+    const module = await importModule(filename.toString());
     if (!module.pluginEntry)
       throw new Error(`Plugin ${filename.basename()} not contain pluginEntry function`);
     module.pluginEntry(pluginContext);

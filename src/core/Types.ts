@@ -1,0 +1,11 @@
+/*
+ * MIT License
+ *
+ * Copyright (c) 2025  Yurii Yakubin (yurii.yakubin@gmail.com)
+ *
+ * Permission is granted to use, copy, modify, and distribute this software
+ * under the MIT License. See LICENSE file for details.
+ */
+
+export const DEBUG_BUILD_TYPE = "Debug";
+export const RELEASE_BUILD_TYPE = "Release";

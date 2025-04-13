@@ -2,6 +2,7 @@ const os = require('node:os');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnAsync } = require('./ChildProcess.js');
+const { CMakeConstants } = require("@/cmake/Constants");
 
 function toVarValue(obj)
 {
@@ -14,7 +15,7 @@ function toVarValue(obj)
     }
   }
   else if (typeof obj === "boolean") {
-    val = obj ? 'ON' : 'OFF'
+    val = obj ? CMakeConstants.BOOLEAN_ON : CMakeConstants.BOOLEAN_OFF;
   }
   else {
     val = obj.toString();
@@ -25,17 +26,17 @@ function toVarValue(obj)
 function toVarType(key, val)
 {
   const map = {
-    CMAKE_INSTALL_PREFIX: 'PATH',
-    CMAKE_TOOLCHAIN_FILE: 'FILEPATH',
+    CMAKE_INSTALL_PREFIX: CMakeConstants.PATH_TYPE,
+    CMAKE_TOOLCHAIN_FILE: CMakeConstants.FILEPATH_TYPE,
   };
 
   if (typeof val === "boolean")
-    return 'BOOL';
+    return CMakeConstants.BOOL_TYPE;
 
   if (map.hasOwnProperty(key))
     return map[key];
 
-  return 'STRING';
+  return CMakeConstants.STRING_TYPE;
 }
 
 function toCacheEntry(name, val)

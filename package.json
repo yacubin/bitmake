@@ -1,16 +1,19 @@
 {
   "name": "bitmake",
-  "version": "0.0.1-develop.3",
+  "version": "0.0.1-develop.4",
   "description": "BitMake builds your code with the flexibility of JS-defined rules",
   "author": "Yurii Yakubin",
   "homepage": "https://github.com/ykbin/bitmake#readme",
   "license": "MIT",
-  "imports": {
-    "###/*": "./src/*"
-  },
   "exports": {
-    ".": "./src/main.js",
-    "./*": "./src/*"
+    ".": "./dist/bitmake.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build:debug": "webpack --config webpack.config.mjs --mode development",
+    "build:release": "webpack --config webpack.config.mjs --mode production"
   },
   "repository": {
     "type": "git",
@@ -21,8 +24,12 @@
     "email": "yurii.yakubin@gmail.com"
   },
   "bin": {
-    "bitmake": "src/bitmake-cli.mjs"
+    "bitmake": "dist/bitmake-cli.js"
   },
-  "dependencies": {
+  "devDependencies": {
+    "ts-loader": "^9.5.2",
+    "typescript": "^5.8.3",
+    "webpack": "^5.99.5",
+    "webpack-cli": "^6.0.1"
   }
 }

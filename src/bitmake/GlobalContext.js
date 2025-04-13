@@ -3,8 +3,8 @@
 const path = require("node:path");
 const fs = require("node:fs");
 
-const { AbsolutePath } = require("###/utils/AbsolutePath.js");
-const { fileExistsSync } = require("###/utils/FileSystem.js");
+const { AbsolutePath } = require("@/utils/AbsolutePath.js");
+const { fileExistsSync } = require("@/utils/FileSystem.js");
 const { TargetCollection } = require("./TargetCollection.js");
 const { ScriptCollection } = require("./ScriptCollection.js");
 const { InterfaceTarget } = require("./InterfaceTarget.js");
@@ -14,6 +14,8 @@ const { InterfaceObjects } = require("./InterfaceObjects.js");
 const { SourceFile } = require("./SourceFile.js");
 const { ObjectLibrary, StaticLibrary, SharedLibrary, Executable } = require("./Target.js");
 const { FilePath, DirPath } = require("./Path.js");
+
+const requireImpl = eval("require");
 
 const TARGETS = Symbol("TARGETS");
 const SCRIPTS = Symbol("SCRIPTS");
@@ -111,7 +113,7 @@ GlobalContext.prototype.addSubdirectoryAlias = function(src, dest) {
 
 GlobalContext.prototype.loadCacheVariables = function(filename) {
   if (fileExistsSync(filename.toString())) {
-    const variables = require(filename.toString());
+    const variables = requireImpl(filename.toString());
     this.addCacheVariables(variables);
   }
 }

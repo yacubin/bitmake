@@ -1,8 +1,8 @@
 import path from "node:path";
 import url from "node:url";
 
-import { fileExists } from "###/utils/FileSystem.js";
-import constants from "###/Constants.js";
+import { fileExists } from "@/utils/FileSystem.js";
+import constants from "@/Constants.js";
 
 const { USER_CONFIG, DEFAULT_PRESET, REQUEST_ATTEMPTS } = constants;
 
@@ -94,7 +94,8 @@ export class RunScriptContext {
       let userConfig = {};
 
       if (configPath) {
-        const configModule = await import(url.pathToFileURL(configPath));
+        const configUrl = url.pathToFileURL(configPath);
+        const configModule = await import(/* webpackIgnore: true */ configUrl);
         switch (typeof configModule.default) {
         case "function":
           userConfig = configModule.default(this._env, {});

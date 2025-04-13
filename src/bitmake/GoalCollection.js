@@ -46,7 +46,13 @@ GoalCollection.buildGoals = async (GoalCollection) => {
     }
     if (type === SCRIPT_GOAL) {
       const { script, params } = goal;
-      const module = require(script.toString());
+      let module;
+      if (script.toString() === path.posix.join(__dirname, "SystemScripts/configure_file.js"))
+        module = require("./SystemScripts/configure_file.js");
+      else if (script.toString() === path.posix.join(__dirname, "SystemScripts/install_script.js"))
+        module = require("./SystemScripts/install_script.js");
+      else
+        module = (await import(/* webpackIgnore: true */ script.toString())).default;
       const result = module(params);
       if (result instanceof Promise) {
         await result;

@@ -1,17 +1,17 @@
-#!/usr/bin/env node
-
 import url from "node:url";
 import path from "node:path";
 
 import { RunScriptContext } from "./RunScriptContext.mjs";
+import initHandler from "./InitHandler.mjs";
+import buildHandler from "./BuildHandler.mjs";
 
 const __filename = url.fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const handlerMap = {
-  default: "./BuildHandler.mjs",
-  init: "./InitHandler.mjs",
-  build: "./BuildHandler.mjs",
+  default: buildHandler,
+  init: initHandler,
+  build: buildHandler,
 };
 
 function toOptionKey(name)

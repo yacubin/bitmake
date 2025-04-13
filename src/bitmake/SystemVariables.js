@@ -4,7 +4,7 @@ const os = require("node:os");
 
 const { DirPath, FilePath } = require("./Path.js");
 const { ensureBoolean, ensureString } = require("./StrictType.js");
-const { AbsolutePath } = require("###/utils/AbsolutePath.js");
+const { AbsolutePath } = require("@/utils/AbsolutePath.js");
 
 const PACKAGE_JSON = "package.json";
 const MAKE_SCRIPT = "MakeScript.js";

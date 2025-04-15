@@ -4,7 +4,7 @@ const path = require("node:path");
 const fs = require("node:fs");
 
 const { AbsolutePath } = require("@/utils/AbsolutePath.js");
-const { fileExistsSync } = require("@/utils/FileSystem.js");
+const { fileExists, fileExistsSync } = require("@/utils/FileSystem.js");
 const { TargetCollection } = require("./TargetCollection.js");
 const { ScriptCollection } = require("./ScriptCollection.js");
 const { InterfaceTarget } = require("./InterfaceTarget.js");
@@ -13,7 +13,8 @@ const { GoalCollection } = require("./GoalCollection.js");
 const { InterfaceObjects } = require("./InterfaceObjects.js");
 const { SourceFile } = require("./SourceFile.js");
 const { ObjectLibrary, StaticLibrary, SharedLibrary, Executable } = require("./Target.js");
-const { FilePath, DirPath } = require("@/core/Path");
+const { DirPath, FilePath } = require("@/core/Path");
+const { importModule } = require("@/utils/Module");
 
 const requireImpl = eval("require");
 
@@ -25,6 +26,7 @@ const INTERFACE_SCRIPTS = Symbol("INTERFACE_SCRIPTS");
 const INSTALL_LIST = Symbol("INSTALL_LIST");
 const SCRIPT_VARIABLES_MAP = Symbol("SCRIPT_VARIABLES_MAP");
 const SUBDIR_ALIAS = Symbol("SUBDIR_ALIAS");
+const SUBDIR_LIST = Symbol("SUBDIR_LIST");
 
 function GlobalContext() {
   this[TARGETS] = TargetCollection.create();
@@ -35,6 +37,7 @@ function GlobalContext() {
   this[INSTALL_LIST] = [];
   this[SCRIPT_VARIABLES_MAP] = {};
   this[SUBDIR_ALIAS] = {};
+  this[SUBDIR_LIST] = [];
 }
 
 GlobalContext.create = () => {
@@ -122,6 +125,50 @@ GlobalContext.prototype.addCacheVariables = function(variables) {
   const cache = this[CACHE];
   for (const [key, entry] of Object.entries(variables)) {
     cache[key] = entry;
+  }
+}
+
+GlobalContext.prototype.addSubdirectory = function(context) {
+  this[SUBDIR_LIST].push(context);
+}
+
+GlobalContext.prototype.doSubdirectory = async function() {
+  while (this[SUBDIR_LIST].length) {
+    const context = this[SUBDIR_LIST].shift();
+
+    const scope = context.__scope();
+
+    let scriptFile;
+    const fileList = [ ".js", ".mjs" ].map(i => "MakeScript" + i);
+    for (const filename of fileList) {
+      const iter = scope.SOURCE_DIR.join(filename).toString();
+      if (await fileExists(iter)) {
+        scriptFile = iter;
+        break;
+      }
+    }
+
+    if (!scriptFile)
+      throw new Error("There are no files from the list " + fileList.join());
+
+    scope.SCRIPT_FILE = FilePath.create(scriptFile);
+    scope.SCRIPT_DIR = DirPath.create(scope.SCRIPT_FILE.dirname());
+
+    this.addSystemVariables(scope);
+    this.copyCacheVariables(context);
+
+    const module = await importModule(context.SCRIPT_FILE.toString());
+
+    const cwdSave = process.cwd();
+    process.chdir(context.SCRIPT_FILE.dirname().toString());
+
+    const result = module.default(context);
+    if (result instanceof Promise)
+      await result;
+
+    process.chdir(cwdSave);
+
+    // this.writeCacheVariables(context.CACHE_FILE.toString());
   }
 }
 

@@ -50,7 +50,9 @@ async function actionMakeScript(config, environment, settings)
     const toolchain = await importModule(root.TOOLCHAIN_FILE);
     if (!toolchain.default)
       throw new Error("Toolchain module has no default export");
-    toolchain.default(root);
+    const result = toolchain.default(root);
+    if (result instanceof Promise)
+      await result;
   }
 
   const pluginContext = PluginContext.create(scope, global);
@@ -59,10 +61,13 @@ async function actionMakeScript(config, environment, settings)
     const module = await importModule(filename.toString());
     if (!module.pluginEntry)
       throw new Error(`Plugin ${filename.basename()} not contain pluginEntry function`);
-    module.pluginEntry(pluginContext);
+    const result = module.pluginEntry(pluginContext);
+    if (result instanceof Promise)
+      await result;
   }
 
-  root.__doSubdirectory();
+  global.addSubdirectory(root);
+  await global.doSubdirectory();
   root.logInfo("Configuring done");
 
   if (root.GLOBAL_CONTEXT_JSON) {

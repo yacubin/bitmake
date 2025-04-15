@@ -11,10 +11,6 @@ const { BaseTarget } = require("./Target.js");
 const { IncludeDirectory } = require("@/core/IncludeDirectory");
 const { SystemVariables } = require("./SystemVariables.js");
 const bitmake = require("@/bitmake/index.js");
-const { DirPath, FilePath } = require("@/core/Path");
-const { importModule } = require("@/utils/Module");
-
-const MAKE_SCRIPT = "MakeScript.js";
 
 const requireImpl = eval("require");
 
@@ -106,6 +102,10 @@ UserContext.prototype.__logTag = function() {
   return path.posix.join(this.PROJECT_NAME, tag);
 }
 
+UserContext.prototype.__scope = function() {
+  return this[SCOPE];
+}
+
 UserContext.prototype.getCacheVariables = function() {
   this.logDebug(currentFunctionName());
   const result = {};
@@ -162,24 +162,7 @@ UserContext.prototype.addSubdirectory = function(sourceDir, binaryDir) {
       newContex[key] = val;
   }
 
-  newContex.__doSubdirectory();
-}
-
-UserContext.prototype.__doSubdirectory = function() {
-  this[SCOPE].SCRIPT_FILE = FilePath.create(this[SCOPE].SOURCE_DIR.join(MAKE_SCRIPT).toString());
-  this[SCOPE].SCRIPT_DIR = DirPath.create(this[SCOPE].SCRIPT_FILE.dirname());
-
-  this[GLOBAL].addSystemVariables(this[SCOPE]);
-  this[GLOBAL].copyCacheVariables(this);
-
-  const module = requireImpl(this.SCRIPT_FILE.toString());
-  
-  const cwdSave = process.cwd();
-  process.chdir(this.SCRIPT_FILE.dirname().toString());
-  module(this);
-  process.chdir(cwdSave);
-
-  // this[GLOBAL].writeCacheVariables(this.CACHE_FILE.toString());
+  this[GLOBAL].addSubdirectory(newContex);
 }
 
 UserContext.prototype.addCustomScript = function(name, params) {

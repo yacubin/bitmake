@@ -1,7 +1,7 @@
 "use strict";
 
 const { InterfaceTarget } = require("./InterfaceTarget.js");
-const { AbsolutePath } = require("@/utils/AbsolutePath.js");
+const { AbsolutePath } = require("@/core/Path");
 const { FilePath, DirPath } = require("@/core/Path");
 
 const VALUE       = Symbol("VALUE");

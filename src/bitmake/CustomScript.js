@@ -1,7 +1,7 @@
 "use strict";
 
 const { ensureString } = require("@/utils/StrictType");
-const { DirPath, FilePath } = require("@/core/Path");
+const { AbsolutePath } = require("@/core/Path");
 
 const TARGET_SCOPE = Symbol("TARGET_SCOPE");
 const NAME         = Symbol("NAME");
@@ -11,7 +11,7 @@ const OUTPUT       = Symbol("OUTPUT");
 const PARAMS       = Symbol("PARAMS");
 const PROPERTIES   = Symbol("PROPERTIES");
 
-const SYSTEM_SCRIPTS_DIR = DirPath.create(__dirname).join("SystemScripts");
+const SYSTEM_SCRIPTS_DIR = AbsolutePath.create(__dirname).join("SystemScripts");
 
 function CustomScript(scope, name, params) {
   this[TARGET_SCOPE] = scope;
@@ -59,7 +59,7 @@ CustomScript.prototype = Object.create(Object.prototype, {
   },
   OUTPUT: {
     get() { return this[OUTPUT]; },
-    set(value) { this[OUTPUT] = FilePath.create(value); },
+    set(value) { this[OUTPUT] = AbsolutePath.create(value); },
     enumerable: true,
   },
   PARAMS: {

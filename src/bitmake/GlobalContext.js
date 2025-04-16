@@ -3,7 +3,7 @@
 const path = require("node:path");
 const fs = require("node:fs");
 
-const { AbsolutePath } = require("@/utils/AbsolutePath.js");
+const { AbsolutePath } = require("@/core/Path");
 const { fileExists, fileExistsSync } = require("@/utils/FileSystem");
 const { TargetCollection } = require("./TargetCollection.js");
 const { ScriptCollection } = require("./ScriptCollection.js");
@@ -151,8 +151,8 @@ GlobalContext.prototype.doSubdirectory = async function() {
     if (!scriptFile)
       throw new Error("There are no files from the list " + fileList.join());
 
-    scope.SCRIPT_FILE = FilePath.create(scriptFile);
-    scope.SCRIPT_DIR = DirPath.create(scope.SCRIPT_FILE.dirname());
+    scope.SCRIPT_FILE = AbsolutePath.createFile(scriptFile);
+    scope.SCRIPT_DIR = AbsolutePath.createDir(scope.SCRIPT_FILE.dirname());
 
     this.addSystemVariables(scope);
     this.copyCacheVariables(context);

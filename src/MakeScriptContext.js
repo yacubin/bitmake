@@ -3,7 +3,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
-const { AbsolutePath } = require("@/utils/AbsolutePath.js");
 const { UserContext } = require("./bitmake/UserContext.js");
 const { PluginContext } = require("./bitmake/PluginContext.js");
 const { GlobalContext } = require("./bitmake/GlobalContext.js");
@@ -11,6 +10,7 @@ const { SystemVariables } = require("./bitmake/SystemVariables.js");
 const { GoalCollection } = require("@/core/GoalCollection");
 const { getPathString }  = require("@/utils/FileSystem");
 const { FilePath, DirPath } = require("@/core/Path");
+const { AbsolutePath } = require("@/core/Path");
 const { importModule }  = require("@/utils/Module");
 const SysVars = require("@/core/SystemVariables");
 

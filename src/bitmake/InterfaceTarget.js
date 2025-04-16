@@ -1,6 +1,6 @@
 "use strict";
 
-const { AbsolutePath } = require("@/utils/AbsolutePath.js");
+const { AbsolutePath } = require("@/core/Path");
 const { InterfaceIncludes } = require("./InterfaceIncludes.js");
 const { InterfaceObjects } = require("./InterfaceObjects.js");
 const { IncludeDirectory } = require("@/core/IncludeDirectory");
@@ -53,9 +53,11 @@ InterfaceTarget.prototype.toString = function() {
 
 InterfaceTarget.prototype.addSources = function(...sources) {
   for (let it of sources.flat(1)) {
-    if (typeof it === "string" || AbsolutePath.isAbsolute(it))
+    if (it instanceof InterfaceObjects || it instanceof SourceFile)
+      /* */;
+    else if (typeof it === "string" || AbsolutePath.isAbsolute(it))
       it = SourceFile.create(this[SCOPE], it);
-    else if (!(it instanceof InterfaceObjects || it instanceof SourceFile))
+    else
       throw new Error(`Not support instance ${it}`);
     this[UNKNOWN_TARGET].SOURCES.push(it);
   }
@@ -64,10 +66,12 @@ InterfaceTarget.prototype.addSources = function(...sources) {
 InterfaceTarget.prototype.addIncludes = function(...includes) {
   for (const it of includes.flat(1)) {
     let VALUE;
-    if (typeof it === "string" || AbsolutePath.isAbsolute(it))
+    if (it instanceof InterfaceIncludes)
+      VALUE = it;
+    else if (typeof it === "string" || AbsolutePath.isAbsolute(it))
       VALUE = IncludeDirectory.create(it, this[SCOPE].SOURCE_DIR);
     else
-      VALUE = InterfaceIncludes.ensureInstance(it);
+      throw new Error(`Not support instance ${it}`);
     this[UNKNOWN_TARGET].INCLUDES.push({ VALUE, PUBLIC_ONLY: false });
   }
 }
@@ -75,10 +79,12 @@ InterfaceTarget.prototype.addIncludes = function(...includes) {
 InterfaceTarget.prototype.addPublicIncludes = function(...includes) {
   for (const it of includes.flat(1)) {
     let VALUE;
-    if (typeof it === "string" || AbsolutePath.isAbsolute(it))
+    if (it instanceof InterfaceIncludes)
+      VALUE = it;
+    else if (typeof it === "string" || AbsolutePath.isAbsolute(it))
       VALUE = IncludeDirectory.create(it, this[SCOPE].SOURCE_DIR);
     else
-      VALUE = InterfaceIncludes.ensureInstance(it);
+      throw new Error(`Not support instance ${it}`);
     this[UNKNOWN_TARGET].INCLUDES.push({ VALUE, PUBLIC_ONLY: true });
   }
 }

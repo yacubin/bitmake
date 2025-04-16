@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const { copyValue } = require("@/utils/Primitives");
 const { fileExistsSync } = require("@/utils/FileSystem");
-const { AbsolutePath } = require("@/utils/AbsolutePath.js");
+const { AbsolutePath } = require("@/core/Path");
 const { InterfaceTarget } = require("./InterfaceTarget.js");
 const { BaseTarget } = require("./Target.js");
 const { IncludeDirectory } = require("@/core/IncludeDirectory");

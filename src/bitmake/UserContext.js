@@ -59,7 +59,7 @@ function UserContext(scope, global) {
 
   const props = Object.getOwnPropertyDescriptors(SystemVariables.prototype);
   for (const [name, desc] of Object.entries(props)) {
-    if (desc.get && desc.set) {
+    if (desc.get || desc.set) {
       const newDesc = { enumerable: desc.enumerable, configurable: false };
       if (desc.get)
         newDesc.get = function() { return this[SCOPE][name]; }

@@ -151,8 +151,8 @@ GlobalContext.prototype.doSubdirectory = async function() {
     if (!scriptFile)
       throw new Error("There are no files from the list " + fileList.join());
 
-    scope.SCRIPT_FILE = AbsolutePath.createFile(scriptFile);
-    scope.SCRIPT_DIR = AbsolutePath.createDir(scope.SCRIPT_FILE.dirname());
+    scope.SCRIPT_FILE = scriptFile;
+    scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
 
     this.addSystemVariables(scope);
     this.copyCacheVariables(context);
@@ -160,15 +160,13 @@ GlobalContext.prototype.doSubdirectory = async function() {
     const module = await importModule(context.SCRIPT_FILE.toString());
 
     const cwdSave = process.cwd();
-    process.chdir(context.SCRIPT_FILE.dirname().toString());
+    process.chdir(context.SOURCE_DIR.toString());
 
     const result = module.default(context);
     if (result instanceof Promise)
       await result;
 
     process.chdir(cwdSave);
-
-    // this.writeCacheVariables(context.CACHE_FILE.toString());
   }
 }
 
@@ -395,7 +393,7 @@ GlobalContext.prototype.createGoals = function(scope) {
       throw new Error(`Can not install ${iter.VALUE}`)
     }
     if (scope.DESTDIR)
-      dest = DirPath.create(scope.DESTDIR).join(dest);
+      dest = scope.DESTDIR.join(dest).toString();
     goalList.addScript(install_script, "", [ src ], dest, scopeValueAsPrimitives({src, dest}), "");
     install_files.push(dest);
   }

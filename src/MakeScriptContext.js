@@ -9,8 +9,7 @@ const { GlobalContext } = require("./bitmake/GlobalContext.js");
 const { SystemVariables } = require("./bitmake/SystemVariables.js");
 const { GoalCollection } = require("@/core/GoalCollection");
 const { getPathString }  = require("@/utils/FileSystem");
-const { FilePath, DirPath } = require("@/core/Path");
-const { AbsolutePath } = require("@/core/Path");
+const { FilePath } = require("@/core/Path");
 const { importModule }  = require("@/utils/Module");
 const SysVars = require("@/core/SystemVariables");
 
@@ -27,16 +26,16 @@ async function actionMakeScript(config, environment, settings)
   const sourceDir = getPathString(config.sourceDir);
   const binaryDir = getPathString(config.binaryDir);
 
-  scope.PROJECT_SOURCE_DIR = DirPath.create(sourceDir);
-  scope.PROJECT_BINARY_DIR = DirPath.create(binaryDir);
+  scope.PROJECT_SOURCE_DIR = sourceDir;
+  scope.PROJECT_BINARY_DIR = binaryDir;
 
-  scope.PACKAGE_FILE = FilePath.create(scope.PROJECT_SOURCE_DIR.join(PACKAGE_JSON).toString());
-  scope.CACHE_FILE = FilePath.create(scope.PROJECT_BINARY_DIR.join(MAKE_CACHE).toString());
-  scope.SOURCE_DIR = AbsolutePath.create(sourceDir);
-  scope.BINARY_DIR = AbsolutePath.create(binaryDir);
+  scope.PACKAGE_FILE = scope.PROJECT_SOURCE_DIR.join(PACKAGE_JSON);
+  scope.CACHE_FILE = scope.PROJECT_BINARY_DIR.join(MAKE_CACHE);
+  scope.SOURCE_DIR = scope.PROJECT_SOURCE_DIR;
+  scope.BINARY_DIR = scope.PROJECT_BINARY_DIR;
 
   const global = GlobalContext.create();
-  global.loadCacheVariables(scope.CACHE_FILE.toString());
+  global.loadCacheVariables(scope.CACHE_FILE);
 
   const packageJson = await fs.promises.readFile(scope.PACKAGE_FILE.toString(), 'utf8');
   const pkg = JSON.parse(packageJson);
@@ -46,14 +45,16 @@ async function actionMakeScript(config, environment, settings)
   scope.PROJECT_VERSION = pkg.version;
   scope.PROJECT_DESCRIPTION = pkg.description;
   scope.PROJECT_HOMEPAGE_URL = pkg.homepage;
-  scope.DESTDIR = config.destDir ? DirPath.create(config.destDir) : null;
+
+  if (config.destDir)
+    scope.DESTDIR = config.destDir;
 
   const root = UserContext.create(scope, global);
 
   if (config.variables) {
     for (const [key, val] of Object.entries(config.variables)) {
       if (key === "INSTALL_PREFIX")
-        root.INSTALL_PREFIX = DirPath.create(val);
+        root.INSTALL_PREFIX = val;
       else if (key === "GLOBAL_CONTEXT_JSON")
         root.GLOBAL_CONTEXT_JSON = FilePath.create(val);
       else if (key === "TARGET_GOALS_JSON")

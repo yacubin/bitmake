@@ -34,7 +34,7 @@ function InstallEntity(scope, value, params) {
   }
 
   this[VALUE] = value;
-  this[DESTINATION] = DirPath.create(scope.INSTALL_PREFIX.resolve(destination.toString()));
+  this[DESTINATION] = DirPath.create(scope.INSTALL_PREFIX.resolve(destination.toString()).toString());
   this[BASE_DIR] = baseDir ? DirPath.create(baseDir.toString()) : null;
 }
 

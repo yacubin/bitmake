@@ -1,22 +1,11 @@
 "use strict";
 
 const { ensureBoolean, ensureString } = require("@/utils/StrictType");
-const { DirPath } = require("@/core/Path");
+const { AbsolutePath } = require("@/core/Path");
 
 const DEFINE_MAP            = Symbol("DEFINE_MAP");
 
-const PROJECT_SOURCE_DIR    = Symbol("PROJECT_SOURCE_DIR");
-const PROJECT_BINARY_DIR    = Symbol("PROJECT_BINARY_DIR");
-const DESTDIR               = Symbol("DESTDIR");
-const INSTALL_PREFIX        = Symbol("INSTALL_PREFIX");
-const SCRIPT_FILE           = Symbol("SCRIPT_FILE");
-const SCRIPT_DIR            = Symbol("SCRIPT_DIR");
-const PACKAGE_FILE          = Symbol("PACKAGE_FILE");
-const CACHE_FILE            = Symbol("CACHE_FILE");
-const SOURCE_DIR            = Symbol("SOURCE_DIR");
-const BINARY_DIR            = Symbol("BINARY_DIR");
 const MODULE_PATH           = Symbol("MODULE_PATH");
-const INCLUDES              = Symbol("INCLUDES");
 const ASM_COMPILER          = Symbol("ASM_COMPILER");
 const ASM_FLAGS             = Symbol("ASM_FLAGS");
 const ASM_FLAGS_DEBUG       = Symbol("ASM_FLAGS_DEBUG");
@@ -49,18 +38,7 @@ const EXECUTABLE_SUFFIX     = Symbol("EXECUTABLE_SUFFIX");
 const EXE_LINKER_FLAGS      = Symbol("EXE_LINKER_FLAGS");
 
 function SystemVariables() {
-  this[PROJECT_SOURCE_DIR]    = null;
-  this[PROJECT_BINARY_DIR]    = null;
-  this[DESTDIR]               = null;
-  this[INSTALL_PREFIX]        = DirPath.create("/usr");
-  this[SCRIPT_FILE]           = null;
-  this[SCRIPT_DIR]            = null;
-  this[PACKAGE_FILE]          = null;
-  this[CACHE_FILE]            = null;
-  this[SOURCE_DIR]            = this[PROJECT_SOURCE_DIR];
-  this[BINARY_DIR]            = this[PROJECT_BINARY_DIR];
   this[MODULE_PATH]           = [];
-  this[INCLUDES]              = [];
   this[ASM_COMPILER]          = "clang";
   this[ASM_FLAGS]             = [];
   this[ASM_FLAGS_DEBUG]       = [ "-g" ];
@@ -93,7 +71,7 @@ function SystemVariables() {
   this[EXE_LINKER_FLAGS]      = [];
 
   for (const { symbol, initValue } of Object.values(this[DEFINE_MAP] || {})) {
-    this[symbol] = initValue;
+    this[symbol] = Array.isArray(initValue) ? Array.from(initValue) : initValue;
   }
 }
 
@@ -105,56 +83,6 @@ SystemVariables.prototype = Object.create(Object.prototype, {
   constructor: {
     value: SystemVariables,
     enumerable: false,
-  },
-  PROJECT_SOURCE_DIR: {
-    get () { return this[PROJECT_SOURCE_DIR]; },
-    set(value) { this[PROJECT_SOURCE_DIR] = value; },
-    enumerable: true,
-  },
-  PROJECT_BINARY_DIR: {
-    get () { return this[PROJECT_BINARY_DIR]; },
-    set(value) { this[PROJECT_BINARY_DIR] = value; },
-    enumerable: true,
-  },
-  DESTDIR: {
-    get () { return this[DESTDIR]; },
-    set(value) { this[DESTDIR] = value; },
-    enumerable: true,
-  },
-  INSTALL_PREFIX: {
-    get () { return this[INSTALL_PREFIX]; },
-    set(value) { this[INSTALL_PREFIX] = DirPath.create(value); },
-    enumerable: true,
-  },
-  SCRIPT_FILE: {
-    get () { return this[SCRIPT_FILE]; },
-    set(value) { this[SCRIPT_FILE] = value; },
-    enumerable: true,
-  },
-  SCRIPT_DIR: {
-    get () { return this[SCRIPT_DIR]; },
-    set(value) { this[SCRIPT_DIR] = value; },
-    enumerable: true,
-  },
-  PACKAGE_FILE: {
-    get () { return this[PACKAGE_FILE]; },
-    set(value) { this[PACKAGE_FILE] = value; },
-    enumerable: true,
-  },
-  CACHE_FILE: {
-    get () { return this[CACHE_FILE]; },
-    set(value) { this[CACHE_FILE] = value; },
-    enumerable: true,
-  },
-  SOURCE_DIR: {
-    get () { return this[SOURCE_DIR]; },
-    set(value) { this[SOURCE_DIR] = value; },
-    enumerable: true,
-  },
-  BINARY_DIR: {
-    get () { return this[BINARY_DIR]; },
-    set(value) { this[BINARY_DIR] = value; },
-    enumerable: true,
   },
   MODULE_PATH: {
     get () { return this[MODULE_PATH]; },
@@ -256,11 +184,6 @@ SystemVariables.prototype = Object.create(Object.prototype, {
     set(value) { this[STRIP] = value; },
     enumerable: true,
   },
-  INCLUDES: {
-    get () { return this[INCLUDES]; },
-    set(value) { this[INCLUDES] = value; },
-    enumerable: true,
-  },
   OBJECT_LIBRARY_PREFIX: {
     get () { return this[OBJECT_LIBRARY_PREFIX]; },
     set(value) { this[OBJECT_LIBRARY_PREFIX] = value; },
@@ -336,7 +259,6 @@ SystemVariables.defineVariable = function(scope, name, descriptor) {
 
   defineEntry.type = type;
   defineEntry.description = descriptor.description || "";
-  defineEntry.initValue = descriptor.value;
 
   let ensureValue;
   if (Array.isArray(type)) {
@@ -360,18 +282,31 @@ SystemVariables.defineVariable = function(scope, name, descriptor) {
     ensureValue = ensureBoolean;
   else if (type === "string")
     ensureValue = ensureString;
+  else if (type === "DirPath")
+    ensureValue = AbsolutePath.createDir;
+  else if (type === "FilePath")
+    ensureValue = AbsolutePath.createFile;
+  else if (type === "array")
+    /* */;
   else
     throw new Error(`Unknown ${type} type of ${name} variable`);
 
-  ensureValue(defineEntry.initValue);
+  if (descriptor.hasOwnProperty("value")) {
+    defineEntry.initValue = (type === "array") ? descriptor.value : ensureValue(descriptor.value);
+  }
+  else {
+    defineEntry.initValue = (type === "array") ? [] : null;
+  }
 
   const { symbol } = defineEntry;
   const desc = {
     configurable: true,
     enumerable: true,
     get() { return this[symbol] },
-    set(value) { this[symbol] = ensureValue(value) },
   };
+
+  if (ensureValue)
+    desc.set = function(value) { this[symbol] = ensureValue(value) };
 
   Object.defineProperty(scope, name, desc);
 }
@@ -391,18 +326,7 @@ SystemVariables.prototype.toJSON = function() {
 SystemVariables.prototype.clone = function() {
   const o = Object.create(SystemVariables.prototype);
 
-  o[PROJECT_SOURCE_DIR]    = this[PROJECT_SOURCE_DIR];
-  o[PROJECT_BINARY_DIR]    = this[PROJECT_BINARY_DIR];
-  o[DESTDIR]               = this[DESTDIR];
-  o[INSTALL_PREFIX]        = this[INSTALL_PREFIX];
-  o[SOURCE_DIR]            = this[SOURCE_DIR];
-  o[BINARY_DIR]            = this[BINARY_DIR];
-  o[SCRIPT_FILE]           = this[SCRIPT_FILE];
-  o[SCRIPT_DIR]            = this[SCRIPT_DIR];
-  o[PACKAGE_FILE]          = this[PACKAGE_FILE];
-  o[CACHE_FILE]            = this[CACHE_FILE];
   o[MODULE_PATH]           = Array.from(this[MODULE_PATH]);
-  o[INCLUDES]              = [ ...this[INCLUDES] ];
   o[ASM_COMPILER]          = this[ASM_COMPILER];
   o[ASM_FLAGS]             = [ ...this[ASM_FLAGS] ];
   o[ASM_FLAGS_DEBUG]       = [ ...this[ASM_FLAGS_DEBUG] ];
@@ -435,10 +359,7 @@ SystemVariables.prototype.clone = function() {
   o[EXE_LINKER_FLAGS]      = [ ...this[EXE_LINKER_FLAGS] ];
 
   for (const { symbol } of Object.values(this[DEFINE_MAP] || {})) {
-    if (Array.isArray(this[symbol]))
-      o[symbol] = Array.from(this[symbol]);
-    else
-      o[symbol] = this[symbol];
+    o[symbol] = Array.isArray(this[symbol]) ? Array.from(this[symbol]) : this[symbol];
   }
 
   return Object.seal(o);

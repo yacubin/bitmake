@@ -1,9 +1,17 @@
-const fs = require("node:fs");
-const path = require("node:path");
-const url = require("node:url");
+/*
+ * MIT License
+ *
+ * Copyright (c) 2025  Yurii Yakubin (yurii.yakubin@gmail.com)
+ *
+ * Permission is granted to use, copy, modify, and distribute this software
+ * under the MIT License. See LICENSE file for details.
+ */
 
-async function pathExists(path)
-{
+import fs from "node:fs";
+import path from "node:path";
+import url from "node:url";
+
+export async function pathExists(path: string) {
   try {
     return !!(await fs.promises.stat(path));
   } catch {
@@ -11,8 +19,7 @@ async function pathExists(path)
   }
 }
 
-function pathExistsSync(path)
-{
+export function pathExistsSync(path: string) {
   try {
     return !!fs.statSync(path);
   } catch {
@@ -20,8 +27,7 @@ function pathExistsSync(path)
   }
 }
 
-async function fileExists(path)
-{
+export async function fileExists(path: string) {
   try {
     return (await fs.promises.stat(path)).isFile();
   } catch {
@@ -29,8 +35,7 @@ async function fileExists(path)
   }
 }
 
-function fileExistsSync(path)
-{
+export function fileExistsSync(path: string) {
   try {
     return fs.statSync(path).isFile();
   } catch {
@@ -38,8 +43,7 @@ function fileExistsSync(path)
   } 
 }
 
-async function directoryExists(path)
-{
+export async function directoryExists(path: string) {
   try {
     return (await fs.promises.stat(path)).isDirectory();
   } catch {
@@ -47,8 +51,7 @@ async function directoryExists(path)
   }
 }
 
-function directoryExistsSync(path)
-{
+export function directoryExistsSync(path: string) {
   try {
    return fs.statSync(path).isDirectory();
   } catch {
@@ -56,10 +59,8 @@ function directoryExistsSync(path)
   }
 }
 
-function extname(fullpath, options)
-{
-  if (options?.longest)
-  {
+export function extname(fullpath: string, options: any) {
+  if (options?.longest) {
     const filename = path.basename(fullpath);
     const index = filename.indexOf('.');
     return index != -1 ? filename.substring(index) : '';
@@ -68,9 +69,8 @@ function extname(fullpath, options)
   return path.extname(fullpath);
 }
 
-async function fileList(dirname, options)
-{
-  const list = [];
+export async function fileList(dirname: string, options: any): Promise<Array<string>> {
+  const list = new Array<string>;
   if (await directoryExists(dirname)) {
     for (const iter of await fs.promises.readdir(dirname)) {
       const filepath = path.resolve(dirname, iter);
@@ -87,8 +87,7 @@ async function fileList(dirname, options)
   return list;
 }
 
-async function saveIfDifferent(filename, content)
-{
+export async function saveIfDifferent(filename: string, content: string) {
   if (await fileExists(filename)) {
     const oldContent = await fs.promises.readFile(filename, { encoding: "utf8" });
     if (content == oldContent)
@@ -97,22 +96,10 @@ async function saveIfDifferent(filename, content)
 
   await fs.promises.mkdir(path.dirname(filename), { recursive: true });
   await fs.promises.writeFile(filename, content, { encoding: "utf8" });
+
   return true;
 }
 
-function getPathString(str) {
+export function getPathString(str: string) {
   return str.startsWith("file://") ? url.fileURLToPath(str) : str;
 }
-
-module.exports = {
-  pathExists,
-  pathExistsSync,
-  fileExists,
-  fileExistsSync,
-  directoryExists,
-  directoryExistsSync,
-  extname,
-  fileList,
-  saveIfDifferent,
-  getPathString,
-};

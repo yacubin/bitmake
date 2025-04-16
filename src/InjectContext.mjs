@@ -4,8 +4,8 @@ import url from 'node:url';
 
 import { generatedScriptNameComment } from "@/utils/CXX.js";
 import { filenameToPragmaOnceMacro } from "@/utils/CXX.js";
-import { saveIfDifferent } from "@/utils/FileSystem.js";
-import { fileExists } from "@/utils/FileSystem.js";
+import { saveIfDifferent } from "@/utils/FileSystem";
+import { fileExists } from "@/utils/FileSystem";
 
 async function loadScript(filename)
 {

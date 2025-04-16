@@ -4,7 +4,7 @@ const path = require("node:path");
 const fs = require("node:fs");
 
 const { AbsolutePath } = require("@/utils/AbsolutePath.js");
-const { fileExists, fileExistsSync } = require("@/utils/FileSystem.js");
+const { fileExists, fileExistsSync } = require("@/utils/FileSystem");
 const { TargetCollection } = require("./TargetCollection.js");
 const { ScriptCollection } = require("./ScriptCollection.js");
 const { InterfaceTarget } = require("./InterfaceTarget.js");

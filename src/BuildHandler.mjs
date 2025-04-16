@@ -3,7 +3,7 @@ import path from "node:path";
 
 import cmake from "@/utils/CMake.js";
 import { makePatch } from "@/utils/MakePatch.mjs";
-import { saveIfDifferent, directoryExists, getPathString } from "@/utils/FileSystem.js";
+import { saveIfDifferent, directoryExists, getPathString } from "@/utils/FileSystem";
 import { SettingsStorage } from "@/utils/SettingsStorage.js";
 import { spawnAsync } from "@/utils/ChildProcess.js";
 import { actionMakeScript } from "@/MakeScriptContext.js";

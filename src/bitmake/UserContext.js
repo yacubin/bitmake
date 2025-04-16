@@ -4,7 +4,7 @@ const os = require("node:os");
 const path = require("node:path");
 
 const { copyValue } = require("@/utils/Primitives");
-const { fileExistsSync } = require("@/utils/FileSystem.js");
+const { fileExistsSync } = require("@/utils/FileSystem");
 const { AbsolutePath } = require("@/utils/AbsolutePath.js");
 const { InterfaceTarget } = require("./InterfaceTarget.js");
 const { BaseTarget } = require("./Target.js");

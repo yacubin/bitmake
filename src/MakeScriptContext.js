@@ -3,6 +3,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
+const { AbsolutePath } = require("@/utils/AbsolutePath.js");
 const { UserContext } = require("./bitmake/UserContext.js");
 const { PluginContext } = require("./bitmake/PluginContext.js");
 const { GlobalContext } = require("./bitmake/GlobalContext.js");
@@ -11,12 +12,28 @@ const bitmake = require("@/bitmake/index.js");
 const { getPathString }  = require("@/utils/FileSystem.js");
 const { FilePath, DirPath } = require("@/core/Path");
 const { importModule }  = require("@/utils/Module");
+const SysVars = require("@/core/SystemVariables");
+
+const PACKAGE_JSON = "package.json";
+const MAKE_CACHE = "MakeCache.json";
 
 async function actionMakeScript(config, environment, settings)
 {
   process.env = environment;
 
-  const scope = SystemVariables.create(getPathString(config.sourceDir), getPathString(config.binaryDir));
+  SystemVariables.defineVariables(SystemVariables.prototype, SysVars.default);
+  const scope = SystemVariables.create();
+
+  const sourceDir = getPathString(config.sourceDir);
+  const binaryDir = getPathString(config.binaryDir);
+
+  scope.PROJECT_SOURCE_DIR = DirPath.create(sourceDir);
+  scope.PROJECT_BINARY_DIR = DirPath.create(binaryDir);
+
+  scope.PACKAGE_FILE = FilePath.create(scope.PROJECT_SOURCE_DIR.join(PACKAGE_JSON).toString());
+  scope.CACHE_FILE = FilePath.create(scope.PROJECT_BINARY_DIR.join(MAKE_CACHE).toString());
+  scope.SOURCE_DIR = AbsolutePath.create(sourceDir);
+  scope.BINARY_DIR = AbsolutePath.create(binaryDir);
 
   const global = GlobalContext.create();
   global.loadCacheVariables(scope.CACHE_FILE.toString());

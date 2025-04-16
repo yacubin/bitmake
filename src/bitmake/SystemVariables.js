@@ -1,14 +1,7 @@
 "use strict";
 
-const os = require("node:os");
-
 const { ensureBoolean, ensureString } = require("@/utils/StrictType");
-const { AbsolutePath } = require("@/utils/AbsolutePath.js");
-const { DEBUG_BUILD_TYPE, RELEASE_BUILD_TYPE } = require("@/core/Types");
-const { FilePath, DirPath } = require("@/core/Path");
-
-const PACKAGE_JSON = "package.json";
-const MAKE_CACHE = "MakeCache.json";
+const { DirPath } = require("@/core/Path");
 
 const DEFINE_MAP            = Symbol("DEFINE_MAP");
 
@@ -55,15 +48,15 @@ const SHARED_LINKER_FLAGS   = Symbol("SHARED_LINKER_FLAGS");
 const EXECUTABLE_SUFFIX     = Symbol("EXECUTABLE_SUFFIX");
 const EXE_LINKER_FLAGS      = Symbol("EXE_LINKER_FLAGS");
 
-function SystemVariables(sourceDir, binaryDir) {
-  this[PROJECT_SOURCE_DIR]    = AbsolutePath.create(sourceDir);
-  this[PROJECT_BINARY_DIR]    = AbsolutePath.create(binaryDir);
+function SystemVariables() {
+  this[PROJECT_SOURCE_DIR]    = null;
+  this[PROJECT_BINARY_DIR]    = null;
   this[DESTDIR]               = null;
   this[INSTALL_PREFIX]        = DirPath.create("/usr");
   this[SCRIPT_FILE]           = null;
   this[SCRIPT_DIR]            = null;
-  this[PACKAGE_FILE]          = FilePath.create(this[PROJECT_SOURCE_DIR].join(PACKAGE_JSON).toString());
-  this[CACHE_FILE]            = FilePath.create(this[PROJECT_SOURCE_DIR].join(MAKE_CACHE).toString());
+  this[PACKAGE_FILE]          = null;
+  this[CACHE_FILE]            = null;
   this[SOURCE_DIR]            = this[PROJECT_SOURCE_DIR];
   this[BINARY_DIR]            = this[PROJECT_BINARY_DIR];
   this[MODULE_PATH]           = [];
@@ -104,8 +97,8 @@ function SystemVariables(sourceDir, binaryDir) {
   }
 }
 
-SystemVariables.create = function(sourceDir, binaryDir) {
-  return Object.seal(new SystemVariables(sourceDir, binaryDir));
+SystemVariables.create = function() {
+  return Object.seal(new SystemVariables);
 }
 
 SystemVariables.prototype = Object.create(Object.prototype, {
@@ -329,7 +322,7 @@ SystemVariables.defineVariable = function(scope, name, descriptor) {
   if (!scope[DEFINE_MAP])
     scope[DEFINE_MAP] = {};
 
-  let type = descriptor.type || typeof descriptor.value;
+  const type = descriptor.type || typeof descriptor.value;
 
   let defineEntry = scope[DEFINE_MAP][name];
   if (!defineEntry) {
@@ -337,7 +330,7 @@ SystemVariables.defineVariable = function(scope, name, descriptor) {
     scope[DEFINE_MAP][name] = defineEntry;
   }
 
-  if (!Object.hasOwn(defineEntry, name) || defineEntry.type !== type) {
+  if (defineEntry.type !== type) {
     defineEntry.symbol = Symbol(name);
   }
 
@@ -450,50 +443,6 @@ SystemVariables.prototype.clone = function() {
 
   return Object.seal(o);
 }
-
-SystemVariables.defineVariables(SystemVariables.prototype, {
-  PROJECT_NAME: {
-    description: "Name of the current project",
-    value: "",
-  },
-  PROJECT_VERSION: {
-    description: "Version of the current project",
-    value: "",
-  },
-  PROJECT_DESCRIPTION: {
-    description: "Description of the current project",
-    value: "",
-  },
-  PROJECT_HOMEPAGE_URL: {
-    description: "Homepage URL of the current project",
-    value: "",
-  },
-  SYSTEM_NAME: {
-    description: "Defines the target OS for the build, used in cross-compilation and native builds",
-    value: "Linux",
-  },
-  SYSTEM_PROCESSOR: {
-    description: "Defines the target CPU architecture",
-    value: "wasm32",
-  },
-  BUILD_TYPE: {
-    description: "Specifies the build configuration for controlling optimization levels and debug information in the build process",
-    type: [ DEBUG_BUILD_TYPE, RELEASE_BUILD_TYPE ],
-    value: RELEASE_BUILD_TYPE,
-  },
-  POSITION_INDEPENDENT_CODE: {
-    description: "Enables Position-Independent Code (PIC) for building shared libraries",
-    value: false,
-  },
-  PREVENT_INSTALL_FILES: {
-    description: "Prevent installation of files",
-    value: false,
-  },
-  HOST_SYSTEM_NAME: {
-    description: "Specifies the OS of the machine running",
-    value: os.type(),
-  },
-});
 
 module.exports = {
   SystemVariables,

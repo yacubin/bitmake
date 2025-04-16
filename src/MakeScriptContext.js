@@ -8,7 +8,7 @@ const { UserContext } = require("./bitmake/UserContext.js");
 const { PluginContext } = require("./bitmake/PluginContext.js");
 const { GlobalContext } = require("./bitmake/GlobalContext.js");
 const { SystemVariables } = require("./bitmake/SystemVariables.js");
-const bitmake = require("@/bitmake/index.js");
+const { GoalCollection } = require("@/core/GoalCollection");
 const { getPathString }  = require("@/utils/FileSystem.js");
 const { FilePath, DirPath } = require("@/core/Path");
 const { importModule }  = require("@/utils/Module");
@@ -104,7 +104,7 @@ async function actionMakeScript(config, environment, settings)
     fs.writeFileSync(filename, content, { encoding: "utf8" });
   }
 
-  await bitmake.GoalCollection.buildGoals(goalList);
+  await GoalCollection.buildGoals(goalList);
 }
 
 module.exports = {

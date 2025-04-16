@@ -12,7 +12,6 @@ const { InterfaceScript } = require("./InterfaceScript.js");
 const { ScriptCollection } = require("./ScriptCollection.js");
 const { TargetCollection } = require("./TargetCollection.js");
 const { InstallEntity } = require("./InstallEntity.js");
-const { GoalCollection } = require("./GoalCollection.js");
 const { GlobalContext } = require("./GlobalContext.js");
 
 module.exports = {
@@ -31,6 +30,5 @@ module.exports = {
   ScriptCollection,
   TargetCollection,
   InstallEntity,
-  GoalCollection,
   GlobalContext,
 };

@@ -5,11 +5,6 @@ const { AbsolutePath } = require("@/core/Path");
 
 const DEFINE_MAP            = Symbol("DEFINE_MAP");
 
-const MODULE_PATH           = Symbol("MODULE_PATH");
-const ASM_COMPILER          = Symbol("ASM_COMPILER");
-const ASM_FLAGS             = Symbol("ASM_FLAGS");
-const ASM_FLAGS_DEBUG       = Symbol("ASM_FLAGS_DEBUG");
-const ASM_FLAGS_RELEASE     = Symbol("ASM_FLAGS_RELEASE");
 const C_COMPILER            = Symbol("C_COMPILER");
 const C_FLAGS               = Symbol("C_FLAGS");
 const C_FLAGS_DEBUG         = Symbol("C_FLAGS_DEBUG");
@@ -38,11 +33,6 @@ const EXECUTABLE_SUFFIX     = Symbol("EXECUTABLE_SUFFIX");
 const EXE_LINKER_FLAGS      = Symbol("EXE_LINKER_FLAGS");
 
 function SystemVariables() {
-  this[MODULE_PATH]           = [];
-  this[ASM_COMPILER]          = "clang";
-  this[ASM_FLAGS]             = [];
-  this[ASM_FLAGS_DEBUG]       = [ "-g" ];
-  this[ASM_FLAGS_RELEASE]     = [ "-O3", "-DNDEBUG" ];
   this[C_COMPILER]            = "clang";
   this[C_FLAGS]               = [];
   this[C_FLAGS_DEBUG]         = [ "-g" ];
@@ -83,31 +73,6 @@ SystemVariables.prototype = Object.create(Object.prototype, {
   constructor: {
     value: SystemVariables,
     enumerable: false,
-  },
-  MODULE_PATH: {
-    get () { return this[MODULE_PATH]; },
-    set(value) { this[MODULE_PATH] = value; },
-    enumerable: true,
-  },
-  ASM_COMPILER: {
-    get () { return this[ASM_COMPILER]; },
-    set(value) { this[ASM_COMPILER] = value; },
-    enumerable: true,
-  },
-  ASM_FLAGS: {
-    get () { return this[ASM_FLAGS]; },
-    set(value) { this[ASM_FLAGS] = value; },
-    enumerable: true,
-  },
-  ASM_FLAGS_DEBUG: {
-    get () { return this[ASM_FLAGS_DEBUG]; },
-    set(value) { this[ASM_FLAGS_DEBUG] = value; },
-    enumerable: true,
-  },
-  ASM_FLAGS_RELEASE: {
-    get () { return this[ASM_FLAGS_RELEASE]; },
-    set(value) { this[ASM_FLAGS_RELEASE] = value; },
-    enumerable: true,
   },
   C_COMPILER: {
     get () { return this[C_COMPILER]; },
@@ -245,7 +210,7 @@ SystemVariables.defineVariable = function(scope, name, descriptor) {
   if (!scope[DEFINE_MAP])
     scope[DEFINE_MAP] = {};
 
-  const type = descriptor.type || typeof descriptor.value;
+  const type = descriptor.type || (Array.isArray(descriptor.value) ? "array" : typeof descriptor.value);
 
   let defineEntry = scope[DEFINE_MAP][name];
   if (!defineEntry) {
@@ -292,7 +257,7 @@ SystemVariables.defineVariable = function(scope, name, descriptor) {
     throw new Error(`Unknown ${type} type of ${name} variable`);
 
   if (descriptor.hasOwnProperty("value")) {
-    defineEntry.initValue = (type === "array") ? descriptor.value : ensureValue(descriptor.value);
+    defineEntry.initValue = (type === "array") ? Array.from(descriptor.value) : ensureValue(descriptor.value);
   }
   else {
     defineEntry.initValue = (type === "array") ? [] : null;
@@ -326,7 +291,6 @@ SystemVariables.prototype.toJSON = function() {
 SystemVariables.prototype.clone = function() {
   const o = Object.create(SystemVariables.prototype);
 
-  o[MODULE_PATH]           = Array.from(this[MODULE_PATH]);
   o[ASM_COMPILER]          = this[ASM_COMPILER];
   o[ASM_FLAGS]             = [ ...this[ASM_FLAGS] ];
   o[ASM_FLAGS_DEBUG]       = [ ...this[ASM_FLAGS_DEBUG] ];

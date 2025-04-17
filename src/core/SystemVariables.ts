@@ -97,4 +97,20 @@ export default {
     description: "Paths searched for header files",
     type: "array",
   },
+  ASM_COMPILER: {
+    description: "Path to the assembler compiler detected",
+    value: "clang",
+  },
+  ASM_FLAGS: {
+    description: "Flags passed to the assembler compiler",
+    value: [],
+  },
+  ASM_FLAGS_DEBUG: {
+    description: "Additional assembler flags used when building in Debug mode",
+    value: [ "-g" ],
+  },
+  ASM_FLAGS_RELEASE: {
+    description: "Additional assembler flags used when building in Release mode",
+    value: [ "-O3", "-DNDEBUG" ],
+  },
 };

@@ -5,7 +5,7 @@ const { SourceFile } = require("@/bitmake/SourceFile.js");
 const { SourceFileList } = require("@/bitmake/SourceFileList.js");
 const { IncludeDirectory } = require("@/core/IncludeDirectory");
 const { InterfaceTarget } = require("@/bitmake/InterfaceTarget.js");
-const { InterfaceIncludes } = require("./InterfaceIncludes.js");
+const { InterfaceIncludes } = require("@/core/InterfaceIncludes");
 const { InterfaceObjects } = require("./InterfaceObjects.js");
 const { AbsolutePath } = require("@/core/Path");
 

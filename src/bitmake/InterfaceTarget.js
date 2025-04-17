@@ -1,7 +1,7 @@
 "use strict";
 
 const { AbsolutePath } = require("@/core/Path");
-const { InterfaceIncludes } = require("./InterfaceIncludes.js");
+const { InterfaceIncludes } = require("@/core/InterfaceIncludes");
 const { InterfaceObjects } = require("./InterfaceObjects.js");
 const { IncludeDirectory } = require("@/core/IncludeDirectory");
 const { SourceFile } = require("./SourceFile.js");

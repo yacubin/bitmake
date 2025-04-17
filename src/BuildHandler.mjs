@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import cmake from "@/utils/CMake.js";
-import { makePatch } from "@/utils/MakePatch.mjs";
+import { makePatch } from "@/utils/MakePatch";
 import { saveIfDifferent, directoryExists, getPathString } from "@/utils/FileSystem";
 import { SettingsStorage } from "@/utils/SettingsStorage.js";
 import { spawnAsync } from "@/utils/ChildProcess";

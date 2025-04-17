@@ -7,7 +7,6 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-
 import { ensureBoolean, ensureString } from "@/utils/StrictType";
 import { AbsolutePath } from "@/core/Path";
 

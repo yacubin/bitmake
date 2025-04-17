@@ -1,6 +1,6 @@
 "use strict";
 
-const { SourceFile } = require("@/bitmake/SourceFile.js");
+const { SourceFile } = require("@/core/SourceFile");
 
 const SOURCES = Symbol("SOURCES");
 

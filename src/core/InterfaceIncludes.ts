@@ -10,7 +10,7 @@
 const NAME = Symbol("NAME");
 
 export class InterfaceIncludes {
-  [NAME]: string;
+  private [NAME]: string;
 
   private constructor(name: string) {
     this[NAME] = name;
@@ -24,7 +24,7 @@ export class InterfaceIncludes {
     return this.toString();
   }
 
-  toString(): string {
+  public toString(): string {
     return "${" + this[NAME] + ".includes}";
   }
 

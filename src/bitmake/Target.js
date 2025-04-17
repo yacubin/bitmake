@@ -1,7 +1,7 @@
 "use strict";
 
 const { ensureString } = require("@/utils/StrictType");
-const { SourceFile } = require("@/bitmake/SourceFile.js");
+const { SourceFile } = require("@/core/SourceFile");
 const { SourceFileList } = require("@/bitmake/SourceFileList.js");
 const { IncludeDirectory } = require("@/core/IncludeDirectory");
 const { InterfaceTarget } = require("@/bitmake/InterfaceTarget.js");

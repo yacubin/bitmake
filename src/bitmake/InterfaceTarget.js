@@ -4,7 +4,7 @@ const { AbsolutePath } = require("@/core/Path");
 const { InterfaceIncludes } = require("@/core/InterfaceIncludes");
 const { InterfaceObjects } = require("./InterfaceObjects.js");
 const { IncludeDirectory } = require("@/core/IncludeDirectory");
-const { SourceFile } = require("./SourceFile.js");
+const { SourceFile } = require("@/core/SourceFile");
 
 const UNKNOWN_TARGET = Symbol("UNKNOWN_TARGET");
 const SCOPE = Symbol("SCOPE");

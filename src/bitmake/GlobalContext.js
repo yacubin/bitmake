@@ -11,9 +11,9 @@ const { InterfaceTarget } = require("./InterfaceTarget.js");
 const { UnknownTarget } = require("./UnknownTarget.js");
 const { GoalCollection } = require("@/core/GoalCollection");
 const { InterfaceObjects } = require("./InterfaceObjects.js");
-const { SourceFile } = require("./SourceFile.js");
+const { SourceFile } = require("@/core/SourceFile");
 const { ObjectLibrary, StaticLibrary, SharedLibrary, Executable } = require("./Target.js");
-const { DirPath, FilePath } = require("@/core/Path");
+const { FilePath } = require("@/core/Path");
 const { importModule } = require("@/utils/Module");
 
 const requireImpl = eval("require");

@@ -2,7 +2,7 @@
 
 const { ensureString } = require("@/utils/StrictType");
 const { SourceFile } = require("@/core/SourceFile");
-const { SourceFileList } = require("@/bitmake/SourceFileList.js");
+const { SourceFileList } = require("@/core/SourceFileList");
 const { IncludeDirectory } = require("@/core/IncludeDirectory");
 const { InterfaceTarget } = require("@/bitmake/InterfaceTarget.js");
 const { InterfaceIncludes } = require("@/core/InterfaceIncludes");

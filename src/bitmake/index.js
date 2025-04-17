@@ -1,7 +1,6 @@
 "use strict";
 
 const { SystemVariables } = require("./SystemVariables.js");
-const { SourceFileList } = require("./SourceFileList.js");
 const { ObjectLibrary, StaticLibrary, SharedLibrary, Executable } = require("./Target.js");
 const { CustomScript } = require("./CustomScript.js");
 const { InterfaceTarget } = require("./InterfaceTarget.js");
@@ -14,7 +13,6 @@ const { GlobalContext } = require("./GlobalContext.js");
 
 module.exports = {
   SystemVariables,
-  SourceFileList,
   ObjectLibrary,
   StaticLibrary,
   SharedLibrary,

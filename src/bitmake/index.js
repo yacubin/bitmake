@@ -2,7 +2,6 @@
 
 const { SystemVariables } = require("./SystemVariables.js");
 const { ObjectLibrary, StaticLibrary, SharedLibrary, Executable } = require("./Target.js");
-const { CustomScript } = require("./CustomScript.js");
 const { InterfaceTarget } = require("./InterfaceTarget.js");
 const { InterfaceObjects } = require("./InterfaceObjects.js");
 const { InterfaceScript } = require("./InterfaceScript.js");
@@ -17,7 +16,6 @@ module.exports = {
   StaticLibrary,
   SharedLibrary,
   Executable,
-  CustomScript,
   InterfaceTarget,
   InterfaceObjects,
   InterfaceScript,

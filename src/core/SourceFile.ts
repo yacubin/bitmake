@@ -127,9 +127,18 @@ export class SourceFile {
   }
 
   public toJSON(): object {
-    const json: any = {};
-    for (const key in this)
-      json[key] = this[key];
-    return json;
+    return {
+      NAME: this.NAME,
+      LANGUAGE: this.LANGUAGE,
+      HEADER_FILE_ONLY: this.HEADER_FILE_ONLY,
+      DEFINES: this.DEFINES,
+      COMPILE_FLAGS: this.COMPILE_FLAGS,
+      FILE: this.FILE,
+      FILE_DIR: this.FILE_DIR,
+      FILE_NAME: this.FILE_NAME,
+      OBJECT_FILE: this.OBJECT_FILE,
+      OBJECT_FILE_DIR: this.OBJECT_FILE_DIR,
+      OBJECT_FILE_NAME: this.OBJECT_FILE_NAME,
+    };
   }
 }

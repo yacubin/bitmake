@@ -10,6 +10,7 @@ const { InterfaceTarget } = require("./InterfaceTarget.js");
 const { BaseTarget } = require("./Target.js");
 const { IncludeDirectory } = require("@/core/IncludeDirectory");
 const { SystemVariables } = require("./SystemVariables.js");
+const { CustomScript } = require("@/core/CustomScript");
 const bitmake = require("@/bitmake/index.js");
 
 const requireImpl = eval("require");
@@ -169,7 +170,7 @@ UserContext.prototype.addCustomScript = function(name, params) {
   this.logDebug(currentFunctionName(), name);
 
   const newScope = this[SCOPE].clone();
-  const target = bitmake.CustomScript.create(newScope, name, params);
+  const target = CustomScript.create(newScope, name, params);
   this[GLOBAL].SCRIPTS.set(name, target);
   return target;
 }

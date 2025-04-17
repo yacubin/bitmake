@@ -20,12 +20,12 @@ export class InterfaceIncludes {
     return this[NAME];
   }
 
-  public toJSON() {
-    return this.toString();
-  }
-
   public toString(): string {
     return "${" + this[NAME] + ".includes}";
+  }
+
+  public toJSON() {
+    return this.toString();
   }
 
   public static create(name: string) {

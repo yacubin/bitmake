@@ -35,10 +35,10 @@ export class IncludeDirectory {
     return this[PATH].toString();
   }
 
-  toJSON() {
-    const json: any = {};
-    for (const key in this)
-      json[key] = this[key];
-    return json;
+  toJSON(): object {
+    return {
+      NAME: this.NAME,
+      PATH: this.PATH,
+    }
   }
 };

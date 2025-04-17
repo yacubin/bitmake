@@ -2,7 +2,7 @@
 
 const { AbsolutePath } = require("@/core/Path");
 const { InterfaceIncludes } = require("@/core/InterfaceIncludes");
-const { InterfaceObjects } = require("./InterfaceObjects.js");
+const { InterfaceObjects } = require("@/core/InterfaceObjects");
 const { IncludeDirectory } = require("@/core/IncludeDirectory");
 const { SourceFile } = require("@/core/SourceFile");
 

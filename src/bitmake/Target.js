@@ -6,7 +6,7 @@ const { SourceFileList } = require("@/core/SourceFileList");
 const { IncludeDirectory } = require("@/core/IncludeDirectory");
 const { InterfaceTarget } = require("@/bitmake/InterfaceTarget.js");
 const { InterfaceIncludes } = require("@/core/InterfaceIncludes");
-const { InterfaceObjects } = require("./InterfaceObjects.js");
+const { InterfaceObjects } = require("@/core/InterfaceObjects");
 const { AbsolutePath } = require("@/core/Path");
 
 const NAME                = Symbol("NAME");

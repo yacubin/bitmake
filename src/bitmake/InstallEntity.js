@@ -1,6 +1,6 @@
 "use strict";
 
-const { InterfaceTarget } = require("./InterfaceTarget.js");
+const { InterfaceTarget } = require("@/core/InterfaceTarget");
 const { AbsolutePath } = require("@/core/Path");
 const { FilePath, DirPath } = require("@/core/Path");
 

@@ -54,7 +54,7 @@ export class SourceFile {
   private [DEFINES]: string[];
   private [COMPILE_FLAGS]: string[];
 
-  private constructor(scope: any, filename: string) {
+  private constructor(scope: any, filename: AbsolutePath|string) {
     this[NAME] = filename.toString();
     const fname = scope.SOURCE_DIR.resolve(filename);
   
@@ -70,7 +70,7 @@ export class SourceFile {
     ];
   }
 
-  public static create(scope: any, filename: string) {
+  public static create(scope: any, filename: AbsolutePath|string) {
     return Object.seal(new SourceFile(scope, filename));
   }
 

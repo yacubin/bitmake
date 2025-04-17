@@ -2,7 +2,7 @@
 
 const { IncludeDirectory } = require("@/core/IncludeDirectory");
 const { InterfaceIncludes } = require("@/core/InterfaceIncludes");
-const { InterfaceTarget } = require("./InterfaceTarget.js");
+const { InterfaceTarget } = require("@/core/InterfaceTarget");
 
 const ENTRIES = Symbol("ENTRIES");
 

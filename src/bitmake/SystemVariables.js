@@ -5,10 +5,6 @@ const { AbsolutePath } = require("@/core/Path");
 
 const DEFINE_MAP            = Symbol("DEFINE_MAP");
 
-const C_COMPILER            = Symbol("C_COMPILER");
-const C_FLAGS               = Symbol("C_FLAGS");
-const C_FLAGS_DEBUG         = Symbol("C_FLAGS_DEBUG");
-const C_FLAGS_RELEASE       = Symbol("C_FLAGS_RELEASE");
 const CXX_COMPILER          = Symbol("CXX_COMPILER");
 const CXX_FLAGS             = Symbol("CXX_FLAGS");
 const CXX_FLAGS_DEBUG       = Symbol("CXX_FLAGS_DEBUG");
@@ -33,10 +29,6 @@ const EXECUTABLE_SUFFIX     = Symbol("EXECUTABLE_SUFFIX");
 const EXE_LINKER_FLAGS      = Symbol("EXE_LINKER_FLAGS");
 
 function SystemVariables() {
-  this[C_COMPILER]            = "clang";
-  this[C_FLAGS]               = [];
-  this[C_FLAGS_DEBUG]         = [ "-g" ];
-  this[C_FLAGS_RELEASE]       = [ "-O3", "-DNDEBUG" ];
   this[CXX_COMPILER]          = "clang++";
   this[CXX_FLAGS]             = [];
   this[CXX_FLAGS_DEBUG]       = [ "-g" ];
@@ -73,26 +65,6 @@ SystemVariables.prototype = Object.create(Object.prototype, {
   constructor: {
     value: SystemVariables,
     enumerable: false,
-  },
-  C_COMPILER: {
-    get () { return this[C_COMPILER]; },
-    set(value) { this[C_COMPILER] = value; },
-    enumerable: true,
-  },
-  C_FLAGS: {
-    get () { return this[C_FLAGS]; },
-    set(value) { this[C_FLAGS] = value; },
-    enumerable: true,
-  },
-  C_FLAGS_DEBUG: {
-    get () { return this[C_FLAGS_DEBUG]; },
-    set(value) { this[C_FLAGS_DEBUG] = value; },
-    enumerable: true,
-  },
-  C_FLAGS_RELEASE: {
-    get () { return this[C_FLAGS_RELEASE]; },
-    set(value) { this[C_FLAGS_RELEASE] = value; },
-    enumerable: true,
   },
   CXX_COMPILER: {
     get () { return this[CXX_COMPILER]; },
@@ -291,14 +263,6 @@ SystemVariables.prototype.toJSON = function() {
 SystemVariables.prototype.clone = function() {
   const o = Object.create(SystemVariables.prototype);
 
-  o[ASM_COMPILER]          = this[ASM_COMPILER];
-  o[ASM_FLAGS]             = [ ...this[ASM_FLAGS] ];
-  o[ASM_FLAGS_DEBUG]       = [ ...this[ASM_FLAGS_DEBUG] ];
-  o[ASM_FLAGS_RELEASE]     = [ ...this[ASM_FLAGS_RELEASE] ];
-  o[C_COMPILER]            = this[C_COMPILER];
-  o[C_FLAGS]               = [ ...this[C_FLAGS] ];
-  o[C_FLAGS_DEBUG]         = [ ...this[C_FLAGS_DEBUG] ];
-  o[C_FLAGS_RELEASE]       = [ ...this[C_FLAGS_RELEASE] ];
   o[CXX_COMPILER]          = this[CXX_COMPILER];
   o[CXX_FLAGS]             = [ ...this[CXX_FLAGS] ];
   o[CXX_FLAGS_DEBUG]       = [ ...this[CXX_FLAGS_DEBUG] ];

@@ -3,47 +3,9 @@
 const { ensureBoolean, ensureString } = require("@/utils/StrictType");
 const { AbsolutePath } = require("@/core/Path");
 
-const DEFINE_MAP            = Symbol("DEFINE_MAP");
-
-const AR                    = Symbol("AR");
-const RANLIB                = Symbol("RANLIB");
-const LINKER                = Symbol("LINKER");
-const NM                    = Symbol("NM");
-const OBJCOPY               = Symbol("OBJCOPY");
-const OBJDUMP               = Symbol("OBJDUMP");
-const STRIP                 = Symbol("STRIP");
-const OBJECT_LIBRARY_PREFIX = Symbol("OBJECT_LIBRARY_PREFIX");
-const OBJECT_LIBRARY_SUFFIX = Symbol("OBJECT_LIBRARY_SUFFIX");
-const OBJECT_LINKER_FLAGS   = Symbol("OBJECT_LINKER_FLAGS");
-const STATIC_LIBRARY_PREFIX = Symbol("STATIC_LIBRARY_PREFIX");
-const STATIC_LIBRARY_SUFFIX = Symbol("STATIC_LIBRARY_SUFFIX");
-const STATIC_LINKER_FLAGS   = Symbol("STATIC_LINKER_FLAGS");
-const SHARED_LIBRARY_PREFIX = Symbol("SHARED_LIBRARY_PREFIX");
-const SHARED_LIBRARY_SUFFIX = Symbol("SHARED_LIBRARY_SUFFIX");
-const SHARED_LINKER_FLAGS   = Symbol("SHARED_LINKER_FLAGS");
-const EXECUTABLE_SUFFIX     = Symbol("EXECUTABLE_SUFFIX");
-const EXE_LINKER_FLAGS      = Symbol("EXE_LINKER_FLAGS");
+const DEFINE_MAP = Symbol("DEFINE_MAP");
 
 function SystemVariables() {
-  this[AR]                    = "llvm-ar";
-  this[RANLIB]                = "llvm-ranlib";
-  this[LINKER]                = "wasm-ld";
-  this[NM]                    = "llvm-nm";
-  this[OBJCOPY]               = "llvm-objcopy";
-  this[OBJDUMP]               = "llvm-objdump";
-  this[STRIP]                 = "llvm-strip";
-  this[OBJECT_LIBRARY_PREFIX] = "";
-  this[OBJECT_LIBRARY_SUFFIX] = ".o";
-  this[OBJECT_LINKER_FLAGS]   = [];
-  this[STATIC_LIBRARY_PREFIX] = "lib";
-  this[STATIC_LIBRARY_SUFFIX] = ".a";
-  this[STATIC_LINKER_FLAGS]   = [];
-  this[SHARED_LIBRARY_PREFIX] = "lib";
-  this[SHARED_LIBRARY_SUFFIX] = ".so";
-  this[SHARED_LINKER_FLAGS]   = [];
-  this[EXECUTABLE_SUFFIX]     = "";
-  this[EXE_LINKER_FLAGS]      = [];
-
   for (const { symbol, initValue } of Object.values(this[DEFINE_MAP] || {})) {
     this[symbol] = Array.isArray(initValue) ? Array.from(initValue) : initValue;
   }
@@ -57,96 +19,6 @@ SystemVariables.prototype = Object.create(Object.prototype, {
   constructor: {
     value: SystemVariables,
     enumerable: false,
-  },
-  AR: {
-    get () { return this[AR]; },
-    set(value) { this[AR] = value; },
-    enumerable: true,
-  },
-  RANLIB: {
-    get () { return this[RANLIB]; },
-    set(value) { this[RANLIB] = value; },
-    enumerable: true,
-  },
-  LINKER: {
-    get () { return this[LINKER]; },
-    set(value) { this[LINKER] = value; },
-    enumerable: true,
-  },
-  NM: {
-    get () { return this[NM]; },
-    set(value) { this[NM] = value; },
-    enumerable: true,
-  },
-  OBJCOPY: {
-    get () { return this[OBJCOPY]; },
-    set(value) { this[OBJCOPY] = value; },
-    enumerable: true,
-  },
-  OBJDUMP: {
-    get () { return this[OBJDUMP]; },
-    set(value) { this[OBJDUMP] = value; },
-    enumerable: true,
-  },
-  STRIP: {
-    get () { return this[STRIP]; },
-    set(value) { this[STRIP] = value; },
-    enumerable: true,
-  },
-  OBJECT_LIBRARY_PREFIX: {
-    get () { return this[OBJECT_LIBRARY_PREFIX]; },
-    set(value) { this[OBJECT_LIBRARY_PREFIX] = value; },
-    enumerable: true,
-  },
-  OBJECT_LIBRARY_SUFFIX: {
-    get () { return this[OBJECT_LIBRARY_SUFFIX]; },
-    set(value) { this[OBJECT_LIBRARY_SUFFIX] = value; },
-    enumerable: true,
-  },
-  OBJECT_LINKER_FLAGS: {
-    get() { return this[OBJECT_LINKER_FLAGS]; },
-    set(value) { this[OBJECT_LINKER_FLAGS] = value; },
-    enumerable: true,
-  },
-  STATIC_LIBRARY_PREFIX: {
-    get () { return this[STATIC_LIBRARY_PREFIX]; },
-    set(value) { this[STATIC_LIBRARY_PREFIX] = value; },
-    enumerable: true,
-  },
-  STATIC_LIBRARY_SUFFIX: {
-    get () { return this[STATIC_LIBRARY_SUFFIX]; },
-    set(value) { this[STATIC_LIBRARY_SUFFIX] = value; },
-    enumerable: true,
-  },
-  STATIC_LINKER_FLAGS: {
-    get() { return this[STATIC_LINKER_FLAGS]; },
-    set(value) { this[STATIC_LINKER_FLAGS] = value; },
-    enumerable: true,
-  },
-  SHARED_LIBRARY_PREFIX: {
-    get() { return this[SHARED_LIBRARY_PREFIX]; },
-    set(value) { this[SHARED_LIBRARY_PREFIX] = value; },
-    enumerable: true,
-  },
-  SHARED_LIBRARY_SUFFIX: {
-    get() { return this[SHARED_LIBRARY_SUFFIX]; },
-    set(value) { this[SHARED_LIBRARY_SUFFIX] = value; },
-    enumerable: true,
-  },
-  SHARED_LINKER_FLAGS: {
-    get() { return this[SHARED_LINKER_FLAGS]; },
-    set(value) { this[SHARED_LINKER_FLAGS] = value; },
-    enumerable: true,
-  },
-  EXECUTABLE_SUFFIX: {
-    get() { return this[EXECUTABLE_SUFFIX]; },
-    set(value) { this[EXECUTABLE_SUFFIX] = value; },
-    enumerable: true,
-  },
-  EXE_LINKER_FLAGS: {
-    get() { return this[EXE_LINKER_FLAGS]; },
-    set(value) { this[EXE_LINKER_FLAGS] = value; },
-    enumerable: true,
   },
 });
 
@@ -234,25 +106,6 @@ SystemVariables.prototype.toJSON = function() {
 
 SystemVariables.prototype.clone = function() {
   const o = Object.create(SystemVariables.prototype);
-
-  o[AR]                    = this[AR];
-  o[RANLIB]                = this[RANLIB];
-  o[LINKER]                = this[LINKER];
-  o[NM]                    = this[NM];
-  o[OBJCOPY]               = this[OBJCOPY];
-  o[OBJDUMP]               = this[OBJDUMP];
-  o[STRIP]                 = this[STRIP];
-  o[OBJECT_LIBRARY_PREFIX] = this[OBJECT_LIBRARY_PREFIX];
-  o[OBJECT_LIBRARY_SUFFIX] = this[OBJECT_LIBRARY_SUFFIX];
-  o[OBJECT_LINKER_FLAGS]   = [ ...this[OBJECT_LINKER_FLAGS] ];
-  o[STATIC_LIBRARY_PREFIX] = this[STATIC_LIBRARY_PREFIX];
-  o[STATIC_LIBRARY_SUFFIX] = this[STATIC_LIBRARY_SUFFIX];
-  o[STATIC_LINKER_FLAGS]   = [ ...this[STATIC_LINKER_FLAGS] ];
-  o[SHARED_LIBRARY_PREFIX] = this[SHARED_LIBRARY_PREFIX];
-  o[SHARED_LIBRARY_SUFFIX] = this[SHARED_LIBRARY_SUFFIX];
-  o[SHARED_LINKER_FLAGS]   = [ ...this[SHARED_LINKER_FLAGS] ];
-  o[EXECUTABLE_SUFFIX]     = this[EXECUTABLE_SUFFIX];
-  o[EXE_LINKER_FLAGS]      = [ ...this[EXE_LINKER_FLAGS] ];
 
   for (const { symbol } of Object.values(this[DEFINE_MAP] || {})) {
     o[symbol] = Array.isArray(this[symbol]) ? Array.from(this[symbol]) : this[symbol];

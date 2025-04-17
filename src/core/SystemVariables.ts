@@ -145,4 +145,76 @@ export default {
     description: "Additional C++ compiler flags used when building in Release mode",
     value: [ "-O3", "-DNDEBUG" ],
   },
+  AR: {
+    description: "Path to the archiver tool used to create static libraries",
+    value: "llvm-ar",
+  },
+  RANLIB: {
+    description: "Tool used to generate an index to the contents of an archive (static library)",
+    value: "llvm-ranlib",
+  },
+  LINKER: {
+    description: "Path to the linker used to link object files and libraries into executables",
+    value: "wasm-ld",
+  },
+  NM: {
+    description: "Path to the tool used to list symbols from object files or archives",
+    value: "llvm-nm",
+  },
+  OBJCOPY: {
+    description: "Path to the tool used to copy and translate object files",
+    value: "llvm-objcopy",
+  },
+  OBJDUMP: {
+    description: "Path to the tool used to display information about object files, such as disassembly",
+    value: "llvm-objdump",
+  },
+  STRIP: {
+    description: "Path to the tool used to remove symbols from object files or executables to reduce size",
+    value: "llvm-strip",
+  },
+  OBJECT_LIBRARY_PREFIX: {
+    description: "Prefix used for object libraries",
+    value: "",
+  },
+  OBJECT_LIBRARY_SUFFIX: {
+    description: "Suffix used for object library files",
+    value: ".o",
+  },
+  OBJECT_LINKER_FLAGS: {
+    description: "Flags passed to the linker when creating object libraries",
+    value: [],
+  },
+  STATIC_LIBRARY_PREFIX: {
+    description: "Prefix used for static library files",
+    value: "lib",
+  },
+  STATIC_LIBRARY_SUFFIX: {
+    description: "Suffix used for static library files",
+    value: ".a",
+  },
+  STATIC_LINKER_FLAGS: {
+    description: "Flags passed to the linker when creating static libraries",
+    value: [],
+  },
+  SHARED_LIBRARY_PREFIX: {
+    description: "Prefix used for shared library files",
+    value: "lib",
+  },
+  SHARED_LIBRARY_SUFFIX: {
+    description: "Suffix used for shared library files",
+    value: ".so",
+  },
+  SHARED_LINKER_FLAGS: {
+    description: "Flags passed to the linker when creating shared libraries",
+    value: [],
+  },
+  EXECUTABLE_SUFFIX: {
+    description: "Suffix used for executable files",
+    value: "",
+  },
+  EXE_LINKER_FLAGS: {
+    description: "Flags passed to the linker when creating executables",
+    value: [],
+  },
 };

@@ -129,4 +129,20 @@ export default {
     description: "Additional C compiler flags used when building in Release mode",
     value: [ "-O3", "-DNDEBUG" ],
   },
+  CXX_COMPILER: {
+    description: "Path to the C++ compiler detected",
+    value: "clang++",
+  },
+  CXX_FLAGS: {
+    description: "Flags passed to the C compiler",
+    value: [],
+  },
+  CXX_FLAGS_DEBUG: {
+    description: "Additional C++ compiler flags used when building in Debug mode",
+    value: [ "-g" ],
+  },
+  CXX_FLAGS_RELEASE: {
+    description: "Additional C++ compiler flags used when building in Release mode",
+    value: [ "-O3", "-DNDEBUG" ],
+  },
 };

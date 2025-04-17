@@ -5,10 +5,6 @@ const { AbsolutePath } = require("@/core/Path");
 
 const DEFINE_MAP            = Symbol("DEFINE_MAP");
 
-const CXX_COMPILER          = Symbol("CXX_COMPILER");
-const CXX_FLAGS             = Symbol("CXX_FLAGS");
-const CXX_FLAGS_DEBUG       = Symbol("CXX_FLAGS_DEBUG");
-const CXX_FLAGS_RELEASE     = Symbol("CXX_FLAGS_RELEASE");
 const AR                    = Symbol("AR");
 const RANLIB                = Symbol("RANLIB");
 const LINKER                = Symbol("LINKER");
@@ -29,10 +25,6 @@ const EXECUTABLE_SUFFIX     = Symbol("EXECUTABLE_SUFFIX");
 const EXE_LINKER_FLAGS      = Symbol("EXE_LINKER_FLAGS");
 
 function SystemVariables() {
-  this[CXX_COMPILER]          = "clang++";
-  this[CXX_FLAGS]             = [];
-  this[CXX_FLAGS_DEBUG]       = [ "-g" ];
-  this[CXX_FLAGS_RELEASE]     = [ "-O3", "-DNDEBUG" ];
   this[AR]                    = "llvm-ar";
   this[RANLIB]                = "llvm-ranlib";
   this[LINKER]                = "wasm-ld";
@@ -65,26 +57,6 @@ SystemVariables.prototype = Object.create(Object.prototype, {
   constructor: {
     value: SystemVariables,
     enumerable: false,
-  },
-  CXX_COMPILER: {
-    get () { return this[CXX_COMPILER]; },
-    set(value) { this[CXX_COMPILER] = value; },
-    enumerable: true,
-  },
-  CXX_FLAGS: {
-    get () { return this[CXX_FLAGS]; },
-    set(value) { this[CXX_FLAGS] = value; },
-    enumerable: true,
-  },
-  CXX_FLAGS_DEBUG: {
-    get () { return this[CXX_FLAGS_DEBUG]; },
-    set(value) { this[CXX_FLAGS_DEBUG] = value; },
-    enumerable: true,
-  },
-  CXX_FLAGS_RELEASE: {
-    get () { return this[CXX_FLAGS_RELEASE]; },
-    set(value) { this[CXX_FLAGS_RELEASE] = value; },
-    enumerable: true,
   },
   AR: {
     get () { return this[AR]; },
@@ -263,10 +235,6 @@ SystemVariables.prototype.toJSON = function() {
 SystemVariables.prototype.clone = function() {
   const o = Object.create(SystemVariables.prototype);
 
-  o[CXX_COMPILER]          = this[CXX_COMPILER];
-  o[CXX_FLAGS]             = [ ...this[CXX_FLAGS] ];
-  o[CXX_FLAGS_DEBUG]       = [ ...this[CXX_FLAGS_DEBUG] ];
-  o[CXX_FLAGS_RELEASE]     = [ ...this[CXX_FLAGS_RELEASE] ];
   o[AR]                    = this[AR];
   o[RANLIB]                = this[RANLIB];
   o[LINKER]                = this[LINKER];

@@ -2,7 +2,7 @@ const os = require('node:os');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const { spawnAsync } = require('./ChildProcess.js');
+const { spawnAsync } = require("@/utils/ChildProcess");
 const { CMAKE_LISTS_TXT, ValueType } = require("@/cmake/Constants");
 const { convertToValue } = require("@/cmake/Helper");
 

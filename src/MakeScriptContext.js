@@ -53,14 +53,7 @@ async function actionMakeScript(config, environment, settings)
 
   if (config.variables) {
     for (const [key, val] of Object.entries(config.variables)) {
-      if (key === "INSTALL_PREFIX")
-        root.INSTALL_PREFIX = val;
-      else if (key === "GLOBAL_CONTEXT_JSON")
-        root.GLOBAL_CONTEXT_JSON = FilePath.create(val);
-      else if (key === "TARGET_GOALS_JSON")
-        root.TARGET_GOALS_JSON = FilePath.create(val);
-      else
-        root[key] = val;
+      root[key] = val;
     }
   }
 

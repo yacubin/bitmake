@@ -5,7 +5,7 @@ import cmake from "@/utils/CMake.js";
 import { makePatch } from "@/utils/MakePatch.mjs";
 import { saveIfDifferent, directoryExists, getPathString } from "@/utils/FileSystem";
 import { SettingsStorage } from "@/utils/SettingsStorage.js";
-import { spawnAsync } from "@/utils/ChildProcess.js";
+import { spawnAsync } from "@/utils/ChildProcess";
 import { actionMakeScript } from "@/MakeScriptContext.js";
 import { arrayWrapper, assignObject } from "@/utils/Primitives";
 import constants from "@/Constants.js";

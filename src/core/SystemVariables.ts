@@ -217,4 +217,12 @@ export default {
     description: "Flags passed to the linker when creating executables",
     value: [],
   },
+  GLOBAL_CONTEXT_JSON: {
+    description: "Filename for JSON of the Global context",
+    type: "FilePath",
+  },
+  TARGET_GOALS_JSON: {
+    description: "Filename for JSON of the Target Goals",
+    type: "FilePath",
+  },
 };

@@ -7,10 +7,12 @@
  * under the MIT License. See LICENSE file for details.
  */
 
+import { CustomScript } from "@/core/CustomScript";
+
 const ENTRIES = Symbol("ENTRIES");
 
 export class ScriptCollection {
-  private [ENTRIES]: any;
+  private [ENTRIES]: { [name: string]: CustomScript };
 
   private constructor() {
     this[ENTRIES] = {};

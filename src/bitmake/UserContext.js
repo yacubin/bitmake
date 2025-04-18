@@ -170,8 +170,16 @@ UserContext.prototype.addSubdirectory = function(sourceDir, binaryDir) {
 UserContext.prototype.addCustomScript = function(name, params) {
   this.logDebug(currentFunctionName(), name);
 
-  const newScope = this[SCOPE].clone();
-  const target = CustomScript.create(newScope, name, params);
+  if (!params || !params.script || !params.output)
+    throw new Error(`Uknown params ${JSON.stringify(params)}`);
+
+  let script;
+  if (typeof params.script === "string")
+    script = this[GLOBAL].findScriptFunction(params.script);
+  if (!script)
+    script = this[SCOPE].SOURCE_DIR.resolve(params.script);
+
+  const target = CustomScript.create(this[SCOPE], name, script, params.output, params);
   this[GLOBAL].SCRIPTS.set(name, target);
   return target;
 }

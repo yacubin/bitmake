@@ -7,7 +7,6 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import path from "node:path";
 import fs from "node:fs";
 
 import { AbsolutePath } from "@/core/Path";
@@ -22,7 +21,9 @@ import { InterfaceScript } from "@/core/InterfaceScript";
 import { SourceFile } from "@/core/SourceFile";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable } from "@/core/Target";
 import { importModule } from "@/utils/Module";
-import install_script from "@/bitmake/SystemScripts/install_script.js";
+
+import configure_file from "@/core/BuildinScripts/configure_file";
+import install_script from "@/core/BuildinScripts/install_script";
 
 const requireImpl = eval("require");
 
@@ -35,6 +36,7 @@ const INSTALL_LIST = Symbol("INSTALL_LIST");
 const SCRIPT_VARIABLES_MAP = Symbol("SCRIPT_VARIABLES_MAP");
 const SUBDIR_ALIAS = Symbol("SUBDIR_ALIAS");
 const SUBDIR_LIST = Symbol("SUBDIR_LIST");
+const BUILDIN_SCRIPTS = Symbol("BUILDIN_SCRIPTS");
 
 type UnknownTargets = {
   [name: string]: UnknownTarget;
@@ -56,6 +58,10 @@ type CacheVariableDescriptor = {
 
 type CacheVariableDescriptors = {
   [name: string]: CacheVariableDescriptor;
+};
+
+type BuildinScripts = {
+  [name: string]: Function;
 };
 
 function ensureValueByType(type: any, value: any) {
@@ -105,6 +111,7 @@ export class GlobalContext {
   private [SCRIPT_VARIABLES_MAP]: any;
   private [SUBDIR_ALIAS]: SubdirectoryAlias;
   private [SUBDIR_LIST]: any[];
+  private [BUILDIN_SCRIPTS]: BuildinScripts;
 
   private constructor() {
     this[TARGETS] = TargetCollection.create();
@@ -116,6 +123,10 @@ export class GlobalContext {
     this[SCRIPT_VARIABLES_MAP] = {};
     this[SUBDIR_ALIAS] = {};
     this[SUBDIR_LIST] = [];
+    this[BUILDIN_SCRIPTS] = {
+      configure_file,
+      install_script,
+    };
   }
 
   public static create() {
@@ -231,6 +242,10 @@ export class GlobalContext {
   public addSubdirectory(context: any) {
     this[SUBDIR_LIST].push(context);
   }
+
+  public findScriptFunction(name: string): Function | undefined {
+    return this[BUILDIN_SCRIPTS][name];
+  }
   
   public async doSubdirectory() {
     while (this[SUBDIR_LIST].length) {
@@ -287,13 +302,15 @@ export class GlobalContext {
     }
   
     const goalList = GoalCollection.create();
-    for (const [name, script] of Object.entries(this[SCRIPTS].ENTRIES) as any) {   
-      const depends = [ script.FILE.toString() ];
+    for (const [name, script] of Object.entries(this[SCRIPTS].ENTRIES)) {   
+      const depends = [];
+      if (script.SCRIPT instanceof AbsolutePath)
+        depends.push(script.SCRIPT.toString());
       if (script.INPUT)
         depends.push(script.INPUT.toString());
       const msg = "\x1b[36m" + "Generating " + script.TARGET_SCOPE.BINARY_DIR.relative(script.OUTPUT) + "\x1b[0m";
       const params = { ...script.PROPERTIES, ...script.PARAMS };
-      goalList.addScript(script.FILE, "", depends, script.OUTPUT.toString(), scopeValueAsPrimitives(params), msg);
+      goalList.addScript(script.SCRIPT, "", depends, script.OUTPUT.toString(), scopeValueAsPrimitives(params), msg);
     }
   
     for (const [name, target] of Object.entries(this[TARGETS].ENTRIES) as any) {
@@ -401,7 +418,6 @@ export class GlobalContext {
     }
   
     const install_files = [];
-    // const install_script = path.posix.join(__dirname, "SystemScripts/install_script.js");
     for (const iter of this[INSTALL_LIST]) {
       let src, dest;
       if (iter.VALUE instanceof AbsolutePath) {

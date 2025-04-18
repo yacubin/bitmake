@@ -1,7 +1,16 @@
-const fs = require("node:fs");
-const path = require("node:path");
+/*
+ * MIT License
+ *
+ * Copyright (c) 2025  Yurii Yakubin (yurii.yakubin@gmail.com)
+ *
+ * Permission is granted to use, copy, modify, and distribute this software
+ * under the MIT License. See LICENSE file for details.
+ */
 
-module.exports = (params) => {
+import fs from "node:fs";
+import path from "node:path";
+
+export default function(params: any) {
   const content = fs.readFileSync(params.input, "utf-8");
   const newContent = content.replace(/@([_A-Za-z][_A-Za-z0-9]+)@/g, (match, value) => {
     const res = params[value] || "";

@@ -7,54 +7,38 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import path from "node:path";
-import url from "node:url";
-
 import { ensureString } from "@/utils/StrictType";
 import { AbsolutePath } from "@/core/Path";
 
 const TARGET_SCOPE = Symbol("TARGET_SCOPE");
 const NAME         = Symbol("NAME");
-const FILE         = Symbol("FILE");
+const SCRIPT       = Symbol("SCRIPT");
 const INPUT        = Symbol("INPUT");
 const OUTPUT       = Symbol("OUTPUT");
 const PARAMS       = Symbol("PARAMS");
 const PROPERTIES   = Symbol("PROPERTIES");
 
-const __filename = url.fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const SYSTEM_SCRIPTS_DIR = AbsolutePath.create(__dirname).resolve("../bitmake/SystemScripts");
-
 export class CustomScript {
   private [TARGET_SCOPE]: any;
   private [NAME]: string;
-  private [FILE]: AbsolutePath;
+  private [SCRIPT]: AbsolutePath | Function;
   private [INPUT]: AbsolutePath | null;
   private [OUTPUT]: AbsolutePath;
   private [PARAMS]: object;
   private [PROPERTIES]: any;
 
-  private constructor(scope: any, name: string, params: any) {
-    this[TARGET_SCOPE] = scope;
+  private constructor(scope: any, name: string, script: AbsolutePath | Function, output: AbsolutePath, params: any) {
+    this[TARGET_SCOPE] = scope.clone();
     this[NAME] = ensureString(name);
-  
-    if (!params || !params.script || !params.output)
-      throw new Error(`Uknown params ${JSON.stringify(params)}`);
-  
-    if (/[.\/\\]/.test(params.script))
-      this[FILE] = scope.SOURCE_DIR.resolve(params.script);
-    else
-      this[FILE] = SYSTEM_SCRIPTS_DIR.join(params.script + ".js");
-  
     this[INPUT] = params.input || null;
-    this[OUTPUT] = params.output;
+    this[SCRIPT] = script;
+    this[OUTPUT] = output;
     this[PARAMS] = params;
     this[PROPERTIES] = {};
   }
 
-  public static create(scope: any, name: string, params: any) {
-    return Object.seal(new CustomScript(scope, name, params));
+  public static create(scope: any, name: string, script: AbsolutePath | Function, output: AbsolutePath, params: any) {
+    return Object.seal(new CustomScript(scope, name, script, output, params));
   }
 
   public addProperty(key: string, ...vals: any[]) {
@@ -74,8 +58,8 @@ export class CustomScript {
     return this[TARGET_SCOPE];
   }
 
-  public get FILE(): AbsolutePath {
-    return this[FILE];
+  public get SCRIPT() {
+    return this[SCRIPT];
   }
 
   public get INPUT(): AbsolutePath | null {
@@ -114,7 +98,7 @@ export class CustomScript {
     return {
       NAME: this.NAME,
       TARGET_SCOPE: this.TARGET_SCOPE,
-      FILE: this.FILE,
+      SCRIPT: this.SCRIPT,
       INPUT: this.INPUT,
       OUTPUT: this.OUTPUT,
       PARAMS: this.PARAMS,

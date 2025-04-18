@@ -11,10 +11,8 @@ import path from "node:path";
 import fs from "node:fs";
 import { spawnSync } from "node:child_process";
 
+import { AbsolutePath } from "@/core/Path";
 import { importModule } from "@/utils/Module";
-
-import configure_file from "@/bitmake/SystemScripts/configure_file.js";
-import install_script from "@/bitmake/SystemScripts/install_script.js";
 
 const ENTRIES = Symbol("ENTRIES");
 
@@ -33,7 +31,7 @@ interface BaseGoal {
 };
 
 interface ScriptGoal extends BaseGoal {
-  script: any;
+  script: AbsolutePath | Function;
   params: any;
 };
 
@@ -68,7 +66,7 @@ export class GoalCollection {
     return !!this.findScriptByOutput(output);
   }
 
-  public addScript(script: any, name: string, depends: Array<string>, output: string, params: any, msg: string) {
+  public addScript(script: AbsolutePath | Function, name: string, depends: Array<string>, output: string, params: any, msg: string) {
     if (this.hasScriptByOutput(output.toString()))
       throw new Error(`Output "${output}" exists`);
     this[ENTRIES].push({ name, type: GoalType.SCRIPT, script, output, depends, params, msg } as ScriptGoal);
@@ -131,10 +129,6 @@ export class GoalCollection {
         let module;
         if (typeof script === "function")
           module = script;
-        else if (script.toString() === path.posix.join(__dirname, "SystemScripts/configure_file.js"))
-          module = configure_file;
-        else if (script.toString() === path.posix.join(__dirname, "SystemScripts/install_script.js"))
-          module = install_script;
         else
           module = (await importModule(script.toString())).default;
         const result = module(params);

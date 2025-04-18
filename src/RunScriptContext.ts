@@ -1,3 +1,12 @@
+/*
+ * MIT License
+ *
+ * Copyright (c) 2025  Yurii Yakubin (yurii.yakubin@gmail.com)
+ *
+ * Permission is granted to use, copy, modify, and distribute this software
+ * under the MIT License. See LICENSE file for details.
+ */
+
 import path from "node:path";
 import url from "node:url";
 
@@ -17,8 +26,7 @@ export class RunScriptContext {
   _env;
   _userConfig;
 
-  constructor(options)
-  {
+  constructor(options: any) {
     this._nodeExecutable = options.nodeExecutable;
     this._currentScript = options.currentScript;
     this._scriptDir = options.scriptDir;
@@ -31,53 +39,43 @@ export class RunScriptContext {
     }
   }
 
-  get nodeExecutable()
-  {
+  get nodeExecutable() {
     return this._nodeExecutable;
   }
 
-  get currentScript()
-  {
+  get currentScript() {
     return this._currentScript;
   }
 
-  get scriptDir()
-  {
+  get scriptDir() {
     return this._scriptDir;
   }
 
-  get rootDir()
-  {
+  get rootDir() {
     return this._rootDir;
   }
 
-  get workDir()
-  {
+  get workDir() {
     return this._workDir;
   }
 
-  get env()
-  {
+  get env() {
     return this._env;
   }
 
-  getPresetPath(preset)
-  {
+  getPresetPath(preset: string) {
     return path.resolve(this._scriptDir, `preset/${preset}.mjs`);
   }
 
-  get userConfigPath()
-  {
+  get userConfigPath() {
     return path.resolve(this._workDir, USER_CONFIG);
   }
 
-  get buildType()
-  {
+  get buildType() {
     return this._env.buildType == DEBUG_BUILD_TYPE ? this._env.buildType : RELEASE_BUILD_TYPE;
   }
 
-  async getUserConfig()
-  {
+  async getUserConfig() {
     if (!this._userConfig) {
       let configPath;
       if (this._env.config) {
@@ -117,8 +115,7 @@ export class RunScriptContext {
     return this._userConfig;
   }
 
-  get requestAttempts()
-  {
+  get requestAttempts() {
     return REQUEST_ATTEMPTS;
   }
 };

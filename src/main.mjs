@@ -1,7 +1,7 @@
 import url from "node:url";
 import path from "node:path";
 
-import { RunScriptContext } from "./RunScriptContext.mjs";
+import { RunScriptContext } from "@/RunScriptContext";
 import initHandler from "./InitHandler.mjs";
 import buildHandler from "./BuildHandler.mjs";
 

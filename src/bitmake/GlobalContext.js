@@ -12,7 +12,7 @@ const { UnknownTarget } = require("@/core/UnknownTarget");
 const { GoalCollection } = require("@/core/GoalCollection");
 const { InterfaceObjects } = require("@/core/InterfaceObjects");
 const { SourceFile } = require("@/core/SourceFile");
-const { ObjectLibrary, StaticLibrary, SharedLibrary, Executable } = require("./Target.js");
+const { ObjectLibrary, StaticLibrary, SharedLibrary, Executable } = require("@/core/Target");
 const { importModule } = require("@/utils/Module");
 
 const requireImpl = eval("require");

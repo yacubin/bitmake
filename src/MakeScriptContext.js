@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const { UserContext } = require("./bitmake/UserContext.js");
 const { PluginContext } = require("@/core/PluginContext");
-const { GlobalContext } = require("./bitmake/GlobalContext.js");
+const { GlobalContext } = require("@/core/GlobalContext");
 const { SystemVariables } = require("./bitmake/SystemVariables.js");
 const { GoalCollection } = require("@/core/GoalCollection");
 const { getPathString }  = require("@/utils/FileSystem");

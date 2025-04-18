@@ -10,9 +10,13 @@
 const NAME       = Symbol("NAME");
 const PROPERTIES = Symbol("PROPERTIES");
 
+type ScriptProperties = {
+  [name: string]: any[];
+};
+
 export class InterfaceScript {
   private [NAME]: string;
-  private [PROPERTIES]: any;
+  private [PROPERTIES]: ScriptProperties;
 
   private constructor(name: string) {
     this[NAME] = name;

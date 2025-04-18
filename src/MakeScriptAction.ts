@@ -1,26 +1,32 @@
-"use strict";
+/*
+ * MIT License
+ *
+ * Copyright (c) 2025  Yurii Yakubin (yurii.yakubin@gmail.com)
+ *
+ * Permission is granted to use, copy, modify, and distribute this software
+ * under the MIT License. See LICENSE file for details.
+ */
 
-const fs = require("node:fs");
-const path = require("node:path");
+import fs from "node:fs";
+import path from "node:path";
 
-const { UserContext } = require("@/core/UserContext");
-const { PluginContext } = require("@/core/PluginContext");
-const { GlobalContext } = require("@/core/GlobalContext");
-const { Scope } = require("@/core/Scope");
-const { GoalCollection } = require("@/core/GoalCollection");
-const { getPathString }  = require("@/utils/FileSystem");
-const { FilePath } = require("@/core/Path");
-const { importModule }  = require("@/utils/Module");
-const SystemVariables = require("@/core/SystemVariables");
+import { UserContext } from "@/core/UserContext";
+import { PluginContext } from "@/core/PluginContext";
+import { GlobalContext } from "@/core/GlobalContext";
+import { Scope } from "@/core/Scope";
+import { GoalCollection } from "@/core/GoalCollection";
+import { getPathString }  from "@/utils/FileSystem";
+import { FilePath } from "@/core/Path";
+import { importModule }  from "@/utils/Module";
+import SystemVariables from "@/core/SystemVariables";
 
 const PACKAGE_JSON = "package.json";
 const MAKE_CACHE = "MakeCache.json";
 
-async function actionMakeScript(config, environment, settings)
-{
+export async function makeScriptAction(config: any, environment: any, settings: any) {
   process.env = environment;
 
-  Scope.defineVariables(Scope.prototype, SystemVariables.default);
+  Scope.defineVariables(Scope.prototype, SystemVariables);
   const scope = Scope.create();
 
   const sourceDir = getPathString(config.sourceDir);
@@ -100,7 +106,3 @@ async function actionMakeScript(config, environment, settings)
 
   await GoalCollection.buildGoals(goalList);
 }
-
-module.exports = {
-  actionMakeScript,
-};

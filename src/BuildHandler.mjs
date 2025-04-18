@@ -6,7 +6,7 @@ import { makePatch } from "@/utils/MakePatch";
 import { saveIfDifferent, directoryExists, getPathString } from "@/utils/FileSystem";
 import { SettingsStorage } from "@/utils/SettingsStorage";
 import { spawnAsync } from "@/utils/ChildProcess";
-import { actionMakeScript } from "@/MakeScriptContext.js";
+import { makeScriptAction } from "@/MakeScriptAction";
 import { arrayWrapper, assignObject } from "@/utils/Primitives";
 import constants from "@/Constants.js";
 import { requireResolve } from "@/utils/Module";
@@ -440,7 +440,7 @@ const actionHandlers = {
       throw `process returned status ${res.status}`;
     }
   },
-  bitmake: actionMakeScript,
+  bitmake: makeScriptAction,
 };
 
 async function doTargetBuild(ctx, environment, config, settings)

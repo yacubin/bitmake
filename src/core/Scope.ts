@@ -10,58 +10,45 @@
 import { ensureBoolean, ensureString } from "@/utils/StrictType";
 import { AbsolutePath } from "@/core/Path";
 
-const SCOPE_DESCRIPTORS = Symbol("SCOPE_DESCRIPTORS");
+const DEFINE_MAP = Symbol("DEFINE_MAP");
 
-export namespace Scope {
+const Scope = function(this: any) {
+  for (const { symbol, initValue } of Object.values(this[DEFINE_MAP] || {}) as any) {
+    this[symbol] = Array.isArray(initValue) ? Array.from(initValue) : initValue;
+  }
+} as any;
 
-interface VariableDescriptor {
-  type?: any;
-  value?: any;
-  description?: string;
-};
+Scope.create = () => {
+  return Object.seal(new Scope);
+}
 
-interface DefineDescriptor {
-  type: string | [];
-  group: string;
-  symbol: symbol;
-  initValue: any;
-  description: string;
-};
+Scope.prototype = Object.create(Object.prototype, {
+  constructor: {
+    value: Scope,
+    enumerable: false,
+  },
+});
 
-export function defineVariable(scope: any, group: string, name: string, descriptor: VariableDescriptor) {
-  if (name === "SCOPE_DESCRIPTORS")
-    throw new Error(`The variable ${name} is reserved`);
-
-  if (!scope[SCOPE_DESCRIPTORS])
-    scope[SCOPE_DESCRIPTORS] = {};
+Scope.defineVariable = function(scope: any, name: string, descriptor: any) {
+  if (!scope[DEFINE_MAP])
+    scope[DEFINE_MAP] = {};
 
   const type = descriptor.type || (Array.isArray(descriptor.value) ? "array" : typeof descriptor.value);
 
-  let needInit = false;
-  let defineEntry: DefineDescriptor = scope[SCOPE_DESCRIPTORS][name];
+  let defineEntry = scope[DEFINE_MAP][name];
   if (!defineEntry) {
-    needInit = true;
-    defineEntry = {
-      type,
-      group,
-      initValue: null,
-      symbol: Symbol(name),
-      description: "",
-    };
-    scope[SCOPE_DESCRIPTORS][name] = defineEntry;
-  }
-  else {
-    if (defineEntry.group !== group)
-      throw new Error(`Group ${defineEntry.group} for variable cannot change to ${group}`);
-    if (defineEntry.type !== type) {
-      needInit = true;
-      defineEntry.type = type;
-    }
+    defineEntry = {};
+    scope[DEFINE_MAP][name] = defineEntry;
   }
 
+  if (defineEntry.type !== type) {
+    defineEntry.symbol = Symbol(name);
+  }
+
+  defineEntry.type = type;
   defineEntry.description = descriptor.description || "";
 
-  let ensureValue = (value: any): any => {};
+  let ensureValue = (value: any) => {};
   if (Array.isArray(type)) {
     let itemType;
     for (const iter of type) {
@@ -100,40 +87,38 @@ export function defineVariable(scope: any, group: string, name: string, descript
   }
 
   const { symbol } = defineEntry;
-
-  if (needInit) {
-    scope[symbol] = defineEntry.initValue;
-  }
-
-  const desc: PropertyDescriptor = {
+  const desc: any = {
     configurable: true,
     enumerable: true,
-    get(this: any): any { return this[symbol] },
+    get(this: any) { return this[symbol] },
   };
 
   if (ensureValue)
-    desc.set = function(this: any, value: any): void { this[symbol] = ensureValue(value) };
+    desc.set = function(this: any, value: any) { this[symbol] = ensureValue(value) };
 
   Object.defineProperty(scope, name, desc);
 }
 
-export function defineVariables(scope: any, group: string, descriptors: VariableDescriptor[]) {
+Scope.defineVariables = function(scope: any, descriptors: any) {
   for (const [ name, descriptor ] of Object.entries(descriptors))
-    defineVariable(scope, group, name, descriptor);
+    Scope.defineVariable(scope, name, descriptor);
 }
 
-export function cloneVariables(scope: any) {
-  const newScope = Object.create(Object.getPrototypeOf(scope));
-  newScope[SCOPE_DESCRIPTORS] = {};
+Scope.prototype.toJSON = function() {
+  const json: any = {};
+  for (const key in this)
+    json[key] = this[key];
+  return json;
+}
 
-  const descriptores = (scope[SCOPE_DESCRIPTORS] || {}) as VariableDescriptor;
-  for (const [name,desc] of Object.entries(descriptores)) {
-    const { symbol } = desc;
-    newScope[symbol] = Array.isArray(scope[symbol]) ? Array.from(scope[symbol]) : scope[symbol];
-    newScope[SCOPE_DESCRIPTORS][name] = desc;
+Scope.prototype.clone = function() {
+  const o = Object.create(Scope.prototype);
+
+  for (const { symbol } of Object.values(this[DEFINE_MAP] || {}) as any) {
+    o[symbol] = Array.isArray(this[symbol]) ? Array.from(this[symbol]) : this[symbol];
   }
 
-  return newScope;
+  return Object.seal(o);
 }
 
-} // namespace Scope
+export { Scope };

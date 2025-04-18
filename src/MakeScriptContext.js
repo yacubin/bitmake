@@ -6,12 +6,12 @@ const path = require("node:path");
 const { UserContext } = require("./bitmake/UserContext.js");
 const { PluginContext } = require("@/core/PluginContext");
 const { GlobalContext } = require("@/core/GlobalContext");
-const { SystemVariables } = require("./bitmake/SystemVariables.js");
+const { Scope } = require("@/core/Scope");
 const { GoalCollection } = require("@/core/GoalCollection");
 const { getPathString }  = require("@/utils/FileSystem");
 const { FilePath } = require("@/core/Path");
 const { importModule }  = require("@/utils/Module");
-const SysVars = require("@/core/SystemVariables");
+const SystemVariables = require("@/core/SystemVariables");
 
 const PACKAGE_JSON = "package.json";
 const MAKE_CACHE = "MakeCache.json";
@@ -20,8 +20,8 @@ async function actionMakeScript(config, environment, settings)
 {
   process.env = environment;
 
-  SystemVariables.defineVariables(SystemVariables.prototype, SysVars.default);
-  const scope = SystemVariables.create();
+  Scope.defineVariables(Scope.prototype, SystemVariables.default);
+  const scope = Scope.create();
 
   const sourceDir = getPathString(config.sourceDir);
   const binaryDir = getPathString(config.binaryDir);

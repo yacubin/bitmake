@@ -11,7 +11,7 @@ const { InterfaceScript } = require("@/core/InterfaceScript");
 const { InstallEntity } = require("@/core/InstallEntity");
 const { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget } = require("@/core/Target");
 const { IncludeDirectory } = require("@/core/IncludeDirectory");
-const { SystemVariables } = require("./SystemVariables.js");
+const { Scope } = require("@/core/Scope");
 const { CustomScript } = require("@/core/CustomScript");
 
 const requireImpl = eval("require");
@@ -59,7 +59,7 @@ function UserContext(scope, global) {
   this[SCOPE] = scope;
   this[GLOBAL] = global;
 
-  const props = Object.getOwnPropertyDescriptors(SystemVariables.prototype);
+  const props = Object.getOwnPropertyDescriptors(Scope.prototype);
   for (const [name, desc] of Object.entries(props)) {
     if (desc.get || desc.set) {
       const newDesc = { enumerable: desc.enumerable, configurable: false };
@@ -160,7 +160,7 @@ UserContext.prototype.addSubdirectory = function(sourceDir, binaryDir) {
   
   const newContex = UserContext.create(newScope, this[GLOBAL]);
   for (const [key, val] of Object.entries(this)) {
-    if (!Object.hasOwn(SystemVariables.prototype, key))
+    if (!Object.hasOwn(Scope.prototype, key))
       newContex[key] = val;
   }
 

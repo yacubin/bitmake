@@ -5,7 +5,7 @@ const fs = require("node:fs");
 
 const { AbsolutePath } = require("@/core/Path");
 const { fileExists, fileExistsSync } = require("@/utils/FileSystem");
-const { TargetCollection } = require("./TargetCollection.js");
+const { TargetCollection } = require("@/core//TargetCollection");
 const { ScriptCollection } = require("@/core/ScriptCollection");
 const { InterfaceTarget } = require("@/core/InterfaceTarget");
 const { UnknownTarget } = require("./UnknownTarget.js");

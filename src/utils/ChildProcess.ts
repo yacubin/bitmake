@@ -9,7 +9,7 @@
 
 import path from "node:path";
 import fs from "node:fs";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 
 export function spawnAsync(command: string, args: string[], options?: any): Promise<unknown> {
   let fd = null;

@@ -1,13 +1,22 @@
-const os = require('node:os');
-const fs = require('node:fs');
-const path = require('node:path');
+/*
+ * MIT License
+ *
+ * Copyright (c) 2025  Yurii Yakubin (yurii.yakubin@gmail.com)
+ *
+ * Permission is granted to use, copy, modify, and distribute this software
+ * under the MIT License. See LICENSE file for details.
+ */
 
-const { spawnAsync } = require("@/utils/ChildProcess");
-const { CMAKE_LISTS_TXT, ValueType } = require("@/cmake/Constants");
-const { convertToValue } = require("@/cmake/Helper");
+import os from "node:os";
+import fs from "node:fs";
+import path from "node:path";
 
-function toVarType(key, val) {
-  const map = {
+import { spawnAsync } from "@/utils/ChildProcess";
+import { CMAKE_LISTS_TXT, ValueType } from "@/cmake/Constants";
+import { convertToValue } from "@/cmake/Helper";
+
+function toVarType(key: string, val: any) {
+  const map: any = {
     CMAKE_INSTALL_PREFIX: ValueType.PATH,
     CMAKE_TOOLCHAIN_FILE: ValueType.FILEPATH,
   };
@@ -21,22 +30,20 @@ function toVarType(key, val) {
   return ValueType.STRING;
 }
 
-function toCacheEntry(name, val)
-{
+function toCacheEntry(name: string, val: any) {
   const type = toVarType(name, val);
   const value = convertToValue(val);
   return `${name}:${type}=${value}`;
 }
 
-async function configure(args)
-{
+export async function configure(args: any) {
   const spawnArgs = [ '-G', args.generator ];
   for (const [key, val] of Object.entries(args.cacheVariables))
     spawnArgs.push('-D', toCacheEntry(key, val));
   spawnArgs.push('-S', args.sourceDir);
   spawnArgs.push('-B', args.binaryDir);
 
-  const res = await spawnAsync("cmake", spawnArgs, {
+  const res: any = await spawnAsync("cmake", spawnArgs, {
     cwd: args.binaryDir,
     env: args.environment || process.env,
     extra: {
@@ -48,15 +55,14 @@ async function configure(args)
   }
 }
 
-async function build(args)
-{
+export async function build(args: any) {
   await configure(args);
 
-  const spawnArgs = [
+  const spawnArgs: string[] = [
     '--build', '.',
-    '--parallel', os.availableParallelism(),
+    '--parallel', os.availableParallelism().toString(),
   ];
-  const res = await spawnAsync("cmake", spawnArgs, {
+  const res: any = await spawnAsync("cmake", spawnArgs, {
     cwd: args.binaryDir,
     env: args.environment || process.env,
     extra: {
@@ -68,8 +74,7 @@ async function build(args)
   }
 }
 
-async function install(args)
-{
+export async function install(args: any) {
   await configure(args);
 
   const spawnArgs = [
@@ -79,7 +84,7 @@ async function install(args)
   if (args.installDir) {
     spawnArgs.push('--prefix', args.installDir);
   }
-  const res = await spawnAsync("cmake", spawnArgs, {
+  const res: any = await spawnAsync("cmake", spawnArgs, {
     cwd: args.binaryDir,
     env: args.environment || process.env,
     extra: {
@@ -91,13 +96,11 @@ async function install(args)
   }
 }
 
-async function ctest(args)
-{
+export async function ctest(args: any) {
   await build(args);
 
-  const spawnArgs = [
-  ];
-  const res = await spawnAsync("ctest", spawnArgs, {
+  const spawnArgs: string[] = [];
+  const res: any = await spawnAsync("ctest", spawnArgs, {
     cwd: args.binaryDir,
     env: args.environment || process.env,
     extra: {
@@ -109,10 +112,9 @@ async function ctest(args)
   }
 }
 
-async function extract(args)
-{
+export async function extract(args: any) {
   const spawnArgs = [ "-E", "tar", "-xvf", args.filename ];
-  const res = await spawnAsync("cmake", spawnArgs, {
+  const res: any = await spawnAsync("cmake", spawnArgs, {
     cwd: args.workDir || args.sourceDir || args.binaryDir,
     env: args.environment || process.env,
     extra: {
@@ -124,8 +126,7 @@ async function extract(args)
   }
 }
 
-async function getProjectInfo(source)
-{
+export async function getProjectInfo(source: string) {
   const stat = await fs.promises.stat(source);
   if (stat.isDirectory())
     source = path.resolve(source, CMAKE_LISTS_TXT);
@@ -133,41 +134,28 @@ async function getProjectInfo(source)
 
   const projectPattern = /project *\( *([^ ]+) *([^)]*)\)/;
   const versionPattern = /VERSION +([^ ]+)/;
-  let match = content.match(projectPattern);
-  const name = match[1];
-  const projectContent = match[2];
-  match = projectContent.match(versionPattern);
-  const version = match[1];
 
-  return {
-    name,
-    version,
-  };
+  const result: any = {};
+  let match = content.match(projectPattern);
+  if (match) {
+    result.name = match[1];
+    const projectContent = match[2];
+    match = projectContent.match(versionPattern);
+    if (match)
+      result.version = match[1];
+  }
+
+  return result;
 }
 
-function lineToSinglComment(line)
-{
+export function lineToSinglComment(line: string) {
   return "# " + line;
 }
 
-function lineToMultipleComment(line)
-{
+export function lineToMultipleComment(line: string) {
   return `#[===[ ${line} ]===]`;
 }
 
-function generatedScriptNameComment(filename)
-{
+export function generatedScriptNameComment(filename: string) {
   return lineToSinglComment("Generated from " + path.basename(filename));
 }
-
-module.exports = {
-  configure,
-  build,
-  install,
-  ctest,
-  extract,
-  getProjectInfo,
-  lineToSinglComment,
-  lineToMultipleComment,
-  generatedScriptNameComment,
-};

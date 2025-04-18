@@ -3,7 +3,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
-const { UserContext } = require("./bitmake/UserContext.js");
+const { UserContext } = require("@/core/UserContext");
 const { PluginContext } = require("@/core/PluginContext");
 const { GlobalContext } = require("@/core/GlobalContext");
 const { Scope } = require("@/core/Scope");
@@ -79,7 +79,7 @@ async function actionMakeScript(config, environment, settings)
 
   global.addSubdirectory(root);
   await global.doSubdirectory();
-  root.logInfo("Configuring done");
+  console.info("Configuring done");
 
   if (root.GLOBAL_CONTEXT_JSON) {
     const filename = root.GLOBAL_CONTEXT_JSON.toString();

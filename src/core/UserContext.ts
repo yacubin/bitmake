@@ -1,27 +1,33 @@
-"use strict";
+/*
+ * MIT License
+ *
+ * Copyright (c) 2025  Yurii Yakubin (yurii.yakubin@gmail.com)
+ *
+ * Permission is granted to use, copy, modify, and distribute this software
+ * under the MIT License. See LICENSE file for details.
+ */
 
-const os = require("node:os");
-const path = require("node:path");
+import os from "node:os";
+import path from "node:path";
 
-const { copyValue } = require("@/utils/Primitives");
-const { fileExistsSync } = require("@/utils/FileSystem");
-const { AbsolutePath } = require("@/core/Path");
-const { InterfaceTarget } = require("@/core/InterfaceTarget");
-const { InterfaceScript } = require("@/core/InterfaceScript");
-const { InstallEntity } = require("@/core/InstallEntity");
-const { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget } = require("@/core/Target");
-const { IncludeDirectory } = require("@/core/IncludeDirectory");
-const { Scope } = require("@/core/Scope");
-const { CustomScript } = require("@/core/CustomScript");
+import { copyValue } from "@/utils/Primitives";
+import { fileExistsSync } from "@/utils/FileSystem";
+import { AbsolutePath } from "@/core/Path";
+import { InterfaceTarget } from "@/core/InterfaceTarget";
+import { InterfaceScript } from "@/core/InterfaceScript";
+import { InstallEntity } from "@/core/InstallEntity";
+import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget } from "@/core/Target";
+import { IncludeDirectory } from "@/core/IncludeDirectory";
+import { Scope } from "@/core/Scope";
+import { CustomScript } from "@/core/CustomScript";
+import { GlobalContext } from "@/core/GlobalContext";
+import { createLogger } from "@/logger";
+
+const logger = createLogger(import.meta.url);
 
 const requireImpl = eval("require");
 
-const currentFunctionName = () => {
-  const stack = new Error().stack.split("\n")[2];
-  return stack.match(/at (\S+)/)?.[1];
-};
-
-function scopeValueAsPrimitives(o) {
+function scopeValueAsPrimitives(o: any): any {
   if (typeof o === "undefined")
     return o;
   if (typeof o === "boolean")
@@ -43,7 +49,7 @@ function scopeValueAsPrimitives(o) {
       return result;
     }
     if (o instanceof Object) {
-      const result = {};
+      const result: any = {};
       for (const [k,v] of Object.entries(o))
         result[k] = scopeValueAsPrimitives(v);
       return result;
@@ -55,53 +61,25 @@ function scopeValueAsPrimitives(o) {
 const GLOBAL = Symbol("GLOBAL");
 const SCOPE = Symbol("SCOPE");
 
-function UserContext(scope, global) {
+const UserContext: any = function(this: any, scope: any, global: GlobalContext) {
   this[SCOPE] = scope;
   this[GLOBAL] = global;
 
   const props = Object.getOwnPropertyDescriptors(Scope.prototype);
   for (const [name, desc] of Object.entries(props)) {
     if (desc.get || desc.set) {
-      const newDesc = { enumerable: desc.enumerable, configurable: false };
+      const newDesc: any = { enumerable: desc.enumerable, configurable: false };
       if (desc.get)
         newDesc.get = function() { return this[SCOPE][name]; }
       if (desc.set)
-        newDesc.set = function(value) { this[SCOPE][name] = value; }
+        newDesc.set = function(value: any) { this[SCOPE][name] = value; }
       Object.defineProperty(this, name, newDesc);
     }
   }
 }
 
-UserContext.create = (scope, global) => {
+UserContext.create = (scope: any, global: GlobalContext) => {
   return new UserContext(scope, global);
-}
-
-function makeLogger(loggerFunc, withTag) {
-  if (!loggerFunc)
-    return () => {};
-  return function() {
-    const list = [];
-    if (withTag)
-      list.push("[" + this.__logTag() + "]");
-    for (const iter of arguments) {
-      if (iter && typeof iter === "object")
-        list.push(JSON.stringify(iter));
-      else
-        list.push(iter.toString());
-    }
-    loggerFunc(list.join(" "));
-  };
-}
-
-UserContext.prototype.logDefault = makeLogger(console.log);
-UserContext.prototype.logInfo = makeLogger(console.info);
-UserContext.prototype.logDebug = makeLogger(/*console.debug*/);
-UserContext.prototype.logWarn = makeLogger(console.warn);
-UserContext.prototype.logError = makeLogger(console.error);
-
-UserContext.prototype.__logTag = function() {
-  const tag = this.PROJECT_SOURCE_DIR.relative(this.SOURCE_DIR);
-  return path.posix.join(this.PROJECT_NAME, tag);
 }
 
 UserContext.prototype.__scope = function() {
@@ -109,9 +87,8 @@ UserContext.prototype.__scope = function() {
 }
 
 UserContext.prototype.getCacheVariables = function() {
-  this.logDebug(currentFunctionName());
-  const result = {};
-  for (const [key, entry] of Object.entries(this[GLOBAL].CACHE)) {
+  const result: any = {};
+  for (const [key, entry] of Object.entries(this[GLOBAL].CACHE) as any) {
     const value = copyValue(this[key]);
     result[key] = {
       type: copyValue(entry.type) || typeof value,
@@ -122,8 +99,7 @@ UserContext.prototype.getCacheVariables = function() {
   return result;
 }
 
-UserContext.prototype.addCacheVariables = function(params) {
-  this.logDebug(currentFunctionName());
+UserContext.prototype.addCacheVariables = function(params: any) {
 
   if (typeof params === "string") {
     const scripts = this.SOURCE_DIR.resolve(params);
@@ -139,14 +115,13 @@ UserContext.prototype.addCacheVariables = function(params) {
   this[GLOBAL].copyCacheVariables(this);
 }
 
-UserContext.prototype.addIncludeDirectories = function(...dirs) {
+UserContext.prototype.addIncludeDirectories = function(...dirs: any[]) {
   for (const iter of dirs.flat(1)) {
     this.INCLUDES.push(IncludeDirectory.create(iter, this.SOURCE_DIR));
   }
 }
 
-UserContext.prototype.addSubdirectory = function(sourceDir, binaryDir) {
-  this.logDebug(currentFunctionName());
+UserContext.prototype.addSubdirectory = function(sourceDir: any, binaryDir: any) {
 
   binaryDir = binaryDir || path.isAbsolute(sourceDir) ? undefined : sourceDir;
 
@@ -167,9 +142,7 @@ UserContext.prototype.addSubdirectory = function(sourceDir, binaryDir) {
   this[GLOBAL].addSubdirectory(newContex);
 }
 
-UserContext.prototype.addCustomScript = function(name, params) {
-  this.logDebug(currentFunctionName(), name);
-
+UserContext.prototype.addCustomScript = function(name: string, params: any) {
   if (!params || !params.script || !params.output)
     throw new Error(`Uknown params ${JSON.stringify(params)}`);
 
@@ -184,14 +157,12 @@ UserContext.prototype.addCustomScript = function(name, params) {
   return target;
 }
 
-UserContext.prototype.target = function(name) {
+UserContext.prototype.target = function(name: string) {
   const utarget = this[GLOBAL].getUknownTarget(name);
   return InterfaceTarget.create(this[SCOPE], utarget);
 }
 
-UserContext.prototype.script = function(name) {
-  this.logDebug(currentFunctionName(), name);
-
+UserContext.prototype.script = function(name: string) {
   let script = this[GLOBAL].INTERFACE_SCRIPTS[name];
   if (!script) {
     script = InterfaceScript.create(name);
@@ -201,7 +172,7 @@ UserContext.prototype.script = function(name) {
   return script;
 }
 
-UserContext.prototype.install = function(value, params) {
+UserContext.prototype.install = function(value: any, params: any) {
   for (const it of [ value ].flat(1)) {
     const iter = (it instanceof BaseTarget) ? this.target(it.NAME) : it;
     const entity = InstallEntity.create(this, iter, params);
@@ -209,9 +180,7 @@ UserContext.prototype.install = function(value, params) {
   }
 }
 
-UserContext.prototype.addStaticLibrary = function(name, ...sources) {
-  this.logDebug(currentFunctionName(), name);
-
+UserContext.prototype.addStaticLibrary = function(name: any, ...sources: any[]) {
   const target = StaticLibrary.create(this[SCOPE], name);
   target.addSources(...sources);
 
@@ -219,9 +188,7 @@ UserContext.prototype.addStaticLibrary = function(name, ...sources) {
   return target;
 }
 
-UserContext.prototype.addObjectLibrary = function(name, ...sources) {
-  this.logDebug(currentFunctionName(), name);
-
+UserContext.prototype.addObjectLibrary = function(name: any, ...sources: any[]) {
   const target = ObjectLibrary.create(this[SCOPE], name);
   target.addSources(...sources);
 
@@ -229,9 +196,7 @@ UserContext.prototype.addObjectLibrary = function(name, ...sources) {
   return target;
 }
 
-UserContext.prototype.addSharedLibrary = function(name, ...sources) {
-  this.logDebug(currentFunctionName(), name);
-
+UserContext.prototype.addSharedLibrary = function(name: any, ...sources: any[]) {
   const target = SharedLibrary.create(this[SCOPE], name);
   target.addSources(...sources);
 
@@ -239,9 +204,7 @@ UserContext.prototype.addSharedLibrary = function(name, ...sources) {
   return target;
 }
 
-UserContext.prototype.addExecutable = function(name, ...sources) {
-  this.logDebug(currentFunctionName(), name);
-
+UserContext.prototype.addExecutable = function(name: string, ...sources: any[]) {
   const target = Executable.create(this[SCOPE], name);
   target.addSources(...sources);
 
@@ -249,13 +212,11 @@ UserContext.prototype.addExecutable = function(name, ...sources) {
   return target;
 }
 
-UserContext.prototype.findProgram = function(name) {
-  this.logDebug(currentFunctionName(), name);
-
+UserContext.prototype.findProgram = function(name: string) {
   if (os.platform() === "win32" && !name.endsWith(".exe"))
     name += ".exe";
 
-  const paths = process.env.PATH.split(path.posix.delimiter);
+  const paths = (process.env.PATH || "").split(path.posix.delimiter);
   for (const iter of paths) {
     const filename = path.posix.resolve(iter, name);
     if (fileExistsSync(filename))
@@ -265,20 +226,10 @@ UserContext.prototype.findProgram = function(name) {
   return null;
 }
 
-UserContext.prototype.executeScript = function(script, options) {
-  this.logDebug(currentFunctionName(), script);
+UserContext.prototype.executeScript = function(script: any, options: any) {
   const scriptPath = this.SOURCE_DIR.resolve(script);
   const module = requireImpl(scriptPath.toString());
   module(scopeValueAsPrimitives(options));
 }
 
-UserContext.prototype.toJSON = function() {
-  const json = {};
-  for (const key in this)
-    json[key] = this[key];
-  return json;
-}
-
-module.exports = {
-  UserContext,
-};
+export { UserContext };

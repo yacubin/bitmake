@@ -9,9 +9,9 @@ import { spawnAsync } from "@/utils/ChildProcess";
 import { actionMakeScript } from "@/MakeScriptContext.js";
 import { arrayWrapper, assignObject } from "@/utils/Primitives";
 import constants from "@/Constants.js";
-import { requireResolve } from "@/utils/Module"
-import { createLogger } from "@/logger";
+import { requireResolve } from "@/utils/Module";
 import { requestGet } from "@/utils/HttpRequest";
+import { createLogger } from "@/logger";
 
 const logger = createLogger(import.meta.url);
 

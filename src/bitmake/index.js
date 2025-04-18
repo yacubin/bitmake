@@ -2,7 +2,6 @@
 
 const { SystemVariables } = require("./SystemVariables.js");
 const { ObjectLibrary, StaticLibrary, SharedLibrary, Executable } = require("./Target.js");
-const { ScriptCollection } = require("./ScriptCollection.js");
 const { TargetCollection } = require("./TargetCollection.js");
 const { InstallEntity } = require("./InstallEntity.js");
 const { GlobalContext } = require("./GlobalContext.js");
@@ -13,7 +12,6 @@ module.exports = {
   StaticLibrary,
   SharedLibrary,
   Executable,
-  ScriptCollection,
   TargetCollection,
   InstallEntity,
   GlobalContext,

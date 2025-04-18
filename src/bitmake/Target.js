@@ -22,7 +22,6 @@ const SOURCES             = Symbol("SOURCES");
 const LIBRARIES           = Symbol("LIBRARIES");
 const POSITION_INDEPENDENT_CODE = Symbol("POSITION_INDEPENDENT_CODE");
 
-
 const reservedTagetNames = [ "all", "install" ];
 function ensureTargetName(name) {
   if (typeof name !== "string")

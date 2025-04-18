@@ -4,7 +4,7 @@ import path from "node:path";
 import cmake from "@/utils/CMake.js";
 import { makePatch } from "@/utils/MakePatch";
 import { saveIfDifferent, directoryExists, getPathString } from "@/utils/FileSystem";
-import { SettingsStorage } from "@/utils/SettingsStorage.js";
+import { SettingsStorage } from "@/utils/SettingsStorage";
 import { spawnAsync } from "@/utils/ChildProcess";
 import { actionMakeScript } from "@/MakeScriptContext.js";
 import { arrayWrapper, assignObject } from "@/utils/Primitives";

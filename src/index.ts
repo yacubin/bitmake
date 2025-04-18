@@ -7,4 +7,4 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-export { default as cxx } from "./utils/CXX.js";
+export * as cxx from "@/cxx";

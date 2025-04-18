@@ -2,8 +2,8 @@ import path from 'node:path';
 import fs from 'node:fs';
 import url from 'node:url';
 
-import { generatedScriptNameComment } from "@/utils/CXX.js";
-import { filenameToPragmaOnceMacro } from "@/utils/CXX.js";
+import { generatedScriptNameComment } from "@/cxx";
+import { filenameToPragmaOnceMacro } from "@/cxx";
 import { saveIfDifferent } from "@/utils/FileSystem";
 import { fileExists } from "@/utils/FileSystem";
 

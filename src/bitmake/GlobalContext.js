@@ -13,7 +13,6 @@ const { GoalCollection } = require("@/core/GoalCollection");
 const { InterfaceObjects } = require("@/core/InterfaceObjects");
 const { SourceFile } = require("@/core/SourceFile");
 const { ObjectLibrary, StaticLibrary, SharedLibrary, Executable } = require("./Target.js");
-const { FilePath } = require("@/core/Path");
 const { importModule } = require("@/utils/Module");
 
 const requireImpl = eval("require");
@@ -377,7 +376,7 @@ GlobalContext.prototype.createGoals = function(scope) {
   const install_script = path.posix.join(__dirname, "SystemScripts/install_script.js");
   for (const iter of this[INSTALL_LIST]) {
     let src, dest;
-    if (iter.VALUE instanceof FilePath) {
+    if (iter.VALUE instanceof AbsolutePath) {
       if (scope.PREVENT_INSTALL_FILES)
         continue;
       src = iter.VALUE.toString();

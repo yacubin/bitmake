@@ -33,7 +33,7 @@ interface BaseGoal {
 };
 
 interface ScriptGoal extends BaseGoal {
-  script: string;
+  script: any;
   params: any;
 };
 
@@ -68,7 +68,7 @@ export class GoalCollection {
     return !!this.findScriptByOutput(output);
   }
 
-  public addScript(script: string, name: string, depends: Array<string>, output: string, params: any, msg: string) {
+  public addScript(script: any, name: string, depends: Array<string>, output: string, params: any, msg: string) {
     if (this.hasScriptByOutput(output.toString()))
       throw new Error(`Output "${output}" exists`);
     this[ENTRIES].push({ name, type: GoalType.SCRIPT, script, output, depends, params, msg } as ScriptGoal);
@@ -129,7 +129,9 @@ export class GoalCollection {
       if (type === GoalType.SCRIPT) {
         const { script, params } = goal as ScriptGoal;
         let module;
-        if (script.toString() === path.posix.join(__dirname, "SystemScripts/configure_file.js"))
+        if (typeof script === "function")
+          module = script;
+        else if (script.toString() === path.posix.join(__dirname, "SystemScripts/configure_file.js"))
           module = configure_file;
         else if (script.toString() === path.posix.join(__dirname, "SystemScripts/install_script.js"))
           module = install_script;

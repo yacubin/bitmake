@@ -22,6 +22,7 @@ import { InterfaceScript } from "@/core/InterfaceScript";
 import { SourceFile } from "@/core/SourceFile";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable } from "@/core/Target";
 import { importModule } from "@/utils/Module";
+import install_script from "@/bitmake/SystemScripts/install_script.js";
 
 const requireImpl = eval("require");
 
@@ -400,7 +401,7 @@ export class GlobalContext {
     }
   
     const install_files = [];
-    const install_script = path.posix.join(__dirname, "SystemScripts/install_script.js");
+    // const install_script = path.posix.join(__dirname, "SystemScripts/install_script.js");
     for (const iter of this[INSTALL_LIST]) {
       let src, dest;
       if (iter.VALUE instanceof AbsolutePath) {

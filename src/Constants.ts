@@ -7,4 +7,6 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-export * as cxx from "@/cxx";
+export const USER_CONFIG = "bitmake.config.mjs";
+export const REQUEST_ATTEMPTS = 30;
+export const BUILD_SETTINGS_FILE = "BuildSettings.json";

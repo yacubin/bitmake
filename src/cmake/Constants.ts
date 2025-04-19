@@ -7,24 +7,40 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-export namespace CMakeConstants {
+export enum BooleanType {
+  ON = "ON",
+  OFF = "OFF",
+};
 
-// Represents a boolean 'true' value in CMake
-export const BOOLEAN_ON = "ON";
+// Enum representing value types used in CMake cache variables
+export enum ValueType {
+  // Represents a full path to a file
+  FILEPATH = "FILEPATH",
 
-// Represents a boolean 'false' value in CMake
-export const BOOLEAN_OFF = "OFF";
+  // Represents a path to a directory
+  PATH = "PATH",
 
-// Represents a full path to a file (used in CMake cache variables)
-export const FILEPATH_TYPE = "FILEPATH";
+  // Represents a boolean value (true/false)
+  BOOL = "BOOL",
 
-// Represents a path to a directory (used in CMake cache variables)
-export const PATH_TYPE = "PATH";
+  // Represents a generic string value
+  STRING = "STRING",
+};
 
-// Represents a boolean value (true/false) in CMake
-export const BOOL_TYPE = "BOOL";
+// BuildType representing common CMake build types
+export enum BuildType {
+  // Debug build type: includes debug symbols, no optimization
+  Debug = "Debug",
 
-// Represents a generic string value in CMake
-export const STRING_TYPE = "STRING";
+  // Release build type: optimized code, no debug info
+  Release = "Release",
 
-} // namespace CMakeConstants
+  // Release with debug info: optimized with debug symbols included
+  RelWithDebInfo = "RelWithDebInfo",
+
+  // Minimum size release: optimized for smallest binary size
+  MinSizeRel = "MinSizeRel",
+};
+
+// The default name of the main CMake build configuration file
+export const CMAKE_LISTS_TXT = "CMakeLists.txt";

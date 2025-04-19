@@ -15,7 +15,7 @@ export interface ILogger {
   error(message?: any, ...params: any[]): void;
 };
 
-export function createLogger(url: URL): ILogger {
+export function createLogger(url: string): ILogger {
   return {
     trace: console.trace.bind(console),
     debug: console.debug.bind(console),

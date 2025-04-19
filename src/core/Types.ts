@@ -7,4 +7,5 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-export * as cxx from "@/cxx";
+export const DEBUG_BUILD_TYPE = "Debug";
+export const RELEASE_BUILD_TYPE = "Release";

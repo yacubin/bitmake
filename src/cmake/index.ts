@@ -1,0 +1,161 @@
+/*
+ * MIT License
+ *
+ * Copyright (c) 2025  Yurii Yakubin (yurii.yakubin@gmail.com)
+ *
+ * Permission is granted to use, copy, modify, and distribute this software
+ * under the MIT License. See LICENSE file for details.
+ */
+
+import os from "node:os";
+import fs from "node:fs";
+import path from "node:path";
+
+import { spawnAsync } from "@/utils/ChildProcess";
+import { CMAKE_LISTS_TXT, ValueType } from "@/cmake/Constants";
+import { convertToValue } from "@/cmake/Helper";
+
+function toVarType(key: string, val: any) {
+  const map: any = {
+    CMAKE_INSTALL_PREFIX: ValueType.PATH,
+    CMAKE_TOOLCHAIN_FILE: ValueType.FILEPATH,
+  };
+
+  if (typeof val === "boolean")
+    return ValueType.BOOL;
+
+  if (map.hasOwnProperty(key))
+    return map[key];
+
+  return ValueType.STRING;
+}
+
+function toCacheEntry(name: string, val: any) {
+  const type = toVarType(name, val);
+  const value = convertToValue(val);
+  return `${name}:${type}=${value}`;
+}
+
+export async function configure(args: any) {
+  const spawnArgs = [ '-G', args.generator ];
+  for (const [key, val] of Object.entries(args.cacheVariables))
+    spawnArgs.push('-D', toCacheEntry(key, val));
+  spawnArgs.push('-S', args.sourceDir);
+  spawnArgs.push('-B', args.binaryDir);
+
+  const res: any = await spawnAsync("cmake", spawnArgs, {
+    cwd: args.binaryDir,
+    env: args.environment || process.env,
+    extra: {
+      output: `cmake.configure.log`,
+    },
+  });
+  if (res.status !== 0) {
+    throw `CMake.configure returned status ${res.status}`;
+  }
+}
+
+export async function build(args: any) {
+  await configure(args);
+
+  const spawnArgs: string[] = [
+    '--build', '.',
+    '--parallel', os.availableParallelism().toString(),
+  ];
+  const res: any = await spawnAsync("cmake", spawnArgs, {
+    cwd: args.binaryDir,
+    env: args.environment || process.env,
+    extra: {
+      output: `cmake.build.log`,
+    },
+  });
+  if (res.status !== 0) {
+    throw `CMake.build returned status ${res.status}`;
+  }
+}
+
+export async function install(args: any) {
+  await configure(args);
+
+  const spawnArgs = [
+    '--install',
+    '.',
+  ];
+  if (args.installDir) {
+    spawnArgs.push('--prefix', args.installDir);
+  }
+  const res: any = await spawnAsync("cmake", spawnArgs, {
+    cwd: args.binaryDir,
+    env: args.environment || process.env,
+    extra: {
+      output: `cmake.install.log`,
+    },
+  });
+  if (res.status !== 0) {
+    throw `CMake.install returned status ${res.status}`;
+  }
+}
+
+export async function ctest(args: any) {
+  await build(args);
+
+  const spawnArgs: string[] = [];
+  const res: any = await spawnAsync("ctest", spawnArgs, {
+    cwd: args.binaryDir,
+    env: args.environment || process.env,
+    extra: {
+      output: `cmake.ctest.log`,
+    },
+  });
+  if (res.status !== 0) {
+    throw `CTest returned status ${res.status}`;
+  }
+}
+
+export async function extract(args: any) {
+  const spawnArgs = [ "-E", "tar", "-xvf", args.filename ];
+  const res: any = await spawnAsync("cmake", spawnArgs, {
+    cwd: args.workDir || args.sourceDir || args.binaryDir,
+    env: args.environment || process.env,
+    extra: {
+      output: args.logFile || `cmake.extract.log`,
+    },
+  });
+  if (res.status !== 0) {
+    throw `Extract returned status ${res.status}`;
+  }
+}
+
+export async function getProjectInfo(source: string) {
+  const stat = await fs.promises.stat(source);
+  if (stat.isDirectory())
+    source = path.resolve(source, CMAKE_LISTS_TXT);
+  const content = await fs.promises.readFile(source, { encoding: 'utf8' });
+
+  const projectPattern = /project *\( *([^ ]+) *([^)]*)\)/;
+  const versionPattern = /VERSION +([^ ]+)/;
+
+  const result: any = {};
+  let match = content.match(projectPattern);
+  if (match) {
+    result.name = match[1];
+    const projectContent = match[2];
+    match = projectContent.match(versionPattern);
+    if (match)
+      result.version = match[1];
+  }
+
+  return result;
+}
+
+export function lineToSinglComment(line: string) {
+  return "# " + line;
+}
+
+export function lineToMultipleComment(line: string) {
+  return `#[===[ ${line} ]===]`;
+}
+
+export function generatedScriptNameComment(filename: string) {
+  return lineToSinglComment("Generated from " + path.basename(filename));
+}

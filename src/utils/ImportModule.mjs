@@ -7,4 +7,4 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-export * as cxx from "@/cxx";
+export const importModule = async (name) => import(/* webpackIgnore: true */ name);

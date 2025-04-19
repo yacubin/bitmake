@@ -140,7 +140,7 @@ export class GoalCollection {
         const { command, args, cwd, output } = goal as ExecGoal;
         fs.mkdirSync(path.posix.dirname(output), { recursive: true });
         const result = spawnSync(command, args, { cwd, encoding: "utf-8" });
-        if (result.status) {
+        if (result.error || result.status) {
           console.info("cd " + cwd);
           let cmd = args.join(" ");
           cmd = command + (cmd ? " " : "") + cmd;
@@ -149,7 +149,7 @@ export class GoalCollection {
   
           console.error(result.stderr);
   
-          throw new Error("Status " + result.status);
+          throw new Error(result.error as any || "Status " + result.status);
         }
       }
       else if (type === GoalType.TARGET) {

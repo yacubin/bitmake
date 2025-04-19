@@ -1,8 +1,8 @@
 # BitMake project
 
-!The project is under development.
+> Note: This project is under active development.
 
-BitMake was part of the WASMUX project and served as a build script.
+BitMake is JavaScript-based build system originally developed as part of the [WASMUX](https://github.com/ykbin/wasmux) project.
 The main task of BitMake is to build recipes and make scripts.
 
 Examples of building a dbc-0.0.1 project:
@@ -31,6 +31,8 @@ npx bitmake build                                                     # Build
 
 Examples of make scripts:
 ```
+// MakeScript.mjs
+
 export default (mk) => {
   const sources = [
     "waeditor.cpp",

@@ -59,6 +59,10 @@ export default {
     description: "Default filename of the BitMake cache storing settings",
     type: "FilePath",
   },
+  TOOLCHAIN_FILE: {
+    description: "Specifies the path to a toolchain file used for cross-compilation",
+    type: "FilePath",
+  },
   BUILD_TYPE: {
     description: "Specifies the build configuration for controlling optimization levels and debug information in the build process",
     type: [ DEBUG_BUILD_TYPE, RELEASE_BUILD_TYPE ],

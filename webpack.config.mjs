@@ -89,7 +89,7 @@ export default async (env, argv) => {
     resolve,
     target: 'node',
     entry: {
-      "bitmake-cli": "./src/main.mjs",
+      "bitmake-cli": "./src/main.ts",
     },
     output: {
       path: outputPath,

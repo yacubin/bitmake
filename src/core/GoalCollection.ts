@@ -148,6 +148,9 @@ export class GoalCollection {
           console.info("");
   
           console.error(result.stderr);
+
+          if (result.error)
+              throw result.error;
   
           throw new Error(result.error as any || "Status " + result.status);
         }

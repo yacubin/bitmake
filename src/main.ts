@@ -1,21 +1,30 @@
+/*
+ * MIT License
+ *
+ * Copyright (c) 2025  Yurii Yakubin (yurii.yakubin@gmail.com)
+ *
+ * Permission is granted to use, copy, modify, and distribute this software
+ * under the MIT License. See LICENSE file for details.
+ */
+
 import url from "node:url";
 import path from "node:path";
 
 import { RunScriptContext } from "@/RunScriptContext";
 import initHandler from "@/InitHandler";
 import buildHandler from "@/BuildHandler";
+import { importModule } from "@/utils/Module";
 
 const __filename = url.fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const handlerMap = {
+const handlerMap: any = {
   default: buildHandler,
   init: initHandler,
   build: buildHandler,
 };
 
-function toOptionKey(name)
-{
+function toOptionKey(name: string) {
   if (!name.startsWith("--"))
     return null;
 
@@ -43,9 +52,8 @@ function toOptionKey(name)
   return hyphen ? null : key;
 }
 
-async function runScript()
-{
-  const options = {
+async function runScript() {
+  const options: any = {
     handler: "default",
     nodeExecutable: null,
     currentScript: null,
@@ -72,7 +80,7 @@ async function runScript()
 
   if (!handlerMap.hasOwnProperty(options.handler)) {
     const scriptName = options.currentScript ? path.basename(options.currentScript) : "wasmux";
-    throw `The ${scriptName} does not support the ${options.handler} command`;
+    throw Error(`The ${scriptName} does not support the ${options.handler} command`);
   }
 
   let lastKey = null;
@@ -81,9 +89,9 @@ async function runScript()
     if (iter.startsWith("--")) {
       const key = toOptionKey(iter);
       if (!key)
-        throw `Option ${iter} is not supported`;
+        throw Error(`Option ${iter} is not supported`);
       if (options.env.hasOwnProperty(key))
-        throw `Cannot specify the same option '${iter}' more than once`;
+        throw Error(`Cannot specify the same option '${iter}' more than once`);
       lastKey = key;
       options.env[key] = true;
     }
@@ -97,7 +105,7 @@ async function runScript()
         value.push(iter);
     }
     else {
-      throw `Need to specify the option name before '${iter}' parameter`;
+      throw Error(`Need to specify the option name before '${iter}' parameter`);
     }
   }
 
@@ -107,7 +115,7 @@ async function runScript()
   if (typeof handler === "string") {
     const filename = path.isAbsolute(handler) ? handler : path.resolve(__dirname, handler);
     const fileUrl = url.pathToFileURL(filename);
-    const module = await import(fileUrl);
+    const module = await importModule(fileUrl);
     handler = module.default;
   }
 

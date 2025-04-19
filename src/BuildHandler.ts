@@ -17,7 +17,7 @@ import { SettingsStorage } from "@/utils/SettingsStorage";
 import { spawnAsync } from "@/utils/ChildProcess";
 import { makeScriptAction } from "@/MakeScriptAction";
 import { arrayWrapper, assignObject } from "@/utils/Primitives";
-import { BUILD_CONFIG_FILE, BUILD_SETTINGS_FILE } from "@/Constants";
+import { BUILD_SETTINGS_FILE } from "@/Constants";
 import { requireResolve } from "@/utils/Module";
 import { requestGet } from "@/utils/HttpRequest";
 import { RunScriptContext } from "@/RunScriptContext";
@@ -450,8 +450,7 @@ const actionHandlers: any = {
   bitmake: makeScriptAction,
 };
 
-async function doTargetBuild(ctx: RunScriptContext, environment: any, config: any, settings: any)
-{
+async function doTargetBuild(ctx: RunScriptContext, environment: any, config: any, settings: any) {
   if (config.preAction) {
     await settings.push("preAction");
     const newConfig: any = {};
@@ -509,9 +508,10 @@ export default async (ctx: RunScriptContext) => {
   const userConfig = await ctx.getUserConfig();
   const buildConfig = makeBuildConfig(ctx, userConfig);
 
-  const jsonConfig = JSON.stringify(buildConfig, null, 2);
-  const dumpConfigPath = path.posix.join(buildConfig.binaryRoot, BUILD_CONFIG_FILE);
-  await saveIfDifferent(dumpConfigPath, jsonConfig);
+  if (buildConfig.RECIPE_CONTENT_FILE) {
+    const jsonConfig = JSON.stringify(buildConfig, null, 2);
+    await saveIfDifferent(buildConfig.RECIPE_CONTENT_FILE, jsonConfig);
+  }
 
   const settingsFilename = path.resolve(buildConfig.binaryRoot, BUILD_SETTINGS_FILE);
   const settings = new SettingsStorage(settingsFilename);

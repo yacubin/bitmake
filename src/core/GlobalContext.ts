@@ -36,7 +36,7 @@ const INSTALL_LIST = Symbol("INSTALL_LIST");
 const SCRIPT_VARIABLES_MAP = Symbol("SCRIPT_VARIABLES_MAP");
 const SUBDIR_ALIAS = Symbol("SUBDIR_ALIAS");
 const SUBDIR_LIST = Symbol("SUBDIR_LIST");
-const BUILDIN_SCRIPTS = Symbol("BUILDIN_SCRIPTS");
+const BUILTIN_SCRIPTS = Symbol("BUILTIN_SCRIPTS");
 
 type UnknownTargets = {
   [name: string]: UnknownTarget;
@@ -111,7 +111,7 @@ export class GlobalContext {
   private [SCRIPT_VARIABLES_MAP]: any;
   private [SUBDIR_ALIAS]: SubdirectoryAlias;
   private [SUBDIR_LIST]: any[];
-  private [BUILDIN_SCRIPTS]: BuildinScripts;
+  private [BUILTIN_SCRIPTS]: BuildinScripts;
 
   private constructor() {
     this[TARGETS] = TargetCollection.create();
@@ -123,7 +123,7 @@ export class GlobalContext {
     this[SCRIPT_VARIABLES_MAP] = {};
     this[SUBDIR_ALIAS] = {};
     this[SUBDIR_LIST] = [];
-    this[BUILDIN_SCRIPTS] = {
+    this[BUILTIN_SCRIPTS] = {
       configure_file,
       install_script,
     };
@@ -244,7 +244,7 @@ export class GlobalContext {
   }
 
   public findScriptFunction(name: string): Function | undefined {
-    return this[BUILDIN_SCRIPTS][name];
+    return this[BUILTIN_SCRIPTS][name];
   }
   
   public async doSubdirectory() {

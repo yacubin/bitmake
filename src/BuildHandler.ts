@@ -17,15 +17,13 @@ import { SettingsStorage } from "@/utils/SettingsStorage";
 import { spawnAsync } from "@/utils/ChildProcess";
 import { makeScriptAction } from "@/MakeScriptAction";
 import { arrayWrapper, assignObject } from "@/utils/Primitives";
-import constants from "@/Constants.js";
+import { BUILD_CONFIG_FILE, BUILD_SETTINGS_FILE } from "@/Constants";
 import { requireResolve } from "@/utils/Module";
 import { requestGet } from "@/utils/HttpRequest";
 import { RunScriptContext } from "@/RunScriptContext";
 import { createLogger } from "@/logger";
 
 const logger = createLogger(import.meta.url);
-
-const { BUILD_CONFIG_FILE, BUILD_SETTINGS_FILE } = constants;
 
 function mergeEnvironment(...args: any) {
   const environment: any = {};

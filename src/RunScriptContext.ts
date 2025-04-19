@@ -11,11 +11,9 @@ import path from "node:path";
 import url from "node:url";
 
 import { fileExists } from "@/utils/FileSystem";
-import constants from "@/Constants.js";
+import { USER_CONFIG, REQUEST_ATTEMPTS } from "@/Constants";
 import { DEBUG_BUILD_TYPE, RELEASE_BUILD_TYPE } from "@/core/Types";
 import { importModule } from "@/utils/Module";
-
-const { USER_CONFIG, REQUEST_ATTEMPTS } = constants;
 
 export class RunScriptContext {
   _nodeExecutable;

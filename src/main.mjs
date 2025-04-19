@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { RunScriptContext } from "@/RunScriptContext";
 import initHandler from "./InitHandler.mjs";
-import buildHandler from "./BuildHandler.mjs";
+import buildHandler from "@/BuildHandler";
 
 const __filename = url.fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

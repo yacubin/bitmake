@@ -1,3 +1,12 @@
+/*
+ * MIT License
+ *
+ * Copyright (c) 2025  Yurii Yakubin (yurii.yakubin@gmail.com)
+ *
+ * Permission is granted to use, copy, modify, and distribute this software
+ * under the MIT License. See LICENSE file for details.
+ */
+
 import fs from "node:fs";
 import path from "node:path";
 
@@ -11,16 +20,17 @@ import { arrayWrapper, assignObject } from "@/utils/Primitives";
 import constants from "@/Constants.js";
 import { requireResolve } from "@/utils/Module";
 import { requestGet } from "@/utils/HttpRequest";
+import { RunScriptContext } from "@/RunScriptContext";
 import { createLogger } from "@/logger";
 
 const logger = createLogger(import.meta.url);
 
 const { BUILD_CONFIG_FILE, BUILD_SETTINGS_FILE } = constants;
 
-function mergeEnvironment(...args) {
-  const environment = {};
+function mergeEnvironment(...args: any) {
+  const environment: any = {};
   for (const env of args) {
-    const list = Object.entries(env || {});
+    const list: any = Object.entries(env || {});
     while (list.length) {
       let [key,val] = list.pop();
       let delimiter;
@@ -51,11 +61,11 @@ function mergeEnvironment(...args) {
   return environment;
 }
 
-function rebaseConfig(config) {
-  const baseConfig = {};
-  const otherConfig = {};
+function rebaseConfig(config: any) {
+  const baseConfig: any = {};
+  const otherConfig: any = {};
 
-  for (const [key, entry] of Object.entries(config)) {
+  for (const [key, entry] of Object.entries(config) as any) {
     (entry.base ? otherConfig : baseConfig)[key] = entry;
   }
 
@@ -98,8 +108,8 @@ function rebaseConfig(config) {
   return baseConfig;
 }
 
-function resolveStringWithVariable(config, entryConfig, rootConfig, val) {
-  return val.replace(/\$\{([^}]+)\}/g, (match, value) => {
+function resolveStringWithVariable(config: any, entryConfig: any, rootConfig: any, val: any) {
+  return val.replace(/\$\{([^}]+)\}/g, (match: any, value: any) => {
     let sel;
     for (const name of value.split(".")) {
       if (sel === undefined) {
@@ -137,7 +147,7 @@ function resolveStringWithVariable(config, entryConfig, rootConfig, val) {
   });
 }
 
-function resolveConfigStringsImpl(config, entryConfig, rootConfig) {
+function resolveConfigStringsImpl(config: any, entryConfig: any, rootConfig: any) {
   let count = 0;
   for (const [key, val] of Object.entries(config)) {
     if (val && typeof val === "object")
@@ -153,7 +163,7 @@ function resolveConfigStringsImpl(config, entryConfig, rootConfig) {
   return count;
 }
 
-function resolveConfigStrings(config) {
+function resolveConfigStrings(config: any) {
   for (;;) {
     let count = 0;
     for (const [key, val] of Object.entries(config)) {
@@ -172,7 +182,7 @@ function resolveConfigStrings(config) {
   }
 }
 
-function makeBuildConfig(ctx, config) {
+function makeBuildConfig(ctx: any, config: any) {
   for (const key of [ "sourceRoot", "wasmuxDir" ]) {
     if (config[key]) {
       throw `The ${key} variable cannot be changed to "${config.sourceRoot}"`;
@@ -185,7 +195,7 @@ function makeBuildConfig(ctx, config) {
   rootConfig.sourceRoot = rootConfig.sourceRoot || ctx.workDir;
   rootConfig.binaryRoot = rootConfig.binaryRoot || path.posix.resolve(ctx.workDir,"build");
 
-  for (const [key, entry] of Object.entries(rootConfig)) {
+  for (const [key, entry] of Object.entries(rootConfig) as any) {
     if (entry && typeof entry === "object" && entry.action) {
       entry.buildType = entry.buildType || rootConfig.buildType;
       const folder = key.replace(":", path.posix.sep);
@@ -214,8 +224,7 @@ function makeBuildConfig(ctx, config) {
   return rootConfig;
 }
 
-async function tryRequestGet(sourceUrl, arcFile, attempts)
-{
+async function tryRequestGet(sourceUrl: string, arcFile: string, attempts: number) {
   for(;;) {
     try {
       const buffer = await requestGet(sourceUrl);
@@ -231,7 +240,7 @@ async function tryRequestGet(sourceUrl, arcFile, attempts)
   }
 }
 
-async function doExtractArchive(ctx, environment, config, settings)
+async function doExtractArchive(ctx: RunScriptContext, environment: any, config: any, settings: any)
 {
   if (!config.sourceUrl)
     throw "Unknown sourceUrl";
@@ -318,11 +327,11 @@ async function doExtractArchive(ctx, environment, config, settings)
   }
 }
 
-const actionHandlers = {
-  none: async (config, environment, settings) => {
+const actionHandlers: any = {
+  none: async (config: any, environment: any, settings: any) => {
     /* do nothing */
   },
-  cmake: async (config, environment, settings) => {
+  cmake: async (config: any, environment: any, settings: any) => {
     const sourceDir = getPathString(config.sourceDir);
     const binaryDir = getPathString(config.binaryDir);
     const cmakeArgs = {
@@ -344,7 +353,7 @@ const actionHandlers = {
     await cmake.build(cmakeArgs);
     await cmake.install(cmakeArgs);
   },
-  configure: async (config, environment, settings) => {
+  configure: async (config: any, environment: any, settings: any) => {
     const sourceDir = getPathString(config.sourceDir);
     const binaryDir = getPathString(config.binaryDir);
     let step = await settings.get("configure") || "config";
@@ -403,7 +412,7 @@ const actionHandlers = {
       await settings.set("configure", step);
     }
   },
-  make: async (config, environment, settings) => {
+  make: async (config: any, environment: any, settings: any) => {
     const binaryDir = getPathString(config.binaryDir);
     const args = config.args || [];
     if (config.destDir) {
@@ -420,7 +429,7 @@ const actionHandlers = {
       throw `make returned status ${res2.status}`;
     }
   },
-  process: async (config, environment, settings) => {
+  process: async (config: any, environment: any, settings: any) => {
     if (!config.command)
       throw "Required command field for process action";
     const sourceDir = getPathString(config.sourceDir);
@@ -443,11 +452,11 @@ const actionHandlers = {
   bitmake: makeScriptAction,
 };
 
-async function doTargetBuild(ctx, environment, config, settings)
+async function doTargetBuild(ctx: RunScriptContext, environment: any, config: any, settings: any)
 {
   if (config.preAction) {
     await settings.push("preAction");
-    const newConfig = {};
+    const newConfig: any = {};
     assignObject(newConfig, config);
     delete newConfig.action;
     delete newConfig.preAction;
@@ -462,7 +471,7 @@ async function doTargetBuild(ctx, environment, config, settings)
     await settings.push("action");
     for (var i = 0; i < config.action.length; ++i) {
       await settings.push(i);
-      const newConfig = {};
+      const newConfig: any = {};
       assignObject(newConfig, config);
       delete newConfig.action;
       delete newConfig.preAction;
@@ -486,7 +495,7 @@ async function doTargetBuild(ctx, environment, config, settings)
 
   if (config.postAction) {
     await settings.push("postAction");
-    const newConfig = {};
+    const newConfig: any = {};
     assignObject(newConfig, config);
     delete newConfig.action;
     delete newConfig.preAction;
@@ -498,7 +507,7 @@ async function doTargetBuild(ctx, environment, config, settings)
   }
 }
 
-export default async function(ctx) {
+export default async (ctx: RunScriptContext) => {
   const userConfig = await ctx.getUserConfig();
   const buildConfig = makeBuildConfig(ctx, userConfig);
 
@@ -509,7 +518,7 @@ export default async function(ctx) {
   const settingsFilename = path.resolve(buildConfig.binaryRoot, BUILD_SETTINGS_FILE);
   const settings = new SettingsStorage(settingsFilename);
 
-  for (const [key, entry] of Object.entries(buildConfig)) {
+  for (const [key, entry] of Object.entries(buildConfig) as any) {
     if (entry && typeof entry === "object" && entry.action && !entry.disabled) {
       await settings.push(key);
       const completed = await settings.get("completed");

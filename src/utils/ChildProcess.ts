@@ -11,7 +11,11 @@ import path from "node:path";
 import fs from "node:fs";
 import { spawn, spawnSync } from "node:child_process";
 
-export function spawnAsync(command: string, args: string[], options?: any): Promise<unknown> {
+type Result = {
+  status: number;
+};
+
+export function spawnAsync(command: string, args: string[], options?: any): Promise<Result> {
   let fd = null;
   let verbose = false;
   if (options && options.extra) {
@@ -39,7 +43,7 @@ export function spawnAsync(command: string, args: string[], options?: any): Prom
       process.stderr.write(data);
       fd && fs.writeSync(fd, data);
     });
-    exec.on("close", (status) => {
+    exec.on("close", (status: number) => {
       fd && fs.closeSync(fd);
       resolve({status});
     });

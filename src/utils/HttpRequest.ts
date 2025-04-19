@@ -31,7 +31,7 @@ function httpRequest(url: string, options: http.RequestOptions | https.RequestOp
   return http.request(url, options, callback);
 };
 
-export function requestGet(url: string) {
+export function requestGet(url: string): Promise<Buffer> {
   return new Promise((resolve, reject) => {
 
     const onError = (err: any) => {

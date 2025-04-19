@@ -15,7 +15,7 @@ import constants from "@/Constants.js";
 import { DEBUG_BUILD_TYPE, RELEASE_BUILD_TYPE } from "@/core/Types";
 import { importModule } from "@/utils/Module";
 
-const { USER_CONFIG, DEFAULT_PRESET, REQUEST_ATTEMPTS } = constants;
+const { USER_CONFIG, REQUEST_ATTEMPTS } = constants;
 
 export class RunScriptContext {
   _nodeExecutable;
@@ -88,7 +88,7 @@ export class RunScriptContext {
         if (await fileExists(userConfigPath))
           configPath = userConfigPath;
         else
-          configPath = this.getPresetPath(DEFAULT_PRESET);
+          throw `Config file '${USER_CONFIG}' is not available`;
       }
 
       let userConfig = {};

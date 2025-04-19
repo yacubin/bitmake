@@ -2,7 +2,7 @@ import url from "node:url";
 import path from "node:path";
 
 import { RunScriptContext } from "@/RunScriptContext";
-import initHandler from "./InitHandler.mjs";
+import initHandler from "@/InitHandler";
 import buildHandler from "@/BuildHandler";
 
 const __filename = url.fileURLToPath(import.meta.url);

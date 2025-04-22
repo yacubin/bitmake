@@ -29,7 +29,11 @@ Scope.prototype = Object.create(Object.prototype, {
   },
 });
 
-Scope.defineVariable = function(scope: any, name: string, descriptor: any) {
+Scope.defineVariable = function(scope: any, group: string, name: string, descriptor: any) {
+  if (!group) {
+    throw new Error(`Attempting to create "${name}" variable with an empty group`);
+  }
+
   if (!scope[DEFINE_MAP])
     scope[DEFINE_MAP] = {};
 
@@ -37,16 +41,18 @@ Scope.defineVariable = function(scope: any, name: string, descriptor: any) {
 
   let defineEntry = scope[DEFINE_MAP][name];
   if (!defineEntry) {
-    defineEntry = {};
+    defineEntry = {
+      group,
+      type,
+      symbol: Symbol(name),
+    };
     scope[DEFINE_MAP][name] = defineEntry;
   }
-
-  if (defineEntry.type !== type) {
-    defineEntry.symbol = Symbol(name);
+  else if (group !== defineEntry.group) {
+    throw new Error(`Attempting to recreate "${name}" variable with "${defineEntry.group}" group in another "${group}"`);
   }
 
-  defineEntry.type = type;
-  defineEntry.description = descriptor.description || "";
+  defineEntry.description = descriptor.description || defineEntry.description || "";
 
   let ensureValue = (value: any) => {};
   if (Array.isArray(type)) {
@@ -99,9 +105,9 @@ Scope.defineVariable = function(scope: any, name: string, descriptor: any) {
   Object.defineProperty(scope, name, desc);
 }
 
-Scope.defineVariables = function(scope: any, descriptors: any) {
+Scope.defineVariables = function(scope: any, group: string, descriptors: any) {
   for (const [ name, descriptor ] of Object.entries(descriptors))
-    Scope.defineVariable(scope, name, descriptor);
+    Scope.defineVariable(scope, group, name, descriptor);
 }
 
 Scope.prototype.toJSON = function() {

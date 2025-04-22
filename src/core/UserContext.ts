@@ -79,7 +79,11 @@ const UserContext: any = function(this: any, scope: any, global: GlobalContext) 
 }
 
 UserContext.create = (scope: any, global: GlobalContext) => {
-  return new UserContext(scope, global);
+  const proto = UserContext.prototype;
+  const newScope = Object.create(proto);
+  const obj = Object.create(newScope);
+  UserContext.call(obj, scope, global)
+  return obj;
 }
 
 UserContext.prototype.__scope = function() {

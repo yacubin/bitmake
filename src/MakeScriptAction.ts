@@ -26,7 +26,7 @@ const MAKE_CACHE = "MakeCache.json";
 export async function makeScriptAction(config: any, environment: any, settings: any) {
   process.env = environment;
 
-  Scope.defineVariables(Scope.prototype, SystemVariables);
+  Scope.defineVariables(Scope.prototype, "system", SystemVariables);
   const scope = Scope.create();
 
   const sourceDir = getPathString(config.sourceDir);

@@ -19,7 +19,9 @@ import { GoalCollection } from "@/core/GoalCollection";
 import { InterfaceObjects } from "@/core/InterfaceObjects";
 import { InterfaceScript } from "@/core/InterfaceScript";
 import { SourceFile } from "@/core/SourceFile";
+import { UserContext } from "@/core/UserContext";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable } from "@/core/Target";
+import { Scope } from "@/core/Scope";
 import { importModule } from "@/utils/Module";
 
 import configure_file from "@/core/BuildinScripts/configure_file";
@@ -239,8 +241,8 @@ export class GlobalContext {
     fs.writeFileSync(filename, json, "utf-8");
   }
 
-  public addSubdirectory(context: any) {
-    this[SUBDIR_LIST].push(context);
+  public addSubdirectory(scope: any) {
+    this[SUBDIR_LIST].push(scope);
   }
 
   public findScriptFunction(name: string): Function | undefined {
@@ -249,9 +251,7 @@ export class GlobalContext {
   
   public async doSubdirectory() {
     while (this[SUBDIR_LIST].length) {
-      const context = this[SUBDIR_LIST].shift();
-  
-      const scope = context.__scope();
+      const scope = this[SUBDIR_LIST].shift();
   
       let scriptFile;
       const fileList = [ ".js", ".mjs" ].map(i => "MakeScript" + i);
@@ -270,16 +270,17 @@ export class GlobalContext {
       scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
   
       this.addSystemVariables(scope);
-      this.copyCacheVariables(context);
-  
-      const module = await importModule(context.SCRIPT_FILE.toString());
+
+      const module = await importModule(scope.SCRIPT_FILE.toString());
   
       const cwdSave = process.cwd();
-      process.chdir(context.SOURCE_DIR.toString());
+      process.chdir(scope.SOURCE_DIR.toString());
   
-      const result = module.default(context);
+      const mk = UserContext.create(scope, this);
+      const result = module.default(mk);
       if (result instanceof Promise)
         await result;
+      Scope.applyVariables(scope, mk);
   
       process.chdir(cwdSave);
     }

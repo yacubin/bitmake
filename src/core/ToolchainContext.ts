@@ -7,24 +7,24 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { AbsolutePath } from "@/core/Path";
+import { findProgram } from "@/core/FindProgram";
 import { GlobalContext } from "@/core/GlobalContext";
 import { Scope } from "@/core/Scope";
 
 const GLOBAL = Symbol("GLOBAL");
 const SCOPE = Symbol("SCOPE");
 
-export class PluginContext {
+export class ToolchainContext {
   private [SCOPE]: any;
   private [GLOBAL]: GlobalContext;
 
-  private constructor(scope: any, global: any) {
+  private constructor(scope: any, global: GlobalContext) {
     this[SCOPE] = scope;
     this[GLOBAL] = global;
   }
 
   public static create(scope: any, global: GlobalContext) {
-    const proto = PluginContext.prototype;
+    const proto = ToolchainContext.prototype;
     const newScope = Object.create(proto);
     Scope.clone(newScope, scope);
     const self = Object.create(newScope);
@@ -33,11 +33,12 @@ export class PluginContext {
     return self;
   }
 
-  public addSubdirectoryAlias(src: AbsolutePath | string, dest: AbsolutePath | string) {
-    this[GLOBAL].addSubdirectoryAlias(AbsolutePath.createDir(src), AbsolutePath.createDir(dest));
-  }
-
   public _scope() {
     return this[SCOPE];
   }
 };
+
+Object.defineProperty(ToolchainContext.prototype, "findProgram", {
+  value: findProgram,
+  enumerable: false,
+});

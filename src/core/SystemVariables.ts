@@ -10,6 +10,28 @@
 import os from "node:os";
 import { DEBUG_BUILD_TYPE, RELEASE_BUILD_TYPE } from "@/core/Types";
 
+function getSizeofVoidp() {
+  const sizeofVoidpBits: any =
+  {
+    arm:     4,
+    arm64:   8,
+    ia32:    4,
+    loong64: 8,
+    mips:    4,
+    mipsel:  4,
+    ppc:     4,
+    ppc64:   8,
+    riscv64: 8,
+    s390:    4,
+    s390x:   8,
+    x64:     4,
+  };
+  const result = sizeofVoidpBits[os.arch()];
+  if (!result)
+    throw new Error(`Unknown CPU`);
+  return result;
+}
+
 export default {
   SYSTEM_NAME: {
     description: "Defines the target OS for the build, used in cross-compilation and native builds",
@@ -229,4 +251,9 @@ export default {
     description: "Filename for JSON of the Target Goals",
     type: "FilePath",
   },
+  SIZEOF_VOID_P: {
+    description: "Defines the size (in bytes) of a void pointer on the target architecture",
+    type: [ 4, 8 ],
+    value: getSizeofVoidp(),
+  }
 };

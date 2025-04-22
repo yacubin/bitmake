@@ -15,6 +15,7 @@ import { InterfaceTarget } from "@/core/InterfaceTarget";
 import { InterfaceIncludes } from "@/core/InterfaceIncludes";
 import { InterfaceObjects } from "@/core/InterfaceObjects";
 import { AbsolutePath } from "@/core/Path";
+import { Scope } from "@/core/Scope";
 
 const NAME                = Symbol("NAME");
 const TARGET_SCOPE        = Symbol("TARGET_SCOPE");
@@ -54,7 +55,7 @@ export class BaseTarget {
 
   protected constructor(scope: any, name: string) {
     this[NAME] = ensureTargetName(name);
-    this[TARGET_SCOPE] = scope.clone();
+    this[TARGET_SCOPE] = Scope.clone({}, scope);
     this[OUTPUT_NAME] = ensureString(name);
     this[PREFIX] = "";
     this[SUFFIX] = "";

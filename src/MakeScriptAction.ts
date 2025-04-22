@@ -10,11 +10,11 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { UserContext } from "@/core/UserContext";
 import { PluginContext } from "@/core/PluginContext";
 import { GlobalContext } from "@/core/GlobalContext";
 import { Scope } from "@/core/Scope";
 import { GoalCollection } from "@/core/GoalCollection";
+import { ToolchainContext } from "@/core/ToolchainContext";
 import { getPathString }  from "@/utils/FileSystem";
 import { FilePath } from "@/core/Path";
 import { importModule }  from "@/utils/Module";
@@ -26,8 +26,8 @@ const MAKE_CACHE = "MakeCache.json";
 export async function makeScriptAction(config: any, environment: any, settings: any) {
   process.env = environment;
 
-  Scope.defineVariables(Scope.prototype, "system", SystemVariables);
-  const scope = Scope.create();
+  let scope: any = {};
+  Scope.defineVariables(scope, "system", SystemVariables);
 
   const sourceDir = getPathString(config.sourceDir);
   const binaryDir = getPathString(config.binaryDir);
@@ -39,9 +39,6 @@ export async function makeScriptAction(config: any, environment: any, settings: 
   scope.CACHE_FILE = scope.PROJECT_BINARY_DIR.join(MAKE_CACHE);
   scope.SOURCE_DIR = scope.PROJECT_SOURCE_DIR;
   scope.BINARY_DIR = scope.PROJECT_BINARY_DIR;
-
-  const global = GlobalContext.create();
-  global.loadCacheVariables(scope.CACHE_FILE);
 
   const packageJson = await fs.promises.readFile(scope.PACKAGE_FILE.toString(), 'utf8');
   const pkg = JSON.parse(packageJson);
@@ -55,50 +52,51 @@ export async function makeScriptAction(config: any, environment: any, settings: 
   if (config.destDir)
     scope.DESTDIR = config.destDir;
 
-  const root = UserContext.create(scope, global);
+  Scope.applyVariables(scope, config.variables || {});
 
-  if (config.variables) {
-    for (const [key, val] of Object.entries(config.variables)) {
-      root[key] = val;
-    }
-  }
-
-  if (root.TOOLCHAIN_FILE) {
-    const toolchain = await importModule(root.TOOLCHAIN_FILE);
+  const global = GlobalContext.create();
+  if (scope.TOOLCHAIN_FILE) {
+    const toolchain = await importModule(scope.TOOLCHAIN_FILE);
     if (!toolchain.default)
       throw new Error("Toolchain module has no default export");
-    const result = toolchain.default(root);
+    const mk = ToolchainContext.create(scope, global);
+    const result = toolchain.default(mk);
     if (result instanceof Promise)
       await result;
+    scope = mk._scope();
+    Scope.applyVariables(scope, mk);
   }
 
-  const pluginContext = PluginContext.create(scope, global);
-  for (const plugin of (root.MAKE_PLUGIN_LIST || [])) {
+  for (const plugin of (scope.MAKE_PLUGIN_LIST || [])) {
     const filename = FilePath.create(plugin);
     const module = await importModule(filename.toString());
     if (!module.pluginEntry)
       throw new Error(`Plugin ${filename.basename()} not contain pluginEntry function`);
-    const result = module.pluginEntry(pluginContext);
+    const mk = PluginContext.create(scope, global);
+    const result = module.pluginEntry(mk);
     if (result instanceof Promise)
       await result;
+    scope = mk._scope();
+    Scope.applyVariables(scope, mk);
   }
 
-  global.addSubdirectory(root);
+  global.addSubdirectory(scope);
+
   await global.doSubdirectory();
   console.info("Configuring done");
 
-  if (root.GLOBAL_CONTEXT_JSON) {
-    const filename = root.GLOBAL_CONTEXT_JSON.toString();
+  if (scope.GLOBAL_CONTEXT_JSON) {
+    const filename = scope.GLOBAL_CONTEXT_JSON.toString();
     const content = JSON.stringify(global, null, 2);
     fs.mkdirSync(path.dirname(filename), { recursive: true });
     fs.writeFileSync(filename, content, { encoding: "utf8" });
   }
 
-  const allGoalList = global.createGoals(root);
+  const allGoalList = global.createGoals(scope);
   const goalList = allGoalList.getTargetList("install");
 
-  if (root.TARGET_GOALS_JSON) {
-    const filename = root.TARGET_GOALS_JSON.toString();
+  if (scope.TARGET_GOALS_JSON) {
+    const filename = scope.TARGET_GOALS_JSON.toString();
     const content = JSON.stringify(goalList, null, 2);
     fs.mkdirSync(path.dirname(filename), { recursive: true });
     fs.writeFileSync(filename, content, { encoding: "utf8" });

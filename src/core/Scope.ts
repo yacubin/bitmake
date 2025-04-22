@@ -7,31 +7,16 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { ensureBoolean, ensureString } from "@/utils/StrictType";
+import { ensureBoolean, ensureString, ensureNumber, ensureArray } from "@/utils/StrictType";
 import { AbsolutePath } from "@/core/Path";
 
 const DEFINE_MAP = Symbol("DEFINE_MAP");
 
-const Scope = function(this: any) {
-  for (const { symbol, initValue } of Object.values(this[DEFINE_MAP] || {}) as any) {
-    this[symbol] = Array.isArray(initValue) ? Array.from(initValue) : initValue;
-  }
-} as any;
+export namespace Scope {
 
-Scope.create = () => {
-  return Object.seal(new Scope);
-}
-
-Scope.prototype = Object.create(Object.prototype, {
-  constructor: {
-    value: Scope,
-    enumerable: false,
-  },
-});
-
-Scope.defineVariable = function(scope: any, group: string, name: string, descriptor: any) {
-  if (!group) {
-    throw new Error(`Attempting to create "${name}" variable with an empty group`);
+function defineVariableImpl(scope: any, group: string, name: string, descriptor: any) {
+  if (name === "DEFINE_MAP") {
+    throw new Error(`${name} is reserved and cannot be used as a variable`);
   }
 
   if (!scope[DEFINE_MAP])
@@ -41,20 +26,18 @@ Scope.defineVariable = function(scope: any, group: string, name: string, descrip
 
   let defineEntry = scope[DEFINE_MAP][name];
   if (!defineEntry) {
-    defineEntry = {
-      group,
-      type,
-      symbol: Symbol(name),
-    };
+    defineEntry = { group, type, symbol: Symbol(name) };
     scope[DEFINE_MAP][name] = defineEntry;
   }
   else if (group !== defineEntry.group) {
-    throw new Error(`Attempting to recreate "${name}" variable with "${defineEntry.group}" group in another "${group}"`);
+    if (defineEntry.group)
+      throw new Error(`Attempting to recreate "${name}" variable with "${defineEntry.group}" group in another "${group}"`);
+    defineEntry.group = group;
   }
 
   defineEntry.description = descriptor.description || defineEntry.description || "";
 
-  let ensureValue = (value: any) => {};
+  let ensureValue: (value: any) => {};
   if (Array.isArray(type)) {
     let itemType;
     for (const iter of type) {
@@ -64,8 +47,8 @@ Scope.defineVariable = function(scope: any, group: string, name: string, descrip
       else if (itemType !== it)
         throw new Error(`All elements for ${name} must be of the same type`);
     }
-    if (itemType !== "boolean" && itemType !== "string")
-      throw new Error(`Unknown ${itemType} element type of ${name} variable`);
+    if (itemType !== "boolean" && itemType !== "number" && itemType !== "string")
+      throw new Error(`Enum ${name} not support ${itemType} type`);
     ensureValue = (value: any) => {
       if (type.includes(value))
         return value;
@@ -74,57 +57,91 @@ Scope.defineVariable = function(scope: any, group: string, name: string, descrip
   }
   else if (type === "boolean")
     ensureValue = ensureBoolean;
+  else if (type === "number")
+    ensureValue = ensureNumber;
   else if (type === "string")
     ensureValue = ensureString;
+  else if (type === "array")
+    ensureValue = ensureArray;
   else if (type === "DirPath")
     ensureValue = AbsolutePath.createDir;
   else if (type === "FilePath")
     ensureValue = AbsolutePath.createFile;
-  else if (type === "array")
-    {}
   else
-    throw new Error(`Unknown ${type} type of ${name} variable`);
+    throw new Error(`Variable "${name}" has wrong ${type} type`);
 
-  if (descriptor.hasOwnProperty("value")) {
-    defineEntry.initValue = (type === "array") ? Array.from(descriptor.value) : ensureValue(descriptor.value);
+  if (descriptor.value !== undefined) {
+    defineEntry.value = (type === "array") ? Array.from(descriptor.value) : ensureValue(descriptor.value);
   }
   else {
-    defineEntry.initValue = (type === "array") ? [] : null;
+    defineEntry.value = (type === "array") ? [] : undefined;
   }
 
-  const { symbol } = defineEntry;
+  const { symbol, value } = defineEntry;
+
+  if (scope[symbol] === undefined && value !== undefined)
+    scope[symbol] = Array.isArray(value) ? Array.from(value) : value;
+
   const desc: any = {
     configurable: true,
     enumerable: true,
-    get(this: any) { return this[symbol] },
+    get() {
+      const value = scope[symbol];
+      /*if (value === undefined)
+        throw new Error(`Value of ${name} cannot be obtained because it has not been established`);*/
+      return value;
+    },
+    set(value: any) {
+      scope[symbol] = ensureValue(value);
+    },
   };
-
-  if (ensureValue)
-    desc.set = function(this: any, value: any) { this[symbol] = ensureValue(value) };
 
   Object.defineProperty(scope, name, desc);
 }
 
-Scope.defineVariables = function(scope: any, group: string, descriptors: any) {
+export function defineVariable(scope: any, group: string, name: string, descriptor: any) {
+  if (!group) {
+    throw new Error(`Attempting to create "${name}" variable with an empty group`);
+  }
+  defineVariableImpl(scope, group, name, descriptor);
+}
+
+export function defineVariables(scope: any, group: string, descriptors: any) {
   for (const [ name, descriptor ] of Object.entries(descriptors))
     Scope.defineVariable(scope, group, name, descriptor);
 }
 
-Scope.prototype.toJSON = function() {
-  const json: any = {};
-  for (const key in this)
-    json[key] = this[key];
-  return json;
-}
-
-Scope.prototype.clone = function() {
-  const o = Object.create(Scope.prototype);
-
-  for (const { symbol } of Object.values(this[DEFINE_MAP] || {}) as any) {
-    o[symbol] = Array.isArray(this[symbol]) ? Array.from(this[symbol]) : this[symbol];
+export function clone(target: any, scope: any) {
+  if (scope[DEFINE_MAP]) {
+    for (const [ name, { group, symbol, type, value, description } ] of Object.entries(scope[DEFINE_MAP]) as any) {
+      defineVariableImpl(target, group, name, { type, value, description });
+      if (scope[symbol] !== undefined)
+        target[name] = scope[symbol];
+    }
   }
-
-  return Object.seal(o);
+  return target;
 }
 
-export { Scope };
+export function getVariablesByGroup(scope: any, grp?: string) {
+  const result: any = {};
+  for (const [ name, { type, group, symbol, description } ] of Object.entries(scope[DEFINE_MAP]) as any) {
+    if (group && group !== grp)
+      continue;
+    result[name] = { type, description, value: scope[symbol] };
+  }
+  return result;
+}
+
+export function applyVariable(scope: any, name: string, value: any) {
+  if (Object.getOwnPropertyDescriptor(scope, name))
+    scope[name] = value;
+  else
+    defineVariableImpl(scope, "", name, { value });
+}
+
+export function applyVariables(scope: any, variables: object) {
+  for (const [ name, value ] of Object.entries(variables))
+    Scope.applyVariable(scope, name, value);
+}
+
+} // Scope

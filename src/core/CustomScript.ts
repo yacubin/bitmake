@@ -9,6 +9,7 @@
 
 import { ensureString } from "@/utils/StrictType";
 import { AbsolutePath } from "@/core/Path";
+import { Scope } from "@/core/Scope";
 
 const TARGET_SCOPE = Symbol("TARGET_SCOPE");
 const NAME         = Symbol("NAME");
@@ -28,7 +29,7 @@ export class CustomScript {
   private [PROPERTIES]: any;
 
   private constructor(scope: any, name: string, script: AbsolutePath | Function, output: AbsolutePath, params: any) {
-    this[TARGET_SCOPE] = scope.clone();
+    this[TARGET_SCOPE] = Scope.clone({}, scope);
     this[NAME] = ensureString(name);
     this[INPUT] = params.input || null;
     this[SCRIPT] = script;
@@ -37,7 +38,7 @@ export class CustomScript {
     this[PROPERTIES] = {};
   }
 
-  public static create(scope: any, name: string, script: AbsolutePath | Function, output: AbsolutePath, params: any) {
+  public static create(scope: any, name: string, script: AbsolutePath | Function, output: AbsolutePath, params: any): CustomScript {
     return Object.seal(new CustomScript(scope, name, script, output, params));
   }
 

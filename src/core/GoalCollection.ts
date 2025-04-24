@@ -41,6 +41,37 @@ interface ExecGoal extends BaseGoal {
   cwd: string;
 };
 
+function scopeValueAsPrimitives(o: any): any {
+  if (typeof o === "undefined")
+    return o;
+  if (typeof o === "boolean")
+    return o;
+  if (typeof o === "number")
+    return o;
+  if (typeof o === "string")
+    return o;
+  if (typeof o === "object") {
+    if (!o)
+      return o;
+    if (o instanceof AbsolutePath) {
+      return o.toString();
+    }
+    if (o instanceof Array) {
+      const result = [];
+      for (const i of o)
+        result.push(scopeValueAsPrimitives(i));
+      return result;
+    }
+    if (o instanceof Object) {
+      const result: any = {};
+      for (const [k,v] of Object.entries(o))
+        result[k] = scopeValueAsPrimitives(v);
+      return result;
+    }
+  }
+  throw new Error(`Unknown instance of ${o}`);
+}
+
 export class GoalCollection {
   private [ENTRIES]: Array<BaseGoal>;
 
@@ -131,7 +162,7 @@ export class GoalCollection {
           module = script;
         else
           module = (await importModule(script.toString())).default;
-        const result = module(params);
+        const result = module(scopeValueAsPrimitives(params));
         if (result instanceof Promise) {
           await result;
         }

@@ -72,37 +72,6 @@ function ensureValueByType(type: any, value: any) {
   throw new Error(`The '${value}' is not a ${type}`);
 }
 
-function scopeValueAsPrimitives(o: any): any {
-  if (typeof o === "undefined")
-    return o;
-  if (typeof o === "boolean")
-    return o;
-  if (typeof o === "number")
-    return o;
-  if (typeof o === "string")
-    return o;
-  if (typeof o === "object") {
-    if (!o)
-      return o;
-    if (o instanceof AbsolutePath) {
-      return o.toString();
-    }
-    if (o instanceof Array) {
-      const result = [];
-      for (const i of o)
-        result.push(scopeValueAsPrimitives(i));
-      return result;
-    }
-    if (o instanceof Object) {
-      const result: any = {};
-      for (const [k,v] of Object.entries(o))
-        result[k] = scopeValueAsPrimitives(v);
-      return result;
-    }
-  }
-  throw new Error(`Unknown instance of ${o}`);
-}
-
 export class GlobalContext {
   private [TARGETS]: TargetCollection;
   private [SCRIPTS]: ScriptCollection;
@@ -310,7 +279,7 @@ export class GlobalContext {
         depends.push(script.INPUT.toString());
       const msg = "\x1b[36m" + "Generating " + script.TARGET_SCOPE.BINARY_DIR.relative(script.OUTPUT) + "\x1b[0m";
       const params = { ...script.PROPERTIES, ...script.PARAMS };
-      goalList.addScript(script.SCRIPT, "", depends, script.OUTPUT.toString(), scopeValueAsPrimitives(params), msg);
+      goalList.addScript(script.SCRIPT, "", depends, script.OUTPUT.toString(), params, msg);
     }
   
     for (const [name, target] of Object.entries(this[TARGETS].ENTRIES) as any) {
@@ -437,7 +406,7 @@ export class GlobalContext {
       }
       if (scope.DESTDIR)
         dest = scope.DESTDIR.join(dest).toString();
-      goalList.addScript(install_script, "", [ src ], dest, scopeValueAsPrimitives({src, dest}), "");
+      goalList.addScript(install_script, "", [ src ], dest, {src, dest}, "");
       install_files.push(dest);
     }
   

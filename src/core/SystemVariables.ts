@@ -9,28 +9,7 @@
 
 import os from "node:os";
 import { DEBUG_BUILD_TYPE, RELEASE_BUILD_TYPE } from "@/core/Types";
-
-function getSizeofVoidp() {
-  const sizeofVoidpBits: any =
-  {
-    arm:     4,
-    arm64:   8,
-    ia32:    4,
-    loong64: 8,
-    mips:    4,
-    mipsel:  4,
-    ppc:     4,
-    ppc64:   8,
-    riscv64: 8,
-    s390:    4,
-    s390x:   8,
-    x64:     4,
-  };
-  const result = sizeofVoidpBits[os.arch()];
-  if (!result)
-    throw new Error(`Unknown CPU`);
-  return result;
-}
+import { getSizeofVoidp } from "@/core/GetSizeofVoidp";
 
 export default {
   SYSTEM_NAME: {

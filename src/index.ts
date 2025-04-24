@@ -16,7 +16,6 @@ import buildHandler from "@/BuildHandler";
 
 export default {
   cxx,
-  print: () => console.log(">>>", (globalThis as any).__bitmake),
   handlers: {
     default: buildHandler,
     init: initHandler,

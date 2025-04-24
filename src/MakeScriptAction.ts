@@ -12,7 +12,7 @@ import path from "node:path";
 
 import { PluginContext } from "@/core/PluginContext";
 import { GlobalContext } from "@/core/GlobalContext";
-import { Scope } from "@/core/Scope";
+import { ScopeHelper } from "@/core/Scope";
 import { GoalCollection } from "@/core/GoalCollection";
 import { ToolchainContext } from "@/core/ToolchainContext";
 import { getPathString }  from "@/utils/FileSystem";
@@ -27,7 +27,7 @@ export async function makeScriptAction(config: any, environment: any, settings: 
   process.env = environment;
 
   let scope: any = {};
-  Scope.defineVariables(scope, "system", SystemVariables);
+  ScopeHelper.defineVariables(scope, "system", SystemVariables);
 
   const sourceDir = getPathString(config.sourceDir);
   const binaryDir = getPathString(config.binaryDir);
@@ -52,7 +52,7 @@ export async function makeScriptAction(config: any, environment: any, settings: 
   if (config.destDir)
     scope.DESTDIR = config.destDir;
 
-  Scope.applyVariables(scope, config.variables || {});
+  ScopeHelper.applyVariables(scope, config.variables || {});
 
   const global = GlobalContext.create();
   if (scope.TOOLCHAIN_FILE) {
@@ -64,7 +64,7 @@ export async function makeScriptAction(config: any, environment: any, settings: 
     if (result instanceof Promise)
       await result;
     scope = mk._scope();
-    Scope.applyVariables(scope, mk);
+    ScopeHelper.applyVariables(scope, mk);
   }
 
   for (const plugin of (scope.MAKE_PLUGIN_LIST || [])) {
@@ -77,7 +77,7 @@ export async function makeScriptAction(config: any, environment: any, settings: 
     if (result instanceof Promise)
       await result;
     scope = mk._scope();
-    Scope.applyVariables(scope, mk);
+    ScopeHelper.applyVariables(scope, mk);
   }
 
   global.addSubdirectory(scope);

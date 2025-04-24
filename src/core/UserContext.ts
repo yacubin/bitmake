@@ -18,7 +18,7 @@ import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget } f
 import { IncludeDirectory } from "@/core/IncludeDirectory";
 import { CustomScript } from "@/core/CustomScript";
 import { GlobalContext } from "@/core/GlobalContext";
-import { Scope } from "@/core/Scope";
+import { ScopeHelper } from "@/core/Scope";
 import { findProgram } from "@/core/FindProgram";
 import { createLogger } from "@/logger";
 
@@ -72,7 +72,7 @@ export class UserContext {
   public static create(scope: any, global: GlobalContext): UserContext {
     const proto = UserContext.prototype;
     const newScope = Object.create(proto);
-    Scope.clone(newScope, scope);
+    ScopeHelper.clone(newScope, scope);
     const obj = Object.create(newScope);
     obj[SCOPE] = newScope;
     obj[GLOBAL] = global;
@@ -80,7 +80,7 @@ export class UserContext {
   }
 
   public getCacheVariables() {
-    return Scope.getVariablesByGroup(this[SCOPE], "cache");
+    return ScopeHelper.getVariablesByGroup(this[SCOPE], "cache");
   }
 
   public addCacheVariables(params: any) {
@@ -92,7 +92,7 @@ export class UserContext {
       variables = requireImpl(filename);
     }
     
-    Scope.defineVariables(this[SCOPE], "cache", variables);
+    ScopeHelper.defineVariables(this[SCOPE], "cache", variables);
   }
 
   public addIncludeDirectories(...dirs: any[]) {
@@ -108,8 +108,8 @@ export class UserContext {
     const SOURCE_DIR = path.isAbsolute(sourceDir) ? AbsolutePath.create(sourceDir) : this[SCOPE].SOURCE_DIR.join(sourceDir);
     const BINARY_DIR = path.isAbsolute(binaryDir) ? AbsolutePath.create(binaryDir) : this[SCOPE].BINARY_DIR.join(binaryDir);
 
-    const newScope = Scope.clone({}, this[SCOPE]);
-    Scope.applyVariables(newScope, this);
+    const newScope = ScopeHelper.clone({}, this[SCOPE]);
+    ScopeHelper.applyVariables(newScope, this);
 
     newScope.SOURCE_DIR = AbsolutePath.create(this[GLOBAL].resolveSubdirectory(SOURCE_DIR).toString());
     newScope.BINARY_DIR = BINARY_DIR;

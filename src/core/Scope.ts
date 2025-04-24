@@ -12,7 +12,7 @@ import { AbsolutePath } from "@/core/Path";
 
 const DEFINE_MAP = Symbol("DEFINE_MAP");
 
-export namespace Scope {
+export namespace ScopeHelper {
 
 function defineVariableImpl(scope: any, group: string, name: string, descriptor: any) {
   if (name === "DEFINE_MAP") {
@@ -108,7 +108,7 @@ export function defineVariable(scope: any, group: string, name: string, descript
 
 export function defineVariables(scope: any, group: string, descriptors: any) {
   for (const [ name, descriptor ] of Object.entries(descriptors))
-    Scope.defineVariable(scope, group, name, descriptor);
+    ScopeHelper.defineVariable(scope, group, name, descriptor);
 }
 
 export function clone(target: any, scope: any) {
@@ -141,7 +141,7 @@ export function applyVariable(scope: any, name: string, value: any) {
 
 export function applyVariables(scope: any, variables: object) {
   for (const [ name, value ] of Object.entries(variables))
-    Scope.applyVariable(scope, name, value);
+    ScopeHelper.applyVariable(scope, name, value);
 }
 
-} // Scope
+} // ScopeHelper

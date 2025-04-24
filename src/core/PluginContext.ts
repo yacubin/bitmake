@@ -9,7 +9,7 @@
 
 import { AbsolutePath } from "@/core/Path";
 import { GlobalContext } from "@/core/GlobalContext";
-import { Scope } from "@/core/Scope";
+import { ScopeHelper } from "@/core/Scope";
 
 const GLOBAL = Symbol("GLOBAL");
 const SCOPE = Symbol("SCOPE");
@@ -26,7 +26,7 @@ export class PluginContext {
   public static create(scope: any, global: GlobalContext) {
     const proto = PluginContext.prototype;
     const newScope = Object.create(proto);
-    Scope.clone(newScope, scope);
+    ScopeHelper.clone(newScope, scope);
     const self = Object.create(newScope);
     self[SCOPE] = newScope;
     self[GLOBAL] = global;

@@ -21,7 +21,7 @@ import { InterfaceScript } from "@/core/InterfaceScript";
 import { SourceFile } from "@/core/SourceFile";
 import { UserContext } from "@/core/UserContext";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable } from "@/core/Target";
-import { Scope } from "@/core/Scope";
+import { ScopeHelper } from "@/core/Scope";
 import { importModule } from "@/utils/Module";
 
 import configure_file from "@/core/BuildinScripts/configure_file";
@@ -275,12 +275,11 @@ export class GlobalContext {
       process.chdir(scope.SOURCE_DIR.toString());
 
       const mk = UserContext.create(scope, this);
-      (globalThis as any).__bitmake = "123";
       const module = await importModule(scope.SCRIPT_FILE.toString());
       const result = module.default(mk);
       if (result instanceof Promise)
         await result;
-      Scope.applyVariables(scope, mk);
+      ScopeHelper.applyVariables(scope, mk);
 
       process.chdir(cwdSave);
     }

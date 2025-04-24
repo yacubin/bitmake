@@ -12,7 +12,7 @@ import { InterfaceIncludes } from "@/core/InterfaceIncludes";
 import { InterfaceObjects } from "@/core/InterfaceObjects";
 import { IncludeDirectory } from "@/core/IncludeDirectory";
 import { SourceFile } from "@/core/SourceFile";
-import { Scope } from "@/core/Scope";
+import { ScopeHelper } from "@/core/Scope";
 
 const UNKNOWN_TARGET = Symbol("UNKNOWN_TARGET");
 const SCOPE = Symbol("SCOPE");
@@ -22,7 +22,7 @@ export class InterfaceTarget {
   private [UNKNOWN_TARGET]: any;
 
   private constructor(scope: any, utarget: any) {
-    this[SCOPE] = Scope.clone({}, scope);
+    this[SCOPE] = ScopeHelper.clone({}, scope);
     this[UNKNOWN_TARGET] = utarget;
   }
 

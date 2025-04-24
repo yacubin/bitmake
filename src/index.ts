@@ -7,6 +7,8 @@
  * under the MIT License. See LICENSE file for details.
  */
 
+/// <reference path="global.d.ts" />
+
 import * as cxx from "@/cxx";
 
 import initHandler from "@/InitHandler";

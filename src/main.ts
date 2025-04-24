@@ -7,6 +7,8 @@
  * under the MIT License. See LICENSE file for details.
  */
 
+/// <reference path="global.d.ts" />
+
 import url from "node:url";
 import path from "node:path";
 

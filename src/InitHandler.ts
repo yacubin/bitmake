@@ -16,7 +16,8 @@ import { createLogger } from "@/logger";
 
 const logger = createLogger(import.meta.url);
 
-export default async function(ctx: RunScriptContext) {
+export default async function(options: any) {
+  const ctx = new RunScriptContext(options);
   const preset: string = ctx.env.preset;
 
   let presetPath;

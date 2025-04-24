@@ -10,19 +10,10 @@
 import url from "node:url";
 import path from "node:path";
 
-import { RunScriptContext } from "@/RunScriptContext";
-import initHandler from "@/InitHandler";
-import buildHandler from "@/BuildHandler";
-import { importModule } from "@/utils/Module";
+import { importModule }  from "@/utils/Module";
 
 const __filename = url.fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-const handlerMap: any = {
-  default: buildHandler,
-  init: initHandler,
-  build: buildHandler,
-};
 
 function toOptionKey(name: string) {
   if (!name.startsWith("--"))
@@ -53,6 +44,7 @@ function toOptionKey(name: string) {
 }
 
 async function runScript() {
+  const handlerMap = (await importModule("./bitmake.js") as any).default.handlers;
   const options: any = {
     handler: "default",
     nodeExecutable: null,
@@ -109,28 +101,17 @@ async function runScript() {
     }
   }
 
-  const context = new RunScriptContext(options);
-
-  let handler = handlerMap[options.handler];
-  if (typeof handler === "string") {
-    const filename = path.isAbsolute(handler) ? handler : path.resolve(__dirname, handler);
-    const fileUrl = url.pathToFileURL(filename);
-    const module = await importModule(fileUrl);
-    handler = module.default;
-  }
-
-  const res = handler(context);
+  const handler = handlerMap[options.handler];
+  const res = handler(options);
   if (res instanceof Promise) {
     await res;
   }
 }
 
 runScript().then(() => process.exit(0)).catch((e) => {
-  if (e instanceof Error) {
+  if (e instanceof Error)
     console.error(e.stack);
-  }
-  else {
+  else
     console.error(e);
-  }
   process.exit(1);
 });

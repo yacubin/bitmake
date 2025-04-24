@@ -504,7 +504,8 @@ async function doTargetBuild(ctx: RunScriptContext, environment: any, config: an
   }
 }
 
-export default async (ctx: RunScriptContext) => {
+export default async (options: any) => {
+  const ctx = new RunScriptContext(options);
   const userConfig = await ctx.getUserConfig();
   const buildConfig = makeBuildConfig(ctx, userConfig);
 

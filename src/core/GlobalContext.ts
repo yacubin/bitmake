@@ -252,7 +252,7 @@ export class GlobalContext {
   public async doSubdirectory() {
     while (this[SUBDIR_LIST].length) {
       const scope = this[SUBDIR_LIST].shift();
-  
+
       let scriptFile;
       const fileList = [ ".js", ".mjs" ].map(i => "MakeScript" + i);
       for (const filename of fileList) {
@@ -262,26 +262,26 @@ export class GlobalContext {
           break;
         }
       }
-  
+
       if (!scriptFile)
         throw new Error("There are no files from the list " + fileList.join());
-  
+
       scope.SCRIPT_FILE = scriptFile;
       scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
-  
+
       this.addSystemVariables(scope);
 
-      const module = await importModule(scope.SCRIPT_FILE.toString());
-  
       const cwdSave = process.cwd();
       process.chdir(scope.SOURCE_DIR.toString());
-  
+
       const mk = UserContext.create(scope, this);
+      (globalThis as any).__bitmake = "123";
+      const module = await importModule(scope.SCRIPT_FILE.toString());
       const result = module.default(mk);
       if (result instanceof Promise)
         await result;
       Scope.applyVariables(scope, mk);
-  
+
       process.chdir(cwdSave);
     }
   }

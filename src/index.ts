@@ -7,4 +7,17 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-export * as cxx from "@/cxx";
+import * as cxx from "@/cxx";
+
+import initHandler from "@/InitHandler";
+import buildHandler from "@/BuildHandler";
+
+export default {
+  cxx,
+  print: () => console.log(">>>", (globalThis as any).__bitmake),
+  handlers: {
+    default: buildHandler,
+    init: initHandler,
+    build: buildHandler,
+  },
+};

@@ -15,6 +15,7 @@ import { InterfaceTarget } from "@/core/InterfaceTarget";
 import { InterfaceIncludes } from "@/core/InterfaceIncludes";
 import { InterfaceObjects } from "@/core/InterfaceObjects";
 import { AbsolutePath } from "@/core/Path";
+import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
 import { ScopeHelper } from "@/core/Scope";
 
 const NAME                = Symbol("NAME");
@@ -30,11 +31,10 @@ const SOURCES             = Symbol("SOURCES");
 const LIBRARIES           = Symbol("LIBRARIES");
 const POSITION_INDEPENDENT_CODE = Symbol("POSITION_INDEPENDENT_CODE");
 
-const reservedTagetNames = [ "all", "install" ];
 function ensureTargetName(name: string): string {
   if (typeof name !== "string")
     throw new Error(`Target "${name}" is not string type`);
-  if (reservedTagetNames.includes(name))
+  if ([ ALL_TARGET, INSTALL_TARGET ].includes(name))
     throw new Error(`Target "${name}" is reserved name`);
   return name;
 }

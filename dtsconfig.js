@@ -12,6 +12,7 @@ module.exports = {
       output: {
         inlineDeclareGlobals: false,
         sortNodes: true,
+        noBanner: true,
         umdModuleName: pkg.name,
       }
     },

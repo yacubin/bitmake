@@ -7,19 +7,21 @@
  * under the MIT License. See LICENSE file for details.
  */
 
+import { AbsolutePath } from "@/core/Path";
+
 const NAME = Symbol("NAME");
 const PATH = Symbol("PATH");
 
 export class IncludeDirectory {
-  private [NAME]: any;
-  private [PATH]: any;
+  private [NAME]: string;
+  private [PATH]: AbsolutePath;
 
-  private constructor(dirname: any, baseDir: any) {
+  private constructor(dirname: any, baseDir: AbsolutePath) {
     this[NAME] = dirname.toString();
     this[PATH] = baseDir.resolve(dirname);
   }
 
-  public static create(dirname: any, baseDir: any) {
+  public static create(dirname: any, baseDir: AbsolutePath) {
     return Object.seal(new IncludeDirectory(dirname, baseDir));
   }
 

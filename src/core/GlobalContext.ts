@@ -9,6 +9,7 @@
 
 import fs from "node:fs";
 
+import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
 import { AbsolutePath } from "@/core/Path";
 import { fileExists, fileExistsSync } from "@/utils/FileSystem";
 import { TargetCollection } from "@/core//TargetCollection";
@@ -22,10 +23,14 @@ import { SourceFile } from "@/core/SourceFile";
 import { UserContext } from "@/core/UserContext";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable } from "@/core/Target";
 import { ScopeHelper } from "@/core/Scope";
+import { SystemScope } from "@/core/SystemScope";
 import { importModule } from "@/utils/Module";
+import { createLogger } from "@/logger";
 
 import configure_file from "@/core/BuildinScripts/configure_file";
 import install_script from "@/core/BuildinScripts/install_script";
+
+const logger = createLogger(import.meta.url);
 
 const requireImpl = eval("require");
 
@@ -81,7 +86,7 @@ export class GlobalContext {
   private [INSTALL_LIST]: any;
   private [SCRIPT_VARIABLES_MAP]: any;
   private [SUBDIR_ALIAS]: SubdirectoryAlias;
-  private [SUBDIR_LIST]: any[];
+  private [SUBDIR_LIST]: SystemScope[];
   private [BUILTIN_SCRIPTS]: BuildinScripts;
 
   private constructor() {
@@ -221,12 +226,14 @@ export class GlobalContext {
   public async doSubdirectory() {
     while (this[SUBDIR_LIST].length) {
       const scope = this[SUBDIR_LIST].shift();
+      if (!scope)
+        continue;
 
-      let scriptFile;
+      let scriptFile: AbsolutePath | undefined;
       const fileList = [ ".js", ".mjs" ].map(i => "MakeScript" + i);
       for (const filename of fileList) {
-        const iter = scope.SOURCE_DIR.join(filename).toString();
-        if (await fileExists(iter)) {
+        const iter = scope.SOURCE_DIR.join(filename);
+        if (await fileExists(iter.toString())) {
           scriptFile = iter;
           break;
         }
@@ -342,7 +349,7 @@ export class GlobalContext {
           goalList.addExec(target.FILE.toString(), depends, scope.LINKER, args, cwd, msg);
         }
         else {
-          console.log(`No objects for "${target.NAME}"`);
+          logger.info(`No objects for "${target.NAME}"`);
         }
       }
   
@@ -355,7 +362,7 @@ export class GlobalContext {
           goalList.addExec(target.FILE.toString(), depends, scope.AR, args, cwd, msg);
         }
         else {
-          console.log(`No objects for "${target.NAME}"`);
+          logger.info(`No objects for "${target.NAME}"`);
         }
       }
   
@@ -379,7 +386,7 @@ export class GlobalContext {
           goalList.addExec(target.FILE.toString(), depends.concat(libs), scope.CXX_COMPILER, args, cwd, msg);
         }
         else {
-          console.log(`No objects for "${target.NAME}"`);
+          logger.info(`No objects for "${target.NAME}"`);
         }
       }
   
@@ -411,10 +418,10 @@ export class GlobalContext {
     }
   
     if (install_files.length) {
-      goalList.addTarget("install", install_files, "");
+      goalList.addTarget(INSTALL_TARGET, install_files, "");
     }
   
-    goalList.addTarget("all", Object.keys(this[TARGETS].ENTRIES), "");
+    goalList.addTarget(ALL_TARGET, Object.keys(this[TARGETS].ENTRIES), "");
   
     return goalList;
   }

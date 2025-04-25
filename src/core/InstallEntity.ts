@@ -9,6 +9,7 @@
 
 import { InterfaceTarget } from "@/core/InterfaceTarget";
 import { AbsolutePath } from "@/core/Path";
+import { SystemScope } from "@/core/SystemScope";
 
 const VALUE       = Symbol("VALUE");
 const DESTINATION = Symbol("DESTINATION");
@@ -19,7 +20,7 @@ export class InstallEntity {
   private [DESTINATION]: AbsolutePath;
   private [BASE_DIR]: AbsolutePath | null;
 
-  private constructor(scope: any, value: string | AbsolutePath | InterfaceTarget, params: string | any) {
+  private constructor(scope: SystemScope, value: string | AbsolutePath | InterfaceTarget, params: string | any) {
     let destination: string|AbsolutePath|undefined;
     let baseDir;
     if (typeof params === "string")

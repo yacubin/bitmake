@@ -10,3 +10,5 @@
 export const USER_CONFIG = "bitmake.config.mjs";
 export const REQUEST_ATTEMPTS = 30;
 export const BUILD_SETTINGS_FILE = "BuildSettings.json";
+export const ALL_TARGET = "all";
+export const INSTALL_TARGET = "install";

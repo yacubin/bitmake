@@ -16,7 +16,7 @@
     "dist"
   ],
   "scripts": {
-    "build:types": "dts-bundle-generator --config dts-config.js",
+    "build:types": "dts-bundle-generator --config dtsconfig.js",
     "build:debug": "webpack --config webpack.config.mjs --mode development",
     "build:release": "webpack --config webpack.config.mjs --mode production"
   },

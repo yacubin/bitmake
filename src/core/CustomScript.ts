@@ -10,6 +10,7 @@
 import { ensureString } from "@/utils/StrictType";
 import { AbsolutePath } from "@/core/Path";
 import { ScopeHelper } from "@/core/Scope";
+import { SystemScope } from "@/core/SystemScope";
 
 const TARGET_SCOPE = Symbol("TARGET_SCOPE");
 const NAME         = Symbol("NAME");
@@ -20,7 +21,7 @@ const PARAMS       = Symbol("PARAMS");
 const PROPERTIES   = Symbol("PROPERTIES");
 
 export class CustomScript {
-  private [TARGET_SCOPE]: any;
+  private [TARGET_SCOPE]: SystemScope;
   private [NAME]: string;
   private [SCRIPT]: AbsolutePath | Function;
   private [INPUT]: AbsolutePath | null;
@@ -28,7 +29,7 @@ export class CustomScript {
   private [PARAMS]: object;
   private [PROPERTIES]: any;
 
-  private constructor(scope: any, name: string, script: AbsolutePath | Function, output: AbsolutePath, params: any) {
+  private constructor(scope: SystemScope, name: string, script: AbsolutePath | Function, output: AbsolutePath, params: any) {
     this[TARGET_SCOPE] = ScopeHelper.clone({}, scope);
     this[NAME] = ensureString(name);
     this[INPUT] = params.input || null;
@@ -38,7 +39,7 @@ export class CustomScript {
     this[PROPERTIES] = {};
   }
 
-  public static create(scope: any, name: string, script: AbsolutePath | Function, output: AbsolutePath, params: any): CustomScript {
+  public static create(scope: SystemScope, name: string, script: AbsolutePath | Function, output: AbsolutePath, params: any): CustomScript {
     return Object.seal(new CustomScript(scope, name, script, output, params));
   }
 
@@ -55,7 +56,7 @@ export class CustomScript {
     return this[NAME];
   }
 
-  public get TARGET_SCOPE(): any {
+  public get TARGET_SCOPE(): SystemScope {
     return this[TARGET_SCOPE];
   }
 

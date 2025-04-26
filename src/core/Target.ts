@@ -17,6 +17,7 @@ import { InterfaceObjects } from "@/core/InterfaceObjects";
 import { AbsolutePath } from "@/core/Path";
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
 import { ScopeHelper } from "@/core/Scope";
+import { SystemScope } from "@/core/SystemScope";
 
 const NAME                = Symbol("NAME");
 const TARGET_SCOPE        = Symbol("TARGET_SCOPE");
@@ -39,9 +40,14 @@ function ensureTargetName(name: string): string {
   return name;
 }
 
+interface IncludeEntry {
+  VALUE: InterfaceIncludes | IncludeDirectory | string;
+  PUBLIC_ONLY?: boolean;
+};
+
 export class BaseTarget {
   private [NAME]: string;
-  private [TARGET_SCOPE]: any;
+  private [TARGET_SCOPE]: SystemScope;
   private [OUTPUT_NAME]: string;
   private [PREFIX]: string;
   private [SUFFIX]: string
@@ -49,11 +55,11 @@ export class BaseTarget {
   private [LINK_OPTIONS]: any[];
   private [SOURCES]: any[];
   private [LIBRARIES]: any[];
-  private [INCLUDES]: any[];
+  private [INCLUDES]: IncludeEntry[];
   private [DEFINES]: any[];
   private [POSITION_INDEPENDENT_CODE]: boolean;
 
-  protected constructor(scope: any, name: string) {
+  protected constructor(scope: SystemScope, name: string) {
     this[NAME] = ensureTargetName(name);
     this[TARGET_SCOPE] = ScopeHelper.clone({}, scope);
     this[OUTPUT_NAME] = ensureString(name);
@@ -63,7 +69,7 @@ export class BaseTarget {
     this[LINK_OPTIONS] = [];
     this[SOURCES] = [];
     this[LIBRARIES] = [];
-    this[INCLUDES] = scope.INCLUDES.map((VALUE: any) => { return {VALUE} });
+    this[INCLUDES] = scope.INCLUDES.map((VALUE: any) => ({ VALUE }));
     this[DEFINES] = [];
     this[POSITION_INDEPENDENT_CODE] = scope.POSITION_INDEPENDENT_CODE;
   }
@@ -108,7 +114,7 @@ export class BaseTarget {
     return this[LINK_OPTIONS];
   }
 
-  public get INCLUDES(): string[] {
+  public get INCLUDES() {
     return this[INCLUDES];
   }
 
@@ -245,7 +251,7 @@ export class BaseTarget {
 };
 
 export class BaseLibrary extends BaseTarget {
-  protected constructor(scope: any, name: string) {
+  protected constructor(scope: SystemScope, name: string) {
     super(scope, name);
   }
 
@@ -287,24 +293,24 @@ export class BaseLibrary extends BaseTarget {
 };
 
 export class ObjectLibrary extends BaseLibrary {
-  private constructor(scope: any, name: string) {
+  private constructor(scope: SystemScope, name: string) {
     super(scope, name);
     this.PREFIX = scope.OBJECT_LIBRARY_PREFIX;
     this.SUFFIX = scope.OBJECT_LIBRARY_SUFFIX;
-    this.LINK_OPTIONS.push(...scope.OBJECT_LINKER_FLAGS.map((VALUE: any) => { return { VALUE } }));
+    this.LINK_OPTIONS.push(...(scope as any).OBJECT_LINKER_FLAGS.map((VALUE: any) => ({ VALUE })));
   }
 
-  public static create(scope: any, name: string) {
+  public static create(scope: SystemScope, name: string) {
     return Object.seal(new ObjectLibrary(scope, name));
   }
 };
 
 export class StaticLibrary extends BaseLibrary {
-  private constructor(scope: any, name: string) {
+  private constructor(scope: SystemScope, name: string) {
     super(scope, name);
     this.PREFIX = scope.STATIC_LIBRARY_PREFIX;
     this.SUFFIX = scope.STATIC_LIBRARY_SUFFIX;
-    this.LINK_OPTIONS.push(...scope.STATIC_LINKER_FLAGS.map((VALUE: any) => { return { VALUE } }));
+    this.LINK_OPTIONS.push(...(scope as any).STATIC_LINKER_FLAGS.map((VALUE: any) => ({ VALUE })));
   }
 
   public static create(scope: any, name: string) {
@@ -313,11 +319,11 @@ export class StaticLibrary extends BaseLibrary {
 };
 
 export class SharedLibrary extends BaseLibrary {
-  private constructor(scope: any, name: string) {
+  private constructor(scope: SystemScope, name: string) {
     super(scope, name);
     this.PREFIX = scope.SHARED_LIBRARY_PREFIX;
     this.SUFFIX = scope.SHARED_LIBRARY_SUFFIX;
-    this.LINK_OPTIONS.push(...scope.SHARED_LINKER_FLAGS.map((VALUE: any) => { return { VALUE } }));
+    this.LINK_OPTIONS.push(...(scope as any).SHARED_LINKER_FLAGS.map((VALUE: any) => ({ VALUE })));
   }
 
   public static create(scope: any, name: string) {
@@ -326,13 +332,13 @@ export class SharedLibrary extends BaseLibrary {
 }
 
 export class Executable extends BaseTarget {
-  private constructor(scope: any, name: string) {
+  private constructor(scope: SystemScope, name: string) {
     super(scope, name);
     this.SUFFIX = scope.EXECUTABLE_SUFFIX;
-    this.LINK_OPTIONS.push(...scope.EXE_LINKER_FLAGS.map((VALUE: any) => { return { VALUE } }));
+    this.LINK_OPTIONS.push(...(scope as any).EXE_LINKER_FLAGS.map((VALUE: any) => ({ VALUE })));
   }
 
-  public static create(scope: any, name: string) {
+  public static create(scope: SystemScope, name: string) {
     return Object.seal(new Executable(scope, name));
   }
 };

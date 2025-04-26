@@ -8,13 +8,14 @@
  */
 
 import { SourceFile } from "@/core/SourceFile";
+import { SystemScope } from "@/core/SystemScope";
 
 const SOURCES = Symbol("SOURCES");
 
 export class SourceFileList {
   private [SOURCES]: SourceFile[];
 
-  private constructor(scope: any, sources: SourceFile[]) {
+  private constructor(scope: SystemScope, sources: SourceFile[]) {
     this[SOURCES] = [];
     for (const iter of sources) {
       if (!(iter instanceof SourceFile))
@@ -23,7 +24,7 @@ export class SourceFileList {
     }
   }
 
-  public static create(scope: any, sources: SourceFile[]) {
+  public static create(scope: SystemScope, sources: SourceFile[]) {
     return Object.seal(new SourceFileList(scope, sources));
   }
 

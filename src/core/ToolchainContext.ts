@@ -10,20 +10,21 @@
 import { findProgram } from "@/core/FindProgram";
 import { GlobalContext } from "@/core/GlobalContext";
 import { ScopeHelper } from "@/core/Scope";
+import { SystemScope } from "@/core/SystemScope";
 
 const GLOBAL = Symbol("GLOBAL");
 const SCOPE = Symbol("SCOPE");
 
 export class ToolchainContext {
-  private [SCOPE]: any;
+  private [SCOPE]: SystemScope;
   private [GLOBAL]: GlobalContext;
 
-  private constructor(scope: any, global: GlobalContext) {
+  private constructor(scope: SystemScope, global: GlobalContext) {
     this[SCOPE] = scope;
     this[GLOBAL] = global;
   }
 
-  public static create(scope: any, global: GlobalContext) {
+  public static create(scope: SystemScope, global: GlobalContext) {
     const proto = ToolchainContext.prototype;
     const newScope = Object.create(proto);
     ScopeHelper.clone(newScope, scope);

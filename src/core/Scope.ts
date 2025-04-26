@@ -8,7 +8,7 @@
  */
 
 import { ensureBoolean, ensureString, ensureNumber, ensureArray } from "@/utils/StrictType";
-import { AbsolutePath } from "@/core/Path";
+import { DirPath, FilePath } from "@/core/Path";
 
 const DEFINE_MAP = Symbol("DEFINE_MAP");
 
@@ -64,9 +64,9 @@ function defineVariableImpl(scope: any, group: string, name: string, descriptor:
   else if (type === "array")
     ensureValue = ensureArray;
   else if (type === "DirPath")
-    ensureValue = AbsolutePath.createDir;
+    ensureValue = DirPath.create;
   else if (type === "FilePath")
-    ensureValue = AbsolutePath.createFile;
+    ensureValue = FilePath.create;
   else
     throw new Error(`Variable "${name}" has wrong ${type} type`);
 

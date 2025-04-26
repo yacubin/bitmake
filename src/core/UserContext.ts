@@ -19,6 +19,7 @@ import { IncludeDirectory } from "@/core/IncludeDirectory";
 import { CustomScript } from "@/core/CustomScript";
 import { GlobalContext } from "@/core/GlobalContext";
 import { ScopeHelper } from "@/core/Scope";
+import { SystemScope } from "@/core/SystemScope";
 import { findProgram } from "@/core/FindProgram";
 import { createLogger } from "@/logger";
 
@@ -61,15 +62,15 @@ const GLOBAL = Symbol("GLOBAL");
 const SCOPE = Symbol("SCOPE");
 
 export class UserContext {
-  private [SCOPE]: any;
+  private [SCOPE]: SystemScope;
   private [GLOBAL]: GlobalContext;
 
-  private constructor(scope: any, global: GlobalContext) {
+  private constructor(scope: SystemScope, global: GlobalContext) {
     this[SCOPE] = scope;
     this[GLOBAL] = global;
   }
 
-  public static create(scope: any, global: GlobalContext): UserContext {
+  public static create(scope: SystemScope, global: GlobalContext): UserContext {
     const proto = UserContext.prototype;
     const newScope = Object.create(proto);
     ScopeHelper.clone(newScope, scope);

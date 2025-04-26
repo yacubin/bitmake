@@ -12,17 +12,12 @@ import url from "node:url";
 
 const PATH = Symbol("PATH");
 
-enum PathType {
-  DirType,
-  FileType,
-};
-
-const _pathMap = new Map<string, PathType>();
+const _paths = new Map<string, DirPath | FilePath>();
 
 export class AbsolutePath {
   private [PATH]: string;
 
-  private constructor(filepath: string) {
+  protected constructor(filepath: string) {
     if (!path.isAbsolute(filepath))
       throw new Error(`Not supported relative path of "${filepath}"`);
     this[PATH] = filepath;
@@ -34,7 +29,7 @@ export class AbsolutePath {
   }
 
   public dirname() {
-    return AbsolutePath.create(path.posix.dirname(this[PATH]));
+    return DirPath.create(path.posix.dirname(this[PATH]));
   }
 
   public basename() {
@@ -42,7 +37,7 @@ export class AbsolutePath {
   }
 
   public relative(to: AbsolutePath | string) {
-    return path.posix.relative(this[PATH],(to instanceof AbsolutePath) ? to[PATH] : to);
+    return path.posix.relative(this[PATH], (to instanceof AbsolutePath) ? to[PATH] : to);
   }
 
   public resolve(...paths: Array<AbsolutePath | string>) {
@@ -79,94 +74,25 @@ export class AbsolutePath {
     return path.isAbsolute(filepath);
   }
 
-  public static create(filepath: AbsolutePath | string) {
-    if (filepath instanceof AbsolutePath)
-      return filepath;
-    if (typeof filepath !== "string")
-      throw new Error(`Not correct type of ${filepath}`);
-    return new AbsolutePath(filepath);
-  }
-
   public static ensureInstance(value: any): AbsolutePath {
     if (value instanceof AbsolutePath)
       return value;
     throw new Error(`The '${value}' is not a AbsolutePath`);
   }
 
-  public static createDir(filepath: AbsolutePath | string) {
-    const key = filepath.toString();
-    const type = _pathMap.get(key);
-    if (type === undefined)
-      _pathMap.set(key, PathType.DirType);
-    else if (type !== PathType.DirType)
-      throw new Error(`The '${filepath}' is not a DirPath`);
-    return AbsolutePath.create(filepath);
-  }
+  public static create(path: AbsolutePath | string): AbsolutePath | DirPath | FilePath {
+    const result = _paths.get(path.toString());
+    if (result)
+      return result;
 
-  public static createFile(filepath: AbsolutePath | string) {
-    const key = filepath.toString();
-    const type = _pathMap.get(key);
-    if (type === undefined)
-      _pathMap.set(key, PathType.FileType);
-    else if (type !== PathType.FileType)
-      throw new Error(`The '${filepath}' is not a FilePath`);
-    return AbsolutePath.create(filepath);
+    if (path instanceof AbsolutePath)
+      return path;
+
+    return Object.seal(new AbsolutePath(path));
   }
 };
 
-class BasePath {
-  private [PATH]: string;
-
-  protected constructor(pathStr: string) {
-    if (!path.isAbsolute(pathStr))
-      throw new Error(`Not supported relative path of "${pathStr}"`);
-    this[PATH] = pathStr;
-  }
-
-  public match(regexp: RegExp) {
-    return this[PATH].match(regexp);
-  }
-
-  public join(...paths: Array<any>) {
-    return path.posix.join(this[PATH], ...paths.map(i => i.toString()));
-  }
-
-  public dirname() {
-    return path.posix.dirname(this[PATH]);
-  }
-
-  public basename() {
-    return path.basename(this[PATH]);
-  }
-
-  public relative(to: any) {
-    return path.posix.relative(this[PATH], to.toString());
-  }
-
-  public resolve(...paths: Array<any>) {
-    return path.posix.resolve(this[PATH], ...paths.map(i => i.toString()));
-  }
-  
-  public toURL() {
-    return url.pathToFileURL(this[PATH]);
-  }
-  
-  public get PATH(): string {
-    return this[PATH];
-  }
-
-  public toString() {
-    return this[PATH];
-  }
-
-  public toJSON() {
-    return this[PATH];
-  }
-};
-
-const _paths = new Map<string, BasePath>();
-
-export class FilePath extends BasePath {
+export class FilePath extends AbsolutePath {
   private constructor(pathStr: string) {
     super(pathStr);
   }
@@ -180,6 +106,9 @@ export class FilePath extends BasePath {
   public static create(path: any): FilePath {
     if (path instanceof FilePath)
       return path;
+
+    if (path instanceof AbsolutePath)
+      path = path.toString();
 
     if (typeof path !== "string")
       throw new Error(`The '${path}' is not a string`);
@@ -195,7 +124,7 @@ export class FilePath extends BasePath {
   }
 }
 
-export class DirPath extends BasePath {
+export class DirPath extends AbsolutePath {
   private constructor(pathStr: string) {
     super(pathStr);
   }
@@ -206,9 +135,12 @@ export class DirPath extends BasePath {
     throw new Error(`The '${value}' is not a DirPath`);
   }
 
-  public static create(path: any) {
+  public static create(path: any): DirPath {
     if (path instanceof DirPath)
       return path;
+
+    if (path instanceof AbsolutePath)
+      path = path.toString();
 
     if (typeof path !== "string")
       throw new Error(`The '${path}' is not a string`);

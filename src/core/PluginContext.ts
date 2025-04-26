@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { AbsolutePath } from "@/core/Path";
+import { DirPath } from "@/core/Path";
 import { GlobalContext } from "@/core/GlobalContext";
 import { ScopeHelper } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
@@ -34,8 +34,8 @@ export class PluginContext {
     return self;
   }
 
-  public addSubdirectoryAlias(src: AbsolutePath | string, dest: AbsolutePath | string) {
-    this[GLOBAL].addSubdirectoryAlias(AbsolutePath.createDir(src), AbsolutePath.createDir(dest));
+  public addSubdirectoryAlias(src: any, dest: any) {
+    this[GLOBAL].addSubdirectoryAlias(DirPath.create(src), DirPath.create(dest));
   }
 
   public _scope() {

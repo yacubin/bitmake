@@ -18,6 +18,7 @@ import { AbsolutePath } from "@/core/Path";
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
 import { ScopeHelper } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
+import { ValueType } from "@/cmake/Constants";
 
 const NAME                = Symbol("NAME");
 const TARGET_SCOPE        = Symbol("TARGET_SCOPE");
@@ -253,6 +254,10 @@ export class BaseTarget {
 export class BaseLibrary extends BaseTarget {
   protected constructor(scope: SystemScope, name: string) {
     super(scope, name);
+  }
+
+  public setPositionIndependentCode(value: boolean) {
+    this[POSITION_INDEPENDENT_CODE] = value;
   }
 
   public addPublicIncludes(...includes: Array<InterfaceIncludes | AbsolutePath | string>) {

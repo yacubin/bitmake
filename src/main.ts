@@ -9,41 +9,10 @@
 
 /// <reference path="global.d.ts" />
 
-import url from "node:url";
 import path from "node:path";
 
+import { Args }  from "@/utils/Args";
 import { importModule }  from "@/utils/Module";
-
-const __filename = url.fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-function toOptionKey(name: string) {
-  if (!name.startsWith("--"))
-    return null;
-
-  name = name.substring(2).toLowerCase();
-  if (!name.length)
-    return null;
-
-  let key = name.charAt(0);
-  if (!key.match(/[a-z]/))
-    return null;
-
-  let hyphen = 0;
-  for (let i = 1; i < name.length; i++) {
-    const ch = name.charAt(i);
-    if (ch.match(/[a-z0-9]/)) {
-      key += (hyphen ? ch.toUpperCase() : ch)
-      hyphen = 0;
-    }
-    else if (ch == "-") {
-      if (++hyphen > 1)
-        return null;
-    }
-  }
-
-  return hyphen ? null : key;
-}
 
 async function runScript() {
   const handlerMap = (await importModule("./bitmake.js") as any).default.handlers;
@@ -51,8 +20,6 @@ async function runScript() {
     handler: "default",
     nodeExecutable: null,
     currentScript: null,
-    scriptDir: __dirname,
-    rootDir: path.dirname(__dirname),
     workDir: process.cwd(),
     env: {},
   };
@@ -77,31 +44,7 @@ async function runScript() {
     throw Error(`The ${scriptName} does not support the ${options.handler} command`);
   }
 
-  let lastKey = null;
-  while (argsIndex < process.argv.length) {
-    const iter = process.argv[argsIndex++];
-    if (iter.startsWith("--")) {
-      const key = toOptionKey(iter);
-      if (!key)
-        throw Error(`Option ${iter} is not supported`);
-      if (options.env.hasOwnProperty(key))
-        throw Error(`Cannot specify the same option '${iter}' more than once`);
-      lastKey = key;
-      options.env[key] = true;
-    }
-    else if (lastKey) {
-      const value = options.env[lastKey];
-      if (typeof value === 'boolean')
-        options.env[lastKey] = iter;
-      else if (typeof value === 'string')
-        options.env[lastKey] = [ value, iter ];
-      else
-        value.push(iter);
-    }
-    else {
-      throw Error(`Need to specify the option name before '${iter}' parameter`);
-    }
-  }
+  options.env = Args.toObject(process.argv.slice(argsIndex));
 
   const handler = handlerMap[options.handler];
   const res = handler(options);

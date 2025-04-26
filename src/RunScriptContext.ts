@@ -11,30 +11,34 @@ import path from "node:path";
 import url from "node:url";
 
 import { fileExists } from "@/utils/FileSystem";
-import { USER_CONFIG, REQUEST_ATTEMPTS } from "@/Constants";
+import { USER_CONFIG } from "@/Constants";
 import { DEBUG_BUILD_TYPE, RELEASE_BUILD_TYPE } from "@/core/Types";
 import { importModule } from "@/utils/Module";
+
+export interface RunScriptOptions {
+  handler: string;
+  nodeExecutable: string;
+  currentScript: string;
+  workDir: string;
+  env: {
+    buildType?: string;
+    config?: string;
+    preset?: string;
+  };
+};
 
 export class RunScriptContext {
   _nodeExecutable;
   _currentScript;
-  _scriptDir;
-  _rootDir;
   _workDir;
-  _env;
-  _userConfig;
+  readonly _env;
+  _userConfig?: object;
 
-  constructor(options: any) {
+  constructor(options: RunScriptOptions) {
     this._nodeExecutable = options.nodeExecutable;
     this._currentScript = options.currentScript;
-    this._scriptDir = options.scriptDir;
-    this._rootDir = options.rootDir;
     this._workDir = options.workDir;
-    this._env = Object.seal(Object.freeze(options.env));
-
-    if (options.userConfig) {
-      this._userConfig = options.userConfig;
-    }
+    this._env = options.env;
   }
 
   get nodeExecutable() {
@@ -45,24 +49,12 @@ export class RunScriptContext {
     return this._currentScript;
   }
 
-  get scriptDir() {
-    return this._scriptDir;
-  }
-
-  get rootDir() {
-    return this._rootDir;
-  }
-
   get workDir() {
     return this._workDir;
   }
 
   get env() {
     return this._env;
-  }
-
-  getPresetPath(preset: string) {
-    return path.resolve(this._scriptDir, `preset/${preset}.mjs`);
   }
 
   get userConfigPath() {
@@ -111,9 +103,5 @@ export class RunScriptContext {
       this._userConfig = userConfig;
     }
     return this._userConfig;
-  }
-
-  get requestAttempts() {
-    return REQUEST_ATTEMPTS;
   }
 };

@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { findProgram } from "@/core/FindProgram";
+import { findProgramSync } from "@/core/FindProgram";
 import { GlobalContext } from "@/core/GlobalContext";
 import { ScopeHelper } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
@@ -40,6 +40,6 @@ export class ToolchainContext {
 };
 
 Object.defineProperty(ToolchainContext.prototype, "findProgram", {
-  value: findProgram,
+  value: findProgramSync,
   enumerable: false,
 });

@@ -10,18 +10,34 @@
 import os from "node:os";
 import path from "node:path";
 
-import { fileExistsSync } from "@/utils/FileSystem";
+import { fileExists, fileExistsSync } from "@/utils/FileSystem";
 
-export function findProgram(name: string): string | undefined {
+function possibleProgramList(name: string) {
   if (os.platform() === "win32" && !name.endsWith(".exe"))
     name += ".exe";
 
+  const result = [];
   const paths = (process.env.PATH || "").split(path.posix.delimiter);
   for (const iter of paths) {
     const filename = path.posix.resolve(iter, name);
-    if (fileExistsSync(filename))
-      return filename;
+    result.push(filename);
   }
 
+  return result;
+}
+
+export async function findProgram(name: string): Promise<string | undefined> {
+  for (const iter of possibleProgramList(name)) {
+    if (await fileExists(iter))
+      return iter;
+  }
+  return undefined;
+}
+
+export function findProgramSync(name: string): string | undefined {
+  for (const iter of possibleProgramList(name)) {
+    if (fileExistsSync(iter))
+      return iter;
+  }
   return undefined;
 }

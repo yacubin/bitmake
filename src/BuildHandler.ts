@@ -17,7 +17,7 @@ import { SettingsStorage } from "@/utils/SettingsStorage";
 import { spawnAsync } from "@/utils/ChildProcess";
 import { makeScriptAction } from "@/MakeScriptAction";
 import { arrayWrapper, assignObject } from "@/utils/Primitives";
-import { BUILD_SETTINGS_FILE } from "@/Constants";
+import { BUILD_SETTINGS_FILE, REQUEST_ATTEMPTS } from "@/Constants";
 import { requireResolve } from "@/utils/Module";
 import { requestGet } from "@/utils/HttpRequest";
 import { RunScriptContext } from "@/RunScriptContext";
@@ -183,7 +183,7 @@ function resolveConfigStrings(config: any) {
 function makeBuildConfig(ctx: any, config: any) {
   for (const key of [ "sourceRoot", "wasmuxDir" ]) {
     if (config[key]) {
-      throw `The ${key} variable cannot be changed to "${config.sourceRoot}"`;
+      throw new Error(`The ${key} variable cannot be changed to "${config.sourceRoot}"`);
     }
   }
 
@@ -208,7 +208,7 @@ function makeBuildConfig(ctx: any, config: any) {
           entry.sourceDir = path.posix.join(entry.extractDir, entry.sourceDir);
       }
       else if (!entry.sourceDir) {
-        throw `Missing sourceDir for ${key} action"`;
+        throw new Error(`Missing sourceDir for ${key} action"`);
       }
       if (entry.binaryDir === null)
         entry.binaryDir = entry.sourceDir;
@@ -241,11 +241,11 @@ async function tryRequestGet(sourceUrl: string, arcFile: string, attempts: numbe
 async function doExtractArchive(ctx: RunScriptContext, environment: any, config: any, settings: any)
 {
   if (!config.sourceUrl)
-    throw "Unknown sourceUrl";
+    throw new Error("Unknown sourceUrl");
   if (!config.archiveDir)
-    throw "Unknown archiveDir";
+    throw new Error("Unknown archiveDir");
   if (!config.extractDir)
-    throw "Unknown extractDir";
+    throw new Error("Unknown extractDir");
 
   if (!await directoryExists(config.archiveDir)) {
     console.log(`mkdir -p ${config.archiveDir}`);
@@ -265,7 +265,7 @@ async function doExtractArchive(ctx: RunScriptContext, environment: any, config:
     arcFile = downloadUrls[config.sourceUrl];
   else {
     arcFile = path.join(config.archiveDir, arcName);
-    await tryRequestGet(config.sourceUrl, arcFile, ctx.requestAttempts);
+    await tryRequestGet(config.sourceUrl, arcFile, REQUEST_ATTEMPTS);
     downloadUrls[config.sourceUrl] = arcFile;
     await settings.set("downloadUrls", downloadUrls);
   }
@@ -291,7 +291,7 @@ async function doExtractArchive(ctx: RunScriptContext, environment: any, config:
       if (!await directoryExists(extractDir)) {
         console.log(`rm -fr ${extractDir}`);
         await fs.promises.rm(extractDir, { recursive: true });
-        throw `Support only directory for archive`;
+        throw new Error(`Support only directory for archive`);
       }
     }
   
@@ -386,7 +386,7 @@ const actionHandlers: any = {
         },
       });
       if (res1.status !== 0) {
-        throw `configure returned status ${res1.status}`;
+        throw new Error(`configure returned status ${res1.status}`);
       }
       step = "install";
       await settings.set("configure", step);
@@ -404,7 +404,7 @@ const actionHandlers: any = {
         },
       });
       if (res2.status !== 0) {
-        throw `make returned status ${res2.status}`;
+        throw new Error(`make returned status ${res2.status}`);
       }
       step = "done";
       await settings.set("configure", step);
@@ -424,12 +424,12 @@ const actionHandlers: any = {
       },
     });
     if (res2.status !== 0) {
-      throw `make returned status ${res2.status}`;
+      throw new Error(`make returned status ${res2.status}`);
     }
   },
   process: async (config: any, environment: any, settings: any) => {
     if (!config.command)
-      throw "Required command field for process action";
+      throw new Error("Required command field for process action");
     const sourceDir = getPathString(config.sourceDir);
     const binaryDir = getPathString(config.binaryDir);
     let { command } = config;
@@ -444,7 +444,7 @@ const actionHandlers: any = {
       },
     });
     if (res.status !== 0) {
-      throw `process returned status ${res.status}`;
+      throw new Error(`process returned status ${res.status}`);
     }
   },
   bitmake: makeScriptAction,

@@ -18,6 +18,7 @@ import { ToolchainContext } from "@/core/ToolchainContext";
 import { getPathString }  from "@/utils/FileSystem";
 import { DirPath, FilePath } from "@/core/Path";
 import { importModule }  from "@/utils/Module";
+import { determineCompiler }  from "@/core/DetermineCompiler";
 import SystemVariables from "@/core/SystemVariables";
 import { SystemScope } from "@/core/SystemScope";
 import { INSTALL_TARGET } from "@/Constants";
@@ -67,6 +68,9 @@ export async function makeScriptAction(config: any, environment: any, settings: 
       await result;
     scope = mk._scope();
     ScopeHelper.applyVariables(scope, mk);
+  }
+  else {
+    await determineCompiler(scope);
   }
 
   for (const plugin of (scope.MAKE_PLUGIN_LIST || [])) {

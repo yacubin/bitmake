@@ -20,7 +20,7 @@ import { CustomScript } from "@/core/CustomScript";
 import { GlobalContext } from "@/core/GlobalContext";
 import { ScopeHelper } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
-import { findProgram } from "@/core/FindProgram";
+import { findProgramSync } from "@/core/FindProgram";
 import { createLogger } from "@/logger";
 
 const logger = createLogger(import.meta.url);
@@ -195,6 +195,6 @@ export class UserContext {
 };
 
 Object.defineProperty(UserContext.prototype, "findProgram", {
-  value: findProgram,
+  value: findProgramSync,
   enumerable: false,
 });

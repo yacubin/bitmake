@@ -16,9 +16,10 @@ import { ScopeHelper } from "@/core/Scope";
 import { GoalCollection } from "@/core/GoalCollection";
 import { ToolchainContext } from "@/core/ToolchainContext";
 import { getPathString }  from "@/utils/FileSystem";
-import { FilePath } from "@/core/Path";
+import { DirPath, FilePath } from "@/core/Path";
 import { importModule }  from "@/utils/Module";
 import SystemVariables from "@/core/SystemVariables";
+import { SystemScope } from "@/core/SystemScope";
 
 const PACKAGE_JSON = "package.json";
 const MAKE_CACHE = "MakeCache.json";
@@ -26,14 +27,14 @@ const MAKE_CACHE = "MakeCache.json";
 export async function makeScriptAction(config: any, environment: any, settings: any) {
   process.env = environment;
 
-  let scope: any = {};
+  let scope = {} as SystemScope;
   ScopeHelper.defineVariables(scope, "system", SystemVariables);
 
   const sourceDir = getPathString(config.sourceDir);
   const binaryDir = getPathString(config.binaryDir);
 
-  scope.PROJECT_SOURCE_DIR = sourceDir;
-  scope.PROJECT_BINARY_DIR = binaryDir;
+  scope.PROJECT_SOURCE_DIR = DirPath.create(sourceDir);
+  scope.PROJECT_BINARY_DIR = DirPath.create(binaryDir);
 
   scope.PACKAGE_FILE = scope.PROJECT_SOURCE_DIR.join(PACKAGE_JSON);
   scope.CACHE_FILE = scope.PROJECT_BINARY_DIR.join(MAKE_CACHE);

@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { AbsolutePath } from "@/core/Path";
+import { DirPath, AbsolutePath } from "@/core/Path";
 import { IncludeDirectory } from "@/core/IncludeDirectory";
 
 export interface SystemScope {
@@ -30,10 +30,10 @@ export interface SystemScope {
   PROJECT_HOMEPAGE_URL: string;
 
   // Absolute path to the top-level source directory of the project
-  PROJECT_SOURCE_DIR: AbsolutePath;
+  PROJECT_SOURCE_DIR: DirPath;
 
   // Absolute path to the top-level build (binary) directory of the project
-  PROJECT_BINARY_DIR: AbsolutePath;
+  PROJECT_BINARY_DIR: DirPath;
 
   // Full path to the current MakeScript file being processed
   SCRIPT_FILE: AbsolutePath;
@@ -175,4 +175,7 @@ export interface SystemScope {
 
   // Defines the size (in bytes) of a void pointer on the target architecture
   SIZEOF_VOID_P: 4 | 8;
+
+  // List of paths to plugins
+  MAKE_PLUGIN_LIST: any[];
 };

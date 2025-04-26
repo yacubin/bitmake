@@ -234,5 +234,9 @@ export default {
     description: "Defines the size (in bytes) of a void pointer on the target architecture",
     type: [ 4, 8 ],
     value: getSizeofVoidp(),
-  }
+  },
+  MAKE_PLUGIN_LIST: {
+    description: "List of paths to plugins",
+    value: [],
+  },
 };

@@ -151,7 +151,7 @@ export class UserContext {
     for (const it of [ value ].flat(1)) {
       const iter = (it instanceof BaseTarget) ? this.target(it.NAME) : it;
       const entity = InstallEntity.create(this, iter, params);
-      this[GLOBAL].INSTALL_LIST.push(entity);
+      this[GLOBAL].addInstallEntry(entity);
     }
   }
 

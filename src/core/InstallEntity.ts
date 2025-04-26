@@ -21,7 +21,7 @@ export class InstallEntity {
   private [BASE_DIR]: DirPath | null;
 
   private constructor(scope: SystemScope, value: string | AbsolutePath | InterfaceTarget, params: string | any) {
-    let destination: string|AbsolutePath|undefined;
+    let destination: string | AbsolutePath | undefined;
     let baseDir;
     if (typeof params === "string")
       destination = params;

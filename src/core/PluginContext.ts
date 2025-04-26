@@ -35,7 +35,9 @@ export class PluginContext {
   }
 
   public addSubdirectoryAlias(src: any, dest: any) {
-    this[GLOBAL].addSubdirectoryAlias(DirPath.create(src), DirPath.create(dest));
+    const srcPath = this[SCOPE].SCRIPT_DIR.resolve(src);
+    const destPath = this[SCOPE].SCRIPT_DIR.resolve(dest);
+    this[GLOBAL].addSubdirectoryAlias(DirPath.create(srcPath), DirPath.create(destPath));
   }
 
   public _scope() {

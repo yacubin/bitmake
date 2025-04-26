@@ -20,6 +20,7 @@ import { DirPath, FilePath } from "@/core/Path";
 import { importModule }  from "@/utils/Module";
 import SystemVariables from "@/core/SystemVariables";
 import { SystemScope } from "@/core/SystemScope";
+import { INSTALL_TARGET } from "@/Constants";
 
 const PACKAGE_JSON = "package.json";
 const MAKE_CACHE = "MakeCache.json";
@@ -69,16 +70,23 @@ export async function makeScriptAction(config: any, environment: any, settings: 
   }
 
   for (const plugin of (scope.MAKE_PLUGIN_LIST || [])) {
-    const filename = FilePath.create(plugin);
-    const module = await importModule(filename.toString());
-    if (!module.pluginEntry)
-      throw new Error(`Plugin ${filename.basename()} not contain pluginEntry function`);
+    const cwdSave = process.cwd();
+    
+    scope.SCRIPT_FILE = FilePath.create(plugin);
+    scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
+
+    process.chdir(scope.SCRIPT_DIR.toString());
+    const module = await importModule(scope.SCRIPT_FILE.toString());
+    if (!module.default)
+      throw new Error(`Plugin ${scope.SCRIPT_FILE.basename()} not contain default function`);
     const mk = PluginContext.create(scope, global);
-    const result = module.pluginEntry(mk);
+    const result = module.default(mk);
     if (result instanceof Promise)
       await result;
     scope = mk._scope();
     ScopeHelper.applyVariables(scope, mk);
+
+    process.chdir(cwdSave);
   }
 
   global.addSubdirectory(scope);
@@ -89,18 +97,18 @@ export async function makeScriptAction(config: any, environment: any, settings: 
   if (scope.GLOBAL_CONTEXT_JSON) {
     const filename = scope.GLOBAL_CONTEXT_JSON.toString();
     const content = JSON.stringify(global, null, 2);
-    fs.mkdirSync(path.dirname(filename), { recursive: true });
-    fs.writeFileSync(filename, content, { encoding: "utf8" });
+    await fs.promises.mkdir(path.dirname(filename), { recursive: true });
+    await fs.promises.writeFile(filename, content, { encoding: "utf8" });
   }
 
   const allGoalList = global.createGoals(scope);
-  const goalList = allGoalList.getTargetList("install");
+  const goalList = allGoalList.getTargetList(INSTALL_TARGET);
 
   if (scope.TARGET_GOALS_JSON) {
     const filename = scope.TARGET_GOALS_JSON.toString();
     const content = JSON.stringify(goalList, null, 2);
-    fs.mkdirSync(path.dirname(filename), { recursive: true });
-    fs.writeFileSync(filename, content, { encoding: "utf8" });
+    await fs.promises.mkdir(path.dirname(filename), { recursive: true });
+    await fs.promises.writeFile(filename, content, { encoding: "utf8" });
   }
 
   await GoalCollection.buildGoals(goalList);

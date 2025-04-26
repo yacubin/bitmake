@@ -10,7 +10,7 @@
 import fs from "node:fs";
 
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
-import { AbsolutePath } from "@/core/Path";
+import { DirPath, AbsolutePath } from "@/core/Path";
 import { fileExists, fileExistsSync } from "@/utils/FileSystem";
 import { TargetCollection } from "@/core//TargetCollection";
 import { ScriptCollection } from "@/core/ScriptCollection";
@@ -26,6 +26,7 @@ import { ScopeHelper } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
 import { importModule } from "@/utils/Module";
 import { createLogger } from "@/logger";
+import { InstallEntity } from "@/core/InstallEntity";
 
 import configure_file from "@/core/BuildinScripts/configure_file";
 import install_script from "@/core/BuildinScripts/install_script";
@@ -50,7 +51,7 @@ type UnknownTargets = {
 };
 
 type SubdirectoryAlias = {
-  [name: string]: AbsolutePath | string;
+  [name: string]: DirPath;
 };
 
 type InterfaceScripts = {
@@ -83,7 +84,7 @@ export class GlobalContext {
   private [CACHE]: CacheVariableDescriptors;
   private [UNKNOWN_TARGETS]: UnknownTargets;
   private [INTERFACE_SCRIPTS]: InterfaceScripts;
-  private [INSTALL_LIST]: any;
+  private [INSTALL_LIST]: InstallEntity[];
   private [SCRIPT_VARIABLES_MAP]: any;
   private [SUBDIR_ALIAS]: SubdirectoryAlias;
   private [SUBDIR_LIST]: SystemScope[];
@@ -129,10 +130,6 @@ export class GlobalContext {
     return this[INTERFACE_SCRIPTS];
   }
 
-  public get INSTALL_LIST() {
-    return this[INSTALL_LIST];
-  }
-
   public get SCRIPT_VARIABLES_MAP() {
     return this[SCRIPT_VARIABLES_MAP];
   }
@@ -161,8 +158,15 @@ export class GlobalContext {
     return resolvedPath || path;
   }
 
-  public addSubdirectoryAlias(src: AbsolutePath | string, dest: AbsolutePath | string) {
-    this[SUBDIR_ALIAS][src.toString()] = dest;
+  public addSubdirectoryAlias(src: DirPath, dest: DirPath) {
+    const srcStr = src.toString();
+    if (this[SUBDIR_ALIAS].hasOwnProperty(srcStr))
+      logger.warn(`Owerride "${srcStr}" subdirectory alias`);
+    this[SUBDIR_ALIAS][srcStr] = dest;
+  }
+
+  public addInstallEntry(entry: InstallEntity) {
+    return this[INSTALL_LIST].push(entry);
   }
 
   public addCacheVariables(variables: CacheVariableDescriptors) {
@@ -240,7 +244,7 @@ export class GlobalContext {
       }
 
       if (!scriptFile)
-        throw new Error("There are no files from the list " + fileList.join());
+        throw new Error(`There are no files ${fileList.join(", ")} in "${scope.SOURCE_DIR}"`);
 
       scope.SCRIPT_FILE = scriptFile;
       scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
@@ -250,8 +254,10 @@ export class GlobalContext {
       const cwdSave = process.cwd();
       process.chdir(scope.SOURCE_DIR.toString());
 
-      const mk = UserContext.create(scope, this);
       const module = await importModule(scope.SCRIPT_FILE.toString());
+      if (!module.default)
+        throw new Error(`Subdirectory ${scope.SCRIPT_FILE.basename()} not contain default function`);
+      const mk = UserContext.create(scope, this);
       const result = module.default(mk);
       if (result instanceof Promise)
         await result;
@@ -400,7 +406,7 @@ export class GlobalContext {
         if (scope.PREVENT_INSTALL_FILES)
           continue;
         src = iter.VALUE.toString();
-        const rfile = iter.BASE_DIR.relative(iter.VALUE);
+        const rfile = (iter.BASE_DIR as any).relative(iter.VALUE);
         dest = iter.DESTINATION.join(rfile);
       }
       else if (iter.VALUE instanceof InterfaceTarget) {
@@ -433,7 +439,7 @@ export class GlobalContext {
       CACHE: this.CACHE,
       UNKNOWN_TARGETS: this.UNKNOWN_TARGETS,
       INTERFACE_SCRIPTS: this.INTERFACE_SCRIPTS,
-      INSTALL_LIST: this.INSTALL_LIST,
+      INSTALL_LIST: this[INSTALL_LIST],
       SCRIPT_VARIABLES_MAP: this.SCRIPT_VARIABLES_MAP,
       SUBDIR_ALIAS: this.SUBDIR_ALIAS,
     };

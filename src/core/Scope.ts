@@ -144,4 +144,31 @@ export function applyVariables(scope: any, variables: object) {
     ScopeHelper.applyVariable(scope, name, value);
 }
 
+export function mergeVariables(target: any, source: any): object {
+  if (!target || typeof target !== "object")
+    throw new Error(`Target ${target} is not object`);
+  if (!source || typeof source !== "object")
+    throw new Error(`Source ${source} is not object`);
+  for (const [ key, val ] of Object.entries(source)) {
+    if (!Object.hasOwn(target, key)) {
+      target[key] = val;
+    }
+    else if (Array.isArray(target[key])) {
+      if (!Array.isArray(val))
+        throw new Error(`Source ${key} has ${val} which is not an array`);
+      for (const iter of val)
+        target[key].push(iter);
+    }
+    else if (target[key] && typeof target[key] === "object") {
+      if (!val || typeof val !== "object")
+        throw new Error(`Source ${key} has ${val} which is not an object`);
+      mergeVariables(target[key], val);
+    }
+    else {
+      throw new Error(`Source ${key} has ${val} which is not ${typeof target[key]}`);
+    }
+  }
+  return target;
+}
+
 } // ScopeHelper

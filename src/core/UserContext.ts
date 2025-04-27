@@ -10,7 +10,7 @@
 import path from "node:path";
 
 import { fileExistsSync } from "@/utils/FileSystem";
-import { FilePath, AbsolutePath } from "@/core/Path";
+import { AbsolutePath } from "@/core/Path";
 import { InterfaceTarget } from "@/core/InterfaceTarget";
 import { InterfaceScript } from "@/core/InterfaceScript";
 import { InstallEntity } from "@/core/InstallEntity";

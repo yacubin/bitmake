@@ -7,43 +7,36 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-const NAME       = Symbol("NAME");
-const PROPERTIES = Symbol("PROPERTIES");
+import { ScopeHelper } from "@/core/Scope";
 
-type ScriptProperties = {
-  [name: string]: any[];
-};
+const NAME       = Symbol("NAME");
+const VARIABLES = Symbol("VARIABLES");
 
 export class InterfaceScript {
   private [NAME]: string;
-  private [PROPERTIES]: ScriptProperties;
+  private [VARIABLES]: object;
 
   private constructor(name: string) {
     this[NAME] = name;
-    this[PROPERTIES] = {};
+    this[VARIABLES] = {};
   }
 
   public get NAME() {
     return this[NAME];
   }
 
-  public get PROPERTIES() {
-    return this[PROPERTIES];
+  public get VARIABLES() {
+    return this[VARIABLES];
   }
-  
-  public addProperty(key: string, ...vals: any[]) {
-    let property = this[PROPERTIES][key];
-    if (!property) {
-      property = [];
-      this[PROPERTIES][key] = property;
-    }
-    vals.forEach(v => property.push(v));
+
+  public mergeVariables(variables: any) {
+    ScopeHelper.mergeVariables(this[VARIABLES], variables);
   }
 
   public toJSON(): object {
     return {
       NAME: this.NAME,
-      PROPERTIES: this.PROPERTIES,
+      VARIABLES: this.VARIABLES,
     };
   }
   

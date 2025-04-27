@@ -10,14 +10,17 @@
 import fs from "node:fs";
 import path from "node:path";
 
-export default function(params: any) {
-  const content = fs.readFileSync(params.input, "utf-8");
-  const newContent = content.replace(/@([_A-Za-z][_A-Za-z0-9]+)@/g, (match, value) => {
-    const res = params[value] || "";
+export default async function(params: any) {
+  let content = await fs.promises.readFile(params.input, "utf-8");
+  content = content.replace(/@([_A-Za-z][_A-Za-z0-9]+)@/g, (match, v1) => {
+    const res = params[v1] || "";
     if (Array.isArray(res))
       return res.join("\n");
     return res.toString();
   });
-  fs.mkdirSync(path.dirname(params.output), { recursive: true });
-  fs.writeFileSync(params.output, newContent, "utf-8");
+  content = content.replace(/#cmakedefine +([_A-Za-z][_A-Za-z0-9]+) *(.*)$/g, (match, v1, v2) => {
+    return params[v1] ? `#define ${v1} ${v2}` : `/* #undef ${v1} */`;
+  });
+  await fs.promises.mkdir(path.dirname(params.output), { recursive: true });
+  await fs.promises.writeFile(params.output, content, "utf-8");
 }

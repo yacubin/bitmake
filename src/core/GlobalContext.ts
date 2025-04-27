@@ -160,6 +160,7 @@ export class GlobalContext {
       output: outputFile,
       input: inputFile,
       workDir: binaryDir,
+      variables: params.variables || {},
     };
 
     const target = CustomScript.create(options);
@@ -314,8 +315,7 @@ export class GlobalContext {
       const script = this[CUSTOM_SCRIPTS].get(iter.NAME);
       if (!script)
         throw new Error(`There is no CustomScript named ${iter.NAME}`);
-      for (const [key, vals] of Object.entries(iter.PROPERTIES))
-        script.addProperty(key, ...vals);
+      script.mergeVariables(iter.VARIABLES);
     }
   
     const goalList = GoalCollection.create();
@@ -326,7 +326,7 @@ export class GlobalContext {
       if (script.INPUT)
         depends.push(script.INPUT.toString());
       const msg = "\x1b[36m" + "Generating " + script.workDir.relative(script.OUTPUT) + "\x1b[0m";
-      const params = { ...script.PROPERTIES, ...script.PARAMS };
+      const params = { ...script.VARIABLES, ...script.PARAMS };
       goalList.addScript(script.SCRIPT, "", depends, script.OUTPUT.toString(), params, msg);
     }
   

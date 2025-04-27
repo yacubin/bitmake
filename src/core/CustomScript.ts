@@ -8,6 +8,7 @@
  */
 
 import { FilePath, DirPath } from "@/core/Path";
+import { ScopeHelper } from "@/core/Scope";
 
 const NAME         = Symbol("NAME");
 const SCRIPT       = Symbol("SCRIPT");
@@ -15,7 +16,7 @@ const INPUT        = Symbol("INPUT");
 const OUTPUT       = Symbol("OUTPUT");
 const PARAMS       = Symbol("PARAMS");
 const WORK_DIR     = Symbol("WORK_DIR");
-const PROPERTIES   = Symbol("PROPERTIES");
+const VARIABLES   = Symbol("VARIABLES");
 
 export class CustomScript {
   private [NAME]: string | null;
@@ -24,7 +25,7 @@ export class CustomScript {
   private [OUTPUT]: FilePath;
   private [PARAMS]: object;
   private [WORK_DIR]: DirPath;
-  private [PROPERTIES]: any;
+  private [VARIABLES]: object;
 
   private constructor(options: CustomScript.Options) {
     this[NAME] = options.name || null;
@@ -33,20 +34,15 @@ export class CustomScript {
     this[OUTPUT] = options.output;
     this[PARAMS] = options.params;
     this[WORK_DIR] = options.workDir;
-    this[PROPERTIES] = {};
+    this[VARIABLES] = options.variables;
   }
 
   public static create(options: CustomScript.Options): CustomScript {
     return Object.seal(new CustomScript(options));
   }
 
-  public addProperty(key: string, ...vals: any[]) {
-    let property = this[PROPERTIES][key];
-    if (!property) {
-      property = [];
-      this[PROPERTIES][key] = property;
-    }
-    vals.forEach(v => property.push(v));
+  public mergeVariables(variables: any) {
+    ScopeHelper.mergeVariables(this[VARIABLES], variables);
   }
 
   public get SCRIPT() {
@@ -73,8 +69,8 @@ export class CustomScript {
     return this[WORK_DIR];
   }
 
-  public get PROPERTIES() {
-    return this[PROPERTIES];
+  public get VARIABLES() {
+    return this[VARIABLES];
   }
 
   public toJSON(): object {
@@ -84,7 +80,7 @@ export class CustomScript {
       INPUT: this.INPUT,
       OUTPUT: this.OUTPUT,
       PARAMS: this.PARAMS,
-      PROPERTIES: this.PROPERTIES,
+      VARIABLES: this.VARIABLES,
     }
   }
 };
@@ -98,6 +94,7 @@ export interface Options {
   input?: FilePath,
   output: FilePath,
   workDir: DirPath,
+  variables: object;
 };
 
 } // namespace CustomScript

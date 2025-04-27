@@ -18,7 +18,7 @@ import { AbsolutePath } from "@/core/Path";
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
 import { ScopeHelper } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
-import { ValueType } from "@/cmake/Constants";
+import { normalizeDefinitions } from "@/core/DefinitionHelper";
 
 const NAME                = Symbol("NAME");
 const TARGET_SCOPE        = Symbol("TARGET_SCOPE");
@@ -226,8 +226,8 @@ export class BaseTarget {
     this[OUTPUT_NAME] = outputName;
   }
   
-  public addDefinitions(...definitions: string[]) {
-    for (const VALUE of definitions.flat(1))
+  public addDefinitions(...definitions: any[]) {
+    for (const VALUE of normalizeDefinitions(...definitions))
       this[DEFINES].push({ VALUE });
   }
 

@@ -119,18 +119,7 @@ export class UserContext {
   }
 
   public addCustomScript(script: any, params: any): CustomScript {
-    if (!params || !params.output)
-      throw new Error(`Uknown params ${JSON.stringify(params)}`);
-
-    let scriptObj: Function | FilePath | undefined;
-    if (typeof script === "string")
-      scriptObj = this[GLOBAL].findScriptFunction(script);
-    if (!scriptObj)
-      scriptObj = FilePath.create(this[SCOPE].SOURCE_DIR.resolve(script));
-
-    const target = CustomScript.create(this[SCOPE], scriptObj, params.output, params);
-    this[GLOBAL].setCustomScript(target, params.name);
-    return target;
+    return this[GLOBAL].addCustomScript(script, params, this[SCOPE].SOURCE_DIR, this[SCOPE].BINARY_DIR);
   }
 
   public target(name: string) {

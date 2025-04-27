@@ -10,7 +10,7 @@
 import fs from "node:fs";
 
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
-import { DirPath, AbsolutePath } from "@/core/Path";
+import { FilePath, DirPath, AbsolutePath } from "@/core/Path";
 import { fileExists, fileExistsSync } from "@/utils/FileSystem";
 import { TargetCollection } from "@/core//TargetCollection";
 import { ScriptCollection } from "@/core/ScriptCollection";
@@ -135,11 +135,40 @@ export class GlobalContext {
     return this[SUBDIR_ALIAS];
   }
   
-  public setCustomScript(target: CustomScript, name?: string) {
-    if (name)
-      this[CUSTOM_SCRIPTS].set(name, target);
+  public addCustomScript(script: any, params: any, sourceDir: DirPath, binaryDir: DirPath): CustomScript {
+    if (!params)
+      throw new Error("Argument with parameters is missing");
+
+    let scriptObj: Function | FilePath | undefined;
+    if (typeof script === "string")
+      scriptObj = this.findScriptFunction(script);
+    if (!scriptObj)
+      scriptObj = FilePath.create(sourceDir.resolve(script));
+
+    let inputFile = params.input;
+    if (inputFile)
+      inputFile = FilePath.create(sourceDir.resolve(inputFile));
+
+    if (!params.output)
+      throw new Error("CustomScript parameters required output entity");
+    const outputFile = FilePath.create(sourceDir.resolve(params.output));
+
+    const options: CustomScript.Options = {
+      name: params.name,
+      script: scriptObj,
+      params,
+      output: outputFile,
+      input: inputFile,
+      workDir: binaryDir,
+    };
+
+    const target = CustomScript.create(options);
+    if (options.name)
+      this[CUSTOM_SCRIPTS].set(options.name, target);
     else
       this[CUSTOM_SCRIPTS].add(target);
+
+    return target;
   }
 
   public getUknownTarget(name: string): UnknownTarget {
@@ -292,11 +321,11 @@ export class GlobalContext {
     const goalList = GoalCollection.create();
     for (const script of this[CUSTOM_SCRIPTS].ENTRIES) {   
       const depends = [];
-      if (script.SCRIPT instanceof AbsolutePath)
+      if (script.SCRIPT instanceof FilePath)
         depends.push(script.SCRIPT.toString());
       if (script.INPUT)
         depends.push(script.INPUT.toString());
-      const msg = "\x1b[36m" + "Generating " + script.TARGET_SCOPE.BINARY_DIR.relative(script.OUTPUT) + "\x1b[0m";
+      const msg = "\x1b[36m" + "Generating " + script.workDir.relative(script.OUTPUT) + "\x1b[0m";
       const params = { ...script.PROPERTIES, ...script.PARAMS };
       goalList.addScript(script.SCRIPT, "", depends, script.OUTPUT.toString(), params, msg);
     }

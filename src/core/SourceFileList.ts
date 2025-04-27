@@ -9,6 +9,7 @@
 
 import { SourceFile } from "@/core/SourceFile";
 import { SystemScope } from "@/core/SystemScope";
+import { normalizeDefinitions } from "@/core/DefinitionHelper";
 
 const SOURCES = Symbol("SOURCES");
 
@@ -29,7 +30,7 @@ export class SourceFileList {
   }
 
   public addDefinitions(...definitions: string[]) {
-    for (const iter of definitions.flat())
+    for (const iter of normalizeDefinitions(...definitions))
       this[SOURCES].forEach(i => i.DEFINES.push(iter));
   }
 

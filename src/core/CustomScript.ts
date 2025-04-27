@@ -7,36 +7,37 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { FilePath, AbsolutePath } from "@/core/Path";
-import { ScopeHelper } from "@/core/Scope";
-import { SystemScope } from "@/core/SystemScope";
+import { FilePath, DirPath } from "@/core/Path";
 
-const TARGET_SCOPE = Symbol("TARGET_SCOPE");
+const NAME         = Symbol("NAME");
 const SCRIPT       = Symbol("SCRIPT");
 const INPUT        = Symbol("INPUT");
 const OUTPUT       = Symbol("OUTPUT");
 const PARAMS       = Symbol("PARAMS");
+const WORK_DIR     = Symbol("WORK_DIR");
 const PROPERTIES   = Symbol("PROPERTIES");
 
 export class CustomScript {
-  private [TARGET_SCOPE]: SystemScope;
-  private [SCRIPT]: AbsolutePath | Function;
-  private [INPUT]: AbsolutePath | null;
-  private [OUTPUT]: AbsolutePath;
+  private [NAME]: string | null;
+  private [SCRIPT]: FilePath | Function;
+  private [INPUT]: FilePath | undefined;
+  private [OUTPUT]: FilePath;
   private [PARAMS]: object;
+  private [WORK_DIR]: DirPath;
   private [PROPERTIES]: any;
 
-  private constructor(scope: SystemScope, script: FilePath | Function, output: AbsolutePath, params: any) {
-    this[TARGET_SCOPE] = ScopeHelper.clone({}, scope);
-    this[INPUT] = params.input || null;
-    this[SCRIPT] = script;
-    this[OUTPUT] = output;
-    this[PARAMS] = params;
+  private constructor(options: CustomScript.Options) {
+    this[NAME] = options.name || null;
+    this[INPUT] = options.input;
+    this[SCRIPT] = options.script;
+    this[OUTPUT] = options.output;
+    this[PARAMS] = options.params;
+    this[WORK_DIR] = options.workDir;
     this[PROPERTIES] = {};
   }
 
-  public static create(scope: SystemScope, script: FilePath | Function, output: AbsolutePath, params: any): CustomScript {
-    return Object.seal(new CustomScript(scope, script, output, params));
+  public static create(options: CustomScript.Options): CustomScript {
+    return Object.seal(new CustomScript(options));
   }
 
   public addProperty(key: string, ...vals: any[]) {
@@ -48,28 +49,16 @@ export class CustomScript {
     vals.forEach(v => property.push(v));
   }
 
-  public get TARGET_SCOPE(): SystemScope {
-    return this[TARGET_SCOPE];
-  }
-
   public get SCRIPT() {
     return this[SCRIPT];
   }
 
-  public get INPUT(): AbsolutePath | null {
+  public get INPUT(): FilePath | undefined {
     return this[INPUT];
   }
 
-  public set INPUT(value: AbsolutePath | string) {
-    this[INPUT] = this[TARGET_SCOPE].SOURCE_DIR.resolve(value);
-  }
-
-  public get OUTPUT(): AbsolutePath {
+  public get OUTPUT(): FilePath {
     return this[OUTPUT];
-  }
-
-  public set OUTPUT(value: AbsolutePath | string) {
-    this[OUTPUT] = AbsolutePath.create(value);
   }
 
   public get PARAMS(): object {
@@ -80,13 +69,17 @@ export class CustomScript {
     this[PARAMS] = value;
   }
 
+  public get workDir(): FilePath {
+    return this[WORK_DIR];
+  }
+
   public get PROPERTIES() {
     return this[PROPERTIES];
   }
 
   public toJSON(): object {
     return {
-      TARGET_SCOPE: this.TARGET_SCOPE,
+      NAME: this[NAME],
       SCRIPT: this.SCRIPT,
       INPUT: this.INPUT,
       OUTPUT: this.OUTPUT,
@@ -95,3 +88,16 @@ export class CustomScript {
     }
   }
 };
+
+export namespace CustomScript {
+
+export interface Options {
+  name?: string,
+  params: any,
+  script: FilePath | Function,
+  input?: FilePath,
+  output: FilePath,
+  workDir: DirPath,
+};
+
+} // namespace CustomScript

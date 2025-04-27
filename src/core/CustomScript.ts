@@ -7,13 +7,11 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { ensureString } from "@/utils/StrictType";
-import { AbsolutePath } from "@/core/Path";
+import { FilePath, AbsolutePath } from "@/core/Path";
 import { ScopeHelper } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
 
 const TARGET_SCOPE = Symbol("TARGET_SCOPE");
-const NAME         = Symbol("NAME");
 const SCRIPT       = Symbol("SCRIPT");
 const INPUT        = Symbol("INPUT");
 const OUTPUT       = Symbol("OUTPUT");
@@ -22,16 +20,14 @@ const PROPERTIES   = Symbol("PROPERTIES");
 
 export class CustomScript {
   private [TARGET_SCOPE]: SystemScope;
-  private [NAME]: string;
   private [SCRIPT]: AbsolutePath | Function;
   private [INPUT]: AbsolutePath | null;
   private [OUTPUT]: AbsolutePath;
   private [PARAMS]: object;
   private [PROPERTIES]: any;
 
-  private constructor(scope: SystemScope, name: string, script: AbsolutePath | Function, output: AbsolutePath, params: any) {
+  private constructor(scope: SystemScope, script: FilePath | Function, output: AbsolutePath, params: any) {
     this[TARGET_SCOPE] = ScopeHelper.clone({}, scope);
-    this[NAME] = ensureString(name);
     this[INPUT] = params.input || null;
     this[SCRIPT] = script;
     this[OUTPUT] = output;
@@ -39,8 +35,8 @@ export class CustomScript {
     this[PROPERTIES] = {};
   }
 
-  public static create(scope: SystemScope, name: string, script: AbsolutePath | Function, output: AbsolutePath, params: any): CustomScript {
-    return Object.seal(new CustomScript(scope, name, script, output, params));
+  public static create(scope: SystemScope, script: FilePath | Function, output: AbsolutePath, params: any): CustomScript {
+    return Object.seal(new CustomScript(scope, script, output, params));
   }
 
   public addProperty(key: string, ...vals: any[]) {
@@ -50,10 +46,6 @@ export class CustomScript {
       this[PROPERTIES][key] = property;
     }
     vals.forEach(v => property.push(v));
-  }
-
-  public get NAME(): string {
-    return this[NAME];
   }
 
   public get TARGET_SCOPE(): SystemScope {
@@ -92,13 +84,8 @@ export class CustomScript {
     return this[PROPERTIES];
   }
 
-  public toString(): string {
-    return this[NAME].toString();
-  }
-
   public toJSON(): object {
     return {
-      NAME: this.NAME,
       TARGET_SCOPE: this.TARGET_SCOPE,
       SCRIPT: this.SCRIPT,
       INPUT: this.INPUT,

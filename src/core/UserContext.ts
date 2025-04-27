@@ -10,7 +10,7 @@
 import path from "node:path";
 
 import { fileExistsSync } from "@/utils/FileSystem";
-import { AbsolutePath } from "@/core/Path";
+import { FilePath, AbsolutePath } from "@/core/Path";
 import { InterfaceTarget } from "@/core/InterfaceTarget";
 import { InterfaceScript } from "@/core/InterfaceScript";
 import { InstallEntity } from "@/core/InstallEntity";
@@ -118,18 +118,18 @@ export class UserContext {
     this[GLOBAL].addSubdirectory(newScope);
   }
 
-  public addCustomScript(name: string, params: any): CustomScript {
-    if (!params || !params.script || !params.output)
+  public addCustomScript(script: any, params: any): CustomScript {
+    if (!params || !params.output)
       throw new Error(`Uknown params ${JSON.stringify(params)}`);
 
-    let script;
-    if (typeof params.script === "string")
-      script = this[GLOBAL].findScriptFunction(params.script);
-    if (!script)
-      script = this[SCOPE].SOURCE_DIR.resolve(params.script);
+    let scriptObj: Function | FilePath | undefined;
+    if (typeof script === "string")
+      scriptObj = this[GLOBAL].findScriptFunction(script);
+    if (!scriptObj)
+      scriptObj = FilePath.create(this[SCOPE].SOURCE_DIR.resolve(script));
 
-    const target = CustomScript.create(this[SCOPE], name, script, params.output, params);
-    this[GLOBAL].setCustomScript(name, target);
+    const target = CustomScript.create(this[SCOPE], scriptObj, params.output, params);
+    this[GLOBAL].setCustomScript(target, params.name);
     return target;
   }
 

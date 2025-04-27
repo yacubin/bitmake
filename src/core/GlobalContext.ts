@@ -135,8 +135,11 @@ export class GlobalContext {
     return this[SUBDIR_ALIAS];
   }
   
-  public setCustomScript(name: string, target: CustomScript) {
-    this[CUSTOM_SCRIPTS].set(name, target);
+  public setCustomScript(target: CustomScript, name?: string) {
+    if (name)
+      this[CUSTOM_SCRIPTS].set(name, target);
+    else
+      this[CUSTOM_SCRIPTS].add(target);
   }
 
   public getUknownTarget(name: string): UnknownTarget {
@@ -280,12 +283,14 @@ export class GlobalContext {
   
     for (const iter of Object.values(this[INTERFACE_SCRIPTS])) {
       const script = this[CUSTOM_SCRIPTS].get(iter.NAME);
+      if (!script)
+        throw new Error(`There is no CustomScript named ${iter.NAME}`);
       for (const [key, vals] of Object.entries(iter.PROPERTIES))
         script.addProperty(key, ...vals);
     }
   
     const goalList = GoalCollection.create();
-    for (const [name, script] of Object.entries(this[CUSTOM_SCRIPTS].ENTRIES)) {   
+    for (const script of this[CUSTOM_SCRIPTS].ENTRIES) {   
       const depends = [];
       if (script.SCRIPT instanceof AbsolutePath)
         depends.push(script.SCRIPT.toString());

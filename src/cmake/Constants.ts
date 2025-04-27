@@ -44,3 +44,11 @@ export enum BuildType {
 
 // The default name of the main CMake build configuration file
 export const CMAKE_LISTS_TXT = "CMakeLists.txt";
+
+export enum GeneratorType {
+  // Name of the CMake generator for standard Unix 'make' build system
+  UnixMakefiles = "Unix Makefiles",
+};
+
+// Name of the CMake generator for standard Unix 'make' build system
+export const DEFAULT_GENERATOR: GeneratorType = GeneratorType.UnixMakefiles;

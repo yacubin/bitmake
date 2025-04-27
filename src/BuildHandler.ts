@@ -9,19 +9,23 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import url from "node:url";
 
-import * as cmake from "@/cmake";
+import cmake  from "@/cmake";
 import { makePatch } from "@/utils/MakePatch";
 import { saveIfDifferent, directoryExists, getPathString } from "@/utils/FileSystem";
 import { SettingsStorage } from "@/utils/SettingsStorage";
 import { spawnAsync } from "@/utils/ChildProcess";
 import { makeScriptAction } from "@/MakeScriptAction";
 import { arrayWrapper, assignObject } from "@/utils/Primitives";
-import { BUILD_SETTINGS_FILE, REQUEST_ATTEMPTS } from "@/Constants";
+import { USER_CONFIG, BUILD_SETTINGS_FILE, REQUEST_ATTEMPTS } from "@/Constants";
 import { requireResolve } from "@/utils/Module";
 import { requestGet } from "@/utils/HttpRequest";
-import { RunScriptContext } from "@/RunScriptContext";
+import { RunScriptContext, RunScriptOptions } from "@/RunScriptContext";
 import { createLogger } from "@/logger";
+
+import { fileExists } from "@/utils/FileSystem";
+import { importModule } from "@/utils/Module";
 
 const logger = createLogger(import.meta.url);
 
@@ -337,7 +341,7 @@ const actionHandlers: any = {
         ...environment,
         DESTDIR: config.destDir,
       },
-      generator: config.generator || "Unix Makefiles",
+      generator: config.generator || cmake.DEFAULT_GENERATOR,
       cacheVariables: config.cacheVariables,
       sourceDir,
       binaryDir,
@@ -504,9 +508,55 @@ async function doTargetBuild(ctx: RunScriptContext, environment: any, config: an
   }
 }
 
-export default async (options: any) => {
+async function getUserConfig(options: RunScriptOptions) {
+  let configPath;
+  if (options.env.config) {
+    configPath = path.isAbsolute(options.env.config) ? options.env.config : path.resolve(options.workDir, options.env.config);
+    if (!await fileExists(configPath))
+      throw `Configuration '${options.env.config}' file does not exist`;
+  }
+  else {
+    const userConfigPath = path.resolve(options.workDir, USER_CONFIG);
+    if (await fileExists(userConfigPath))
+      configPath = userConfigPath;
+    else {
+      logger.warn(`Config file '${USER_CONFIG}' is not available`);
+    }
+  }
+
+  if (!configPath) {
+    return {
+      "bundle:output": {
+        action: "bitmake",
+        variables: {
+          INSTALL_PREFIX: "/usr",
+        },
+        sourceDir: "${sourceRoot}",
+        destDir: "${binaryRoot}/output",
+      }
+    };
+  }
+
+  const configUrl = url.pathToFileURL(configPath);
+  const configModule = await importModule(configUrl);
+  switch (typeof configModule.default) {
+  case "function":
+    const userConfig = configModule.default(options.env, {});
+    if (userConfig instanceof Promise)
+      return await userConfig;
+    return userConfig;
+
+  case "object":
+    return configModule.default;
+
+  default:
+    throw new Error(`Unknown user configuration type`);
+  }
+}
+
+export default async (options: RunScriptOptions) => {
   const ctx = new RunScriptContext(options);
-  const userConfig = await ctx.getUserConfig();
+  const userConfig = await getUserConfig(options);
   const buildConfig = makeBuildConfig(ctx, userConfig);
 
   if (buildConfig.RECIPE_CONTENT_FILE) {

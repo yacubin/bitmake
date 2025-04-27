@@ -12,7 +12,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { spawnAsync } from "@/utils/ChildProcess";
-import { CMAKE_LISTS_TXT, ValueType } from "@/cmake/Constants";
+import { CMAKE_LISTS_TXT, DEFAULT_GENERATOR, ValueType } from "@/cmake/Constants";
 import { convertToValue } from "@/cmake/Helper";
 
 function toVarType(key: string, val: any) {
@@ -159,3 +159,12 @@ export function lineToMultipleComment(line: string) {
 export function generatedScriptNameComment(filename: string) {
   return lineToSinglComment("Generated from " + path.basename(filename));
 }
+
+export default {
+  DEFAULT_GENERATOR,
+  configure,
+  build,
+  install,
+  ctest,
+  extract,
+};

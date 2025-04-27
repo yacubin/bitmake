@@ -129,7 +129,7 @@ export class UserContext {
       script = this[SCOPE].SOURCE_DIR.resolve(params.script);
 
     const target = CustomScript.create(this[SCOPE], name, script, params.output, params);
-    this[GLOBAL].SCRIPTS.set(name, target);
+    this[GLOBAL].setCustomScript(name, target);
     return target;
   }
 

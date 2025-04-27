@@ -27,6 +27,7 @@ import { SystemScope } from "@/core/SystemScope";
 import { importModule } from "@/utils/Module";
 import { createLogger } from "@/logger";
 import { InstallEntity } from "@/core/InstallEntity";
+import { CustomScript } from "@/core/CustomScript";
 
 import configure_file from "@/core/BuildinScripts/configure_file";
 import install_script from "@/core/BuildinScripts/install_script";
@@ -36,7 +37,7 @@ const logger = createLogger(import.meta.url);
 const requireImpl = eval("require");
 
 const TARGETS = Symbol("TARGETS");
-const SCRIPTS = Symbol("SCRIPTS");
+const CUSTOM_SCRIPTS = Symbol("CUSTOM_SCRIPTS");
 const CACHE = Symbol("CACHE");
 const UNKNOWN_TARGETS = Symbol("UNKNOWN_TARGETS");
 const INTERFACE_SCRIPTS = Symbol("INTERFACE_SCRIPTS");
@@ -80,7 +81,7 @@ function ensureValueByType(type: any, value: any) {
 
 export class GlobalContext {
   private [TARGETS]: TargetCollection;
-  private [SCRIPTS]: ScriptCollection;
+  private [CUSTOM_SCRIPTS]: ScriptCollection;
   private [CACHE]: CacheVariableDescriptors;
   private [UNKNOWN_TARGETS]: UnknownTargets;
   private [INTERFACE_SCRIPTS]: InterfaceScripts;
@@ -92,7 +93,7 @@ export class GlobalContext {
 
   private constructor() {
     this[TARGETS] = TargetCollection.create();
-    this[SCRIPTS] = ScriptCollection.create();
+    this[CUSTOM_SCRIPTS] = ScriptCollection.create();
     this[CACHE] = {};
     this[UNKNOWN_TARGETS] = {};
     this[INTERFACE_SCRIPTS] = {};
@@ -114,10 +115,6 @@ export class GlobalContext {
     return this[TARGETS];
   }
 
-  public get SCRIPTS() {
-    return this[SCRIPTS];
-  }
-
   public get CACHE() {
     return this[CACHE];
   }
@@ -136,6 +133,10 @@ export class GlobalContext {
 
   public get SUBDIR_ALIAS() {
     return this[SUBDIR_ALIAS];
+  }
+  
+  public setCustomScript(name: string, target: CustomScript) {
+    this[CUSTOM_SCRIPTS].set(name, target);
   }
 
   public getUknownTarget(name: string): UnknownTarget {
@@ -278,13 +279,13 @@ export class GlobalContext {
     }
   
     for (const iter of Object.values(this[INTERFACE_SCRIPTS])) {
-      const script = this[SCRIPTS].get(iter.NAME);
+      const script = this[CUSTOM_SCRIPTS].get(iter.NAME);
       for (const [key, vals] of Object.entries(iter.PROPERTIES))
         script.addProperty(key, ...vals);
     }
   
     const goalList = GoalCollection.create();
-    for (const [name, script] of Object.entries(this[SCRIPTS].ENTRIES)) {   
+    for (const [name, script] of Object.entries(this[CUSTOM_SCRIPTS].ENTRIES)) {   
       const depends = [];
       if (script.SCRIPT instanceof AbsolutePath)
         depends.push(script.SCRIPT.toString());
@@ -435,7 +436,7 @@ export class GlobalContext {
   public toJSON(): object {
     return {
       TARGETS: this.TARGETS,
-      SCRIPTS: this.SCRIPTS,
+      CUSTOM_SCRIPTS: this[CUSTOM_SCRIPTS],
       CACHE: this.CACHE,
       UNKNOWN_TARGETS: this.UNKNOWN_TARGETS,
       INTERFACE_SCRIPTS: this.INTERFACE_SCRIPTS,

@@ -49,8 +49,8 @@ export async function makeScriptAction(config: any, environment: any, settings: 
   scope.BUILD_TYPE = config.buildType;
   scope.PROJECT_NAME = pkg.name;
   scope.PROJECT_VERSION = pkg.version;
-  scope.PROJECT_DESCRIPTION = pkg.description;
-  scope.PROJECT_HOMEPAGE_URL = pkg.homepage;
+  scope.PROJECT_DESCRIPTION = pkg.description || "";
+  scope.PROJECT_HOMEPAGE_URL = pkg.homepage || "";
 
   if (config.destDir)
     scope.DESTDIR = config.destDir;

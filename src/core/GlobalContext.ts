@@ -337,7 +337,7 @@ export class GlobalContext {
     }
   }
 
-  public createGoals(scope: any) {
+  public createGoals(scope: SystemScope): GoalCollection {
     for (const iter of Object.values(this[UNKNOWN_TARGETS])) {
       const target = this[TARGETS].get(iter.NAME);
       target.addSources(iter.SOURCES);
@@ -484,7 +484,7 @@ export class GlobalContext {
       goalList.addTarget(name, [ target.FILE.toString() ], `Built target ${name}`);
     }
   
-    const install_files = [];
+    const install_files: string[] = [];
     for (const iter of this[INSTALL_LIST]) {
       let src, dest;
       if (iter.VALUE instanceof AbsolutePath) {
@@ -508,10 +508,10 @@ export class GlobalContext {
         const params = scopeValueAsPrimitives({src, dest});
         await install_script(params);
       };
-      goalList.addScript(handler, [ src ], dest, "");
-      install_files.push(dest);
+      goalList.addScript(handler, [ src ], dest.toString(), "");
+      install_files.push(dest.toString());
     }
-  
+
     if (install_files.length) {
       goalList.addTarget(INSTALL_TARGET, install_files, "");
     }

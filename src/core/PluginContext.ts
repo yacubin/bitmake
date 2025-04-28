@@ -9,38 +9,45 @@
 
 import { DirPath } from "@/core/Path";
 import { GlobalContext } from "@/core/GlobalContext";
-import { ScopeHelper } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
+import { findProgramSync } from "@/core/FindProgram";
 
 const GLOBAL = Symbol("GLOBAL");
 const SCOPE = Symbol("SCOPE");
 
-export class PluginContext {
-  private [SCOPE]: SystemScope;
-  private [GLOBAL]: GlobalContext;
+export namespace PluginContext {
 
-  private constructor(scope: SystemScope, global: any) {
-    this[SCOPE] = scope;
-    this[GLOBAL] = global;
-  }
-
-  public static create(scope: SystemScope, global: GlobalContext) {
-    const proto = PluginContext.prototype;
-    const newScope = Object.create(proto);
-    ScopeHelper.clone(newScope, scope);
-    const self = Object.create(newScope);
-    self[SCOPE] = newScope;
-    self[GLOBAL] = global;
-    return self;
-  }
-
-  public addSubdirectoryAlias(src: any, dest: any) {
-    const srcPath = this[SCOPE].SCRIPT_DIR.resolve(src);
-    const destPath = this[SCOPE].SCRIPT_DIR.resolve(dest);
-    this[GLOBAL].addSubdirectoryAlias(DirPath.create(srcPath), DirPath.create(destPath));
-  }
-
-  public _scope() {
-    return this[SCOPE];
-  }
+interface IPluginContext {
+  findProgram(name: string): string | undefined;
+  addSubdirectoryAlias(src: any, dest: any): void;
 };
+
+function addSubdirectoryAlias(this: any, src: any, dest: any) {
+  const srcPath = this[SCOPE].SCRIPT_DIR.resolve(src);
+  const destPath = this[SCOPE].SCRIPT_DIR.resolve(dest);
+  this[GLOBAL].addSubdirectoryAlias(DirPath.create(srcPath), DirPath.create(destPath));
+}
+
+export function create(scope: SystemScope, global: GlobalContext): IPluginContext {
+  const mk = Object.create(scope, {
+    findProgram: {
+      value: findProgramSync,
+      enumerable: false,
+      writable: false,
+      configurable: false,
+    },
+    addSubdirectoryAlias: {
+      value: addSubdirectoryAlias,
+      enumerable: false,
+      writable: false,
+      configurable: false,
+    },
+  });
+
+  mk[SCOPE] = scope;
+  mk[GLOBAL] = global;
+
+  return mk;
+}
+
+} // namespace PluginContext

@@ -86,7 +86,6 @@ export async function makeScriptAction(config: any, environment: any, settings: 
     const result = module.default(mk);
     if (result instanceof Promise)
       await result;
-    scope = mk._scope();
     ScopeHelper.applyVariables(scope, mk);
 
     process.chdir(cwdSave);

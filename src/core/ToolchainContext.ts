@@ -7,9 +7,9 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { findProgramSync } from "@/core/FindProgram";
 import { GlobalContext } from "@/core/GlobalContext";
 import { SystemScope } from "@/core/SystemScope";
+import { findProgramSync } from "@/core/FindProgram";
 
 const GLOBAL = Symbol("GLOBAL");
 const SCOPE = Symbol("SCOPE");

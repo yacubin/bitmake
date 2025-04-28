@@ -16,7 +16,7 @@ const SCOPE = Symbol("SCOPE");
 
 export namespace ScriptContext {
 
-interface IScriptContext {
+interface IScriptContext extends SystemScope {
   findProgram(name: string): string | undefined;
 };
   

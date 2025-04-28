@@ -16,10 +16,10 @@ const SCOPE = Symbol("SCOPE");
 
 export namespace ToolchainContext {
 
-interface IToolchainContext {
+interface IToolchainContext extends SystemScope {
   findProgram(name: string): string | undefined;
 };
-  
+
 export function create(scope: SystemScope, global: GlobalContext): IToolchainContext {
   const mk = Object.create(scope, {
     findProgram: {

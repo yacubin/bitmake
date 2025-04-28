@@ -17,7 +17,7 @@ const SCOPE = Symbol("SCOPE");
 
 export namespace PluginContext {
 
-interface IPluginContext {
+interface IPluginContext extends SystemScope {
   findProgram(name: string): string | undefined;
   addSubdirectoryAlias(src: any, dest: any): void;
 };

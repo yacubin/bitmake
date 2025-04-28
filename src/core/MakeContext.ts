@@ -61,30 +61,36 @@ function scopeValueAsPrimitives(o: any): any {
 const GLOBAL = Symbol("GLOBAL");
 const SCOPE = Symbol("SCOPE");
 
-export class UserContext {
-  private [SCOPE]: SystemScope;
-  private [GLOBAL]: GlobalContext;
+export namespace MakeContext {
 
-  private constructor(scope: SystemScope, global: GlobalContext) {
-    this[SCOPE] = scope;
-    this[GLOBAL] = global;
-  }
+interface IMakeContext extends SystemScope {
+  findProgram(name: string): string | undefined;
 
-  public static create(scope: SystemScope, global: GlobalContext): UserContext {
-    const proto = UserContext.prototype;
-    const newScope = Object.create(proto);
-    ScopeHelper.clone(newScope, scope);
-    const obj = Object.create(newScope);
-    obj[SCOPE] = newScope;
-    obj[GLOBAL] = global;
-    return obj;
-  }
+  getCacheVariables(): any;
+  addCacheVariables(params: any): void;
+  addIncludeDirectories(...dirs: any[]): void;
+  addSubdirectory(sourceDir: any, binaryDir: any): void;
+  addCustomScript(script: any, params: any): CustomScript;
+  target(name: string): InterfaceTarget;
+  script(name: string): InterfaceScript;
+  install(value: any, params: any): void;
+  addStaticLibrary(name: any, ...sources: any[]): StaticLibrary;
+  addSharedLibrary(name: any, ...sources: any[]): SharedLibrary;
+  addExecutable(name: string, ...sources: any[]): Executable;
+  executeScript(this: IMakeContext, script: any, options: any): void;
 
-  public getCacheVariables() {
+  [SCOPE]: SystemScope;
+  [GLOBAL]: GlobalContext;
+};
+
+const methods = {
+  findProgram: findProgramSync,
+
+  getCacheVariables(this: IMakeContext) {
     return ScopeHelper.getVariablesByGroup(this[SCOPE], "cache");
-  }
+  },
 
-  public addCacheVariables(params: any) {
+  addCacheVariables(this: IMakeContext, params: any) {
     let variables = params;
     if (typeof params === "string") {
       const filename = this[SCOPE].SOURCE_DIR.resolve(params).toString();
@@ -94,98 +100,114 @@ export class UserContext {
     }
     
     ScopeHelper.defineVariables(this[SCOPE], "cache", variables);
-  }
-
-  public addIncludeDirectories(...dirs: any[]) {
+  },
+  
+  addIncludeDirectories(this: IMakeContext, ...dirs: any[]) {
     const sourceDir = this[SCOPE].SOURCE_DIR;
     for (const iter of dirs.flat(1)) {
       this[SCOPE].INCLUDES.push(IncludeDirectory.create(iter, sourceDir));
     }
-  }
-
-  public addSubdirectory(sourceDir: any, binaryDir: any) {
+  },
+  
+  addSubdirectory(this: IMakeContext, sourceDir: any, binaryDir: any) {
     binaryDir = binaryDir || path.isAbsolute(sourceDir) ? undefined : sourceDir;
-
+  
     const SOURCE_DIR = path.isAbsolute(sourceDir) ? AbsolutePath.create(sourceDir) : this[SCOPE].SOURCE_DIR.join(sourceDir);
     const BINARY_DIR = path.isAbsolute(binaryDir) ? AbsolutePath.create(binaryDir) : this[SCOPE].BINARY_DIR.join(binaryDir);
-
+  
     const newScope = ScopeHelper.clone({}, this[SCOPE]);
     ScopeHelper.applyVariables(newScope, this);
-
+  
     newScope.SOURCE_DIR = AbsolutePath.create(this[GLOBAL].resolveSubdirectory(SOURCE_DIR).toString());
     newScope.BINARY_DIR = BINARY_DIR;
-
+  
     this[GLOBAL].addSubdirectory(newScope);
-  }
-
-  public addCustomScript(script: any, params: any): CustomScript {
+  },
+  
+  addCustomScript(this: IMakeContext, script: any, params: any): CustomScript {
     const newScope = ScopeHelper.clone({}, this[SCOPE]);
     ScopeHelper.applyVariables(newScope, this);
     return this[GLOBAL].addCustomScript(newScope, script, params);
-  }
-
-  public target(name: string) {
+  },
+  
+  target(this: IMakeContext, name: string): InterfaceTarget {
     const utarget = this[GLOBAL].getUknownTarget(name);
     return InterfaceTarget.create(this[SCOPE], utarget);
-  }
-
-  public script(name: string) {
+  },
+  
+  script(this: IMakeContext, name: string): InterfaceScript {
     let script = this[GLOBAL].INTERFACE_SCRIPTS[name];
     if (!script) {
       script = InterfaceScript.create(name);
       this[GLOBAL].INTERFACE_SCRIPTS[name] = script;
     }
     return script;
-  }
-
-  public install(value: any, params: any) {
+  },
+  
+  install(this: IMakeContext, value: any, params: any): void {
     for (const it of [ value ].flat(1)) {
       const iter = (it instanceof BaseTarget) ? this.target(it.NAME) : it;
       const entity = InstallEntity.create(this, iter, params);
       this[GLOBAL].addInstallEntry(entity);
     }
-  }
-
-  public addStaticLibrary(name: any, ...sources: any[]) {
+  },
+  
+  addStaticLibrary(this: IMakeContext, name: any, ...sources: any[]): StaticLibrary {
     const target = StaticLibrary.create(this[SCOPE], name);
     target.addSources(...sources);
   
     this[GLOBAL].TARGETS.set(name, target);
     return target;
-  }
+  },
 
-  public addObjectLibrary(name: any, ...sources: any[]) {
+  addObjectLibrary(this: IMakeContext, name: any, ...sources: any[]): ObjectLibrary {
     const target = ObjectLibrary.create(this[SCOPE], name);
-    target.addSources(...sources);
-
-    this[GLOBAL].TARGETS.set(name, target);
-    return target;
-  }
-
-  public addSharedLibrary(name: any, ...sources: any[]) {
-    const target = SharedLibrary.create(this[SCOPE], name);
     target.addSources(...sources);
   
     this[GLOBAL].TARGETS.set(name, target);
     return target;
-  }
+  },
 
-  public addExecutable(name: string, ...sources: any[]) {
+  addSharedLibrary(this: IMakeContext, name: any, ...sources: any[]): SharedLibrary {
+    const target = SharedLibrary.create(this[SCOPE], name);
+    target.addSources(...sources);
+
+    this[GLOBAL].TARGETS.set(name, target);
+    return target;
+  },
+
+  addExecutable(this: IMakeContext, name: string, ...sources: any[]): Executable {
     const target = Executable.create(this[SCOPE], name);
     target.addSources(...sources);
   
     this[GLOBAL].TARGETS.set(name, target);
     return target;
-  }
+  },
 
-  public executeScript(script: any, options: any) {
+  executeScript(this: IMakeContext, script: any, options: any) {
     const scriptPath = this[SCOPE].SOURCE_DIR.resolve(script);
     const module = requireImpl(scriptPath.toString());
     module(scopeValueAsPrimitives(options));
-  }
+  },
 };
 
-Object.defineProperty(UserContext.prototype, "findProgram", {
-  value: findProgramSync,
-  enumerable: false,
-});
+export function create(scope: SystemScope, global: GlobalContext): IMakeContext {
+  const props: any = {};
+  for (const [key, value] of Object.entries(methods)) {
+    props[key] = {
+      value,
+      enumerable: false,
+      writable: false,
+      configurable: false,
+    }
+  }
+
+  const mk = Object.create(scope, props);
+
+  mk[SCOPE] = scope;
+  mk[GLOBAL] = global;
+
+  return mk;
+}
+
+} // namespace MakeContext

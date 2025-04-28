@@ -20,7 +20,7 @@ import { GoalCollection } from "@/core/GoalCollection";
 import { InterfaceObjects } from "@/core/InterfaceObjects";
 import { InterfaceScript } from "@/core/InterfaceScript";
 import { SourceFile } from "@/core/SourceFile";
-import { UserContext } from "@/core/UserContext";
+import { MakeContext } from "@/core/MakeContext";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable } from "@/core/Target";
 import { ScopeHelper } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
@@ -216,11 +216,10 @@ export class GlobalContext {
     return target;
   }
 
-  public addSystemVariables(variables: any) {
-    const script = variables.SCRIPT_FILE.toString();
-    if (this[SCRIPT_VARIABLES_MAP][script])
-      throw new Error(`SystemVariables exists for ${script}`);
-    this[SCRIPT_VARIABLES_MAP][script] = variables;
+  public registerSystemScope(name: string, scope: SystemScope) {
+    if (this[SCRIPT_VARIABLES_MAP][name])
+      throw new Error(`SystemVariables exists for ${name}`);
+    this[SCRIPT_VARIABLES_MAP][name] = scope;
   }
 
   public resolveSubdirectory(path: AbsolutePath | string) {
@@ -316,10 +315,10 @@ export class GlobalContext {
       if (!scriptFile)
         throw new Error(`There are no files ${fileList.join(", ")} in "${scope.SOURCE_DIR}"`);
 
+      this.registerSystemScope(scriptFile.toString(), scope);
+
       scope.SCRIPT_FILE = scriptFile;
       scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
-
-      this.addSystemVariables(scope);
 
       const cwdSave = process.cwd();
       process.chdir(scope.SOURCE_DIR.toString());
@@ -327,7 +326,7 @@ export class GlobalContext {
       const module = await importModule(scope.SCRIPT_FILE.toString());
       if (!module.default)
         throw new Error(`Subdirectory ${scope.SCRIPT_FILE.basename()} not contain default function`);
-      const mk = UserContext.create(scope, this);
+      const mk = MakeContext.create(scope, this);
       const result = module.default(mk);
       if (result instanceof Promise)
         await result;
@@ -364,11 +363,12 @@ export class GlobalContext {
       const msg = "\x1b[36m" + "Generating " + script.workDir.relative(script.OUTPUT) + "\x1b[0m";
       const params = { ...script.VARIABLES, ...script.PARAMS };
       let func = script.SCRIPT;
-      const mk = ScriptContext.create(script.SCOPE, this);
+      const scope = script.SCOPE;
       const handler = async () => {
         if (func instanceof FilePath)
           func = (await importModule(func.toString())).default;
         if (func instanceof Function) {
+          const mk = ScriptContext.create(scope, this);
           const result = func(mk, scopeValueAsPrimitives(params));
           if (result instanceof Promise)
             await result;

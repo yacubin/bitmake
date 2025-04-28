@@ -9,37 +9,31 @@
 
 import { findProgramSync } from "@/core/FindProgram";
 import { GlobalContext } from "@/core/GlobalContext";
-import { ScopeHelper } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
 
 const GLOBAL = Symbol("GLOBAL");
 const SCOPE = Symbol("SCOPE");
 
-export class ToolchainContext {
-  private [SCOPE]: SystemScope;
-  private [GLOBAL]: GlobalContext;
+export namespace ToolchainContext {
 
-  private constructor(scope: SystemScope, global: GlobalContext) {
-    this[SCOPE] = scope;
-    this[GLOBAL] = global;
-  }
-
-  public static create(scope: SystemScope, global: GlobalContext) {
-    const proto = ToolchainContext.prototype;
-    const newScope = Object.create(proto);
-    ScopeHelper.clone(newScope, scope);
-    const self = Object.create(newScope);
-    self[SCOPE] = newScope;
-    self[GLOBAL] = global;
-    return self;
-  }
-
-  public _scope() {
-    return this[SCOPE];
-  }
+interface IToolchainContext {
+  findProgram(name: string): string | undefined;
 };
+  
+export function create(scope: SystemScope, global: GlobalContext): IToolchainContext {
+  const mk = Object.create(scope, {
+    findProgram: {
+      value: findProgramSync,
+      enumerable: false,
+      writable: false,
+      configurable: false,
+    },
+  });
 
-Object.defineProperty(ToolchainContext.prototype, "findProgram", {
-  value: findProgramSync,
-  enumerable: false,
-});
+  mk[SCOPE] = scope;
+  mk[GLOBAL] = global;
+
+  return mk;
+}
+
+} // namespace ToolchainContext

@@ -66,7 +66,6 @@ export async function makeScriptAction(config: any, environment: any, settings: 
     const result = toolchain.default(mk);
     if (result instanceof Promise)
       await result;
-    scope = mk._scope();
     ScopeHelper.applyVariables(scope, mk);
   }
   else {

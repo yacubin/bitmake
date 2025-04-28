@@ -18,7 +18,7 @@ export default async function(params: any) {
       return res.join("\n");
     return res.toString();
   });
-  content = content.replace(/#cmakedefine +([_A-Za-z][_A-Za-z0-9]+) *(.*)$/g, (match, v1, v2) => {
+  content = content.replace(/#cmakedefine +([_A-Za-z][_A-Za-z0-9]+) *(.*)/g, (match, v1, v2) => {
     return params[v1] ? `#define ${v1} ${v2}` : `/* #undef ${v1} */`;
   });
   await fs.promises.mkdir(path.dirname(params.output), { recursive: true });

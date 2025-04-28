@@ -119,7 +119,9 @@ export class UserContext {
   }
 
   public addCustomScript(script: any, params: any): CustomScript {
-    return this[GLOBAL].addCustomScript(script, params, this[SCOPE].SOURCE_DIR, this[SCOPE].BINARY_DIR);
+    const newScope = ScopeHelper.clone({}, this[SCOPE]);
+    ScopeHelper.applyVariables(newScope, this);
+    return this[GLOBAL].addCustomScript(newScope, script, params);
   }
 
   public target(name: string) {

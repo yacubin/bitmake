@@ -28,6 +28,7 @@ import { importModule } from "@/utils/Module";
 import { createLogger } from "@/logger";
 import { InstallEntity } from "@/core/InstallEntity";
 import { CustomScript } from "@/core/CustomScript";
+import { ScriptContext } from "@/core/ScriptContext";
 
 import configure_file from "@/core/BuildinScripts/configure_file";
 import install_script from "@/core/BuildinScripts/install_script";
@@ -77,6 +78,37 @@ function ensureValueByType(type: any, value: any) {
   if (Array.isArray(type) ? type.includes(value) : typeof value === type)
     return value;
   throw new Error(`The '${value}' is not a ${type}`);
+}
+
+function scopeValueAsPrimitives(o: any): any {
+  if (typeof o === "undefined")
+    return o;
+  if (typeof o === "boolean")
+    return o;
+  if (typeof o === "number")
+    return o;
+  if (typeof o === "string")
+    return o;
+  if (typeof o === "object") {
+    if (!o)
+      return o;
+    if (o instanceof AbsolutePath) {
+      return o.toString();
+    }
+    if (o instanceof Array) {
+      const result = [];
+      for (const i of o)
+        result.push(scopeValueAsPrimitives(i));
+      return result;
+    }
+    if (o instanceof Object) {
+      const result: any = {};
+      for (const [k,v] of Object.entries(o))
+        result[k] = scopeValueAsPrimitives(v);
+      return result;
+    }
+  }
+  throw new Error(`Unknown instance of ${o}`);
 }
 
 export class GlobalContext {
@@ -135,9 +167,12 @@ export class GlobalContext {
     return this[SUBDIR_ALIAS];
   }
   
-  public addCustomScript(script: any, params: any, sourceDir: DirPath, binaryDir: DirPath): CustomScript {
+  public addCustomScript(scope: SystemScope, script: any, params: any): CustomScript {
     if (!params)
       throw new Error("Argument with parameters is missing");
+
+    const sourceDir = scope.SOURCE_DIR;
+    const binaryDir = scope.BINARY_DIR;
 
     let scriptObj: Function | FilePath | undefined;
     if (typeof script === "string")
@@ -154,6 +189,7 @@ export class GlobalContext {
     const outputFile = FilePath.create(sourceDir.resolve(params.output));
 
     const options: CustomScript.Options = {
+      scope,
       name: params.name,
       script: scriptObj,
       params,
@@ -327,7 +363,21 @@ export class GlobalContext {
         depends.push(script.INPUT.toString());
       const msg = "\x1b[36m" + "Generating " + script.workDir.relative(script.OUTPUT) + "\x1b[0m";
       const params = { ...script.VARIABLES, ...script.PARAMS };
-      goalList.addScript(script.SCRIPT, "", depends, script.OUTPUT.toString(), params, msg);
+      let func = script.SCRIPT;
+      const mk = ScriptContext.create(script.SCOPE, this);
+      const handler = async () => {
+        if (func instanceof FilePath)
+          func = (await importModule(func.toString())).default;
+        if (func instanceof Function) {
+          const result = func(mk, scopeValueAsPrimitives(params));
+          if (result instanceof Promise)
+            await result;
+        }
+        else {
+          throw new Error(`There is no Function`);
+        }
+      };
+      goalList.addScript(handler, depends, script.OUTPUT.toString(), msg);
     }
   
     for (const [name, target] of Object.entries(this[TARGETS].ENTRIES) as any) {
@@ -454,7 +504,11 @@ export class GlobalContext {
       }
       if (scope.DESTDIR)
         dest = scope.DESTDIR.join(dest).toString();
-      goalList.addScript(install_script, "", [ src ], dest, {src, dest}, "");
+      const handler = async () => {
+        const params = scopeValueAsPrimitives({src, dest});
+        await install_script(params);
+      };
+      goalList.addScript(handler, [ src ], dest, "");
       install_files.push(dest);
     }
   

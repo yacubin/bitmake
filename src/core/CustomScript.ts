@@ -9,16 +9,19 @@
 
 import { FilePath, DirPath } from "@/core/Path";
 import { ScopeHelper } from "@/core/Scope";
+import { SystemScope } from "@/core/SystemScope";
 
+const SCOPE        = Symbol("SCOPE");
 const NAME         = Symbol("NAME");
 const SCRIPT       = Symbol("SCRIPT");
 const INPUT        = Symbol("INPUT");
 const OUTPUT       = Symbol("OUTPUT");
 const PARAMS       = Symbol("PARAMS");
 const WORK_DIR     = Symbol("WORK_DIR");
-const VARIABLES   = Symbol("VARIABLES");
+const VARIABLES    = Symbol("VARIABLES");
 
 export class CustomScript {
+  private [SCOPE]: SystemScope;
   private [NAME]: string | null;
   private [SCRIPT]: FilePath | Function;
   private [INPUT]: FilePath | undefined;
@@ -28,6 +31,7 @@ export class CustomScript {
   private [VARIABLES]: object;
 
   private constructor(options: CustomScript.Options) {
+    this[SCOPE] = options.scope;
     this[NAME] = options.name || null;
     this[INPUT] = options.input;
     this[SCRIPT] = options.script;
@@ -73,8 +77,13 @@ export class CustomScript {
     return this[VARIABLES];
   }
 
+  public get SCOPE() {
+    return this[SCOPE];
+  }
+
   public toJSON(): object {
     return {
+      SCOPE: this[SCOPE],
       NAME: this[NAME],
       SCRIPT: this.SCRIPT,
       INPUT: this.INPUT,
@@ -88,6 +97,7 @@ export class CustomScript {
 export namespace CustomScript {
 
 export interface Options {
+  scope: SystemScope,
   name?: string,
   params: any,
   script: FilePath | Function,

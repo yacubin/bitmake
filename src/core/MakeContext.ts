@@ -118,7 +118,13 @@ const methods = {
     const newScope = ScopeHelper.clone({}, this[SCOPE]);
     ScopeHelper.applyVariables(newScope, this);
   
-    newScope.SOURCE_DIR = AbsolutePath.create(this[GLOBAL].resolveSubdirectory(SOURCE_DIR).toString());
+    const resolvePath = this[GLOBAL].resolveSubdirectory(SOURCE_DIR);
+    if (!resolvePath) {
+      logger.info(`Source dir "${SOURCE_DIR}" was disabled`);
+      return;
+    }
+  
+    newScope.SOURCE_DIR = AbsolutePath.create(resolvePath.toString());
     newScope.BINARY_DIR = BINARY_DIR;
   
     this[GLOBAL].addSubdirectory(newScope);

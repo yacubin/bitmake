@@ -53,7 +53,7 @@ type UnknownTargets = {
 };
 
 type SubdirectoryAlias = {
-  [name: string]: DirPath;
+  [name: string]: DirPath | null;
 };
 
 type InterfaceScripts = {
@@ -163,10 +163,6 @@ export class GlobalContext {
     return this[SCRIPT_VARIABLES_MAP];
   }
 
-  public get SUBDIR_ALIAS() {
-    return this[SUBDIR_ALIAS];
-  }
-  
   public addCustomScript(scope: SystemScope, script: any, params: any): CustomScript {
     if (!params)
       throw new Error("Argument with parameters is missing");
@@ -224,10 +220,14 @@ export class GlobalContext {
 
   public resolveSubdirectory(path: AbsolutePath | string) {
     const resolvedPath = this[SUBDIR_ALIAS][path.toString()];
-    return resolvedPath || path;
+    if (resolvedPath === undefined)
+      return path;
+    if (resolvedPath === null)
+      return undefined;
+    return resolvedPath;
   }
 
-  public addSubdirectoryAlias(src: DirPath, dest: DirPath) {
+  public addSubdirectoryAlias(src: DirPath, dest: DirPath | null) {
     const srcStr = src.toString();
     if (this[SUBDIR_ALIAS].hasOwnProperty(srcStr))
       logger.warn(`Owerride "${srcStr}" subdirectory alias`);
@@ -530,7 +530,7 @@ export class GlobalContext {
       INTERFACE_SCRIPTS: this.INTERFACE_SCRIPTS,
       INSTALL_LIST: this[INSTALL_LIST],
       SCRIPT_VARIABLES_MAP: this.SCRIPT_VARIABLES_MAP,
-      SUBDIR_ALIAS: this.SUBDIR_ALIAS,
+      SUBDIR_ALIAS: this[SUBDIR_ALIAS],
     };
   }
 };

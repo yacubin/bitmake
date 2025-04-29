@@ -20,12 +20,15 @@ export namespace PluginContext {
 interface IPluginContext extends SystemScope {
   findProgram(name: string): string | undefined;
   addSubdirectoryAlias(src: any, dest: any): void;
+
+  [GLOBAL]: GlobalContext;
+  [SCOPE]: SystemScope;
 };
 
-function addSubdirectoryAlias(this: any, src: any, dest: any) {
-  const srcPath = this[SCOPE].SCRIPT_DIR.resolve(src);
-  const destPath = this[SCOPE].SCRIPT_DIR.resolve(dest);
-  this[GLOBAL].addSubdirectoryAlias(DirPath.create(srcPath), DirPath.create(destPath));
+function addSubdirectoryAlias(this: IPluginContext, src: any, dest: any) {
+  const srcPath = DirPath.create(this[SCOPE].SCRIPT_DIR.resolve(src));
+  const destPath = (dest === null) ? null : DirPath.create(this[SCOPE].SCRIPT_DIR.resolve(dest));
+  this[GLOBAL].addSubdirectoryAlias(srcPath, destPath);
 }
 
 export function create(scope: SystemScope, global: GlobalContext): IPluginContext {

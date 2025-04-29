@@ -16,6 +16,45 @@ import { createLogger } from "@/logger";
 
 const logger = createLogger(import.meta.url);
 
+interface IResultBuilder {
+  append(data: Buffer): void;
+  toResult(): Buffer | undefined;
+};
+
+class BufferBuilder implements IResultBuilder {
+  private _chunks: Array<Buffer> = [];
+
+  public append(chunk: Buffer): void {
+    this._chunks.push(chunk);
+  }
+
+  public toResult(): Buffer {
+    return Buffer.concat(this._chunks);
+  }
+};
+
+class FileSyncWriter implements IResultBuilder {
+  private _fd: number;
+
+  public constructor(file: string) {
+    this._fd = fs.openSync(file, "w");
+  }
+
+  public append(chunk: Buffer): void {
+    fs.writeSync(this._fd, chunk);
+  }
+
+  public toResult(): undefined {
+    fs.closeSync(this._fd);
+  }
+};
+
+function createBuilder(file?: string): IResultBuilder {
+  if (file)
+    return new FileSyncWriter(file);
+  return new BufferBuilder;
+}
+
 const httpOptions = {
   method: 'GET',
   timeout: 5000,
@@ -31,27 +70,32 @@ function httpRequest(url: string, options: http.RequestOptions | https.RequestOp
   return http.request(url, options, callback);
 };
 
-export function requestGet(url: string): Promise<Buffer> {
+function fetchImpl(url: string): Promise<Buffer>;
+function fetchImpl(url: string, file: string): Promise<undefined>;
+function fetchImpl(url: string, file?: string): Promise<Buffer|undefined> {
   return new Promise((resolve, reject) => {
 
     const onError = (err: any) => {
       const message = "Encountered an error trying to make a request: " + err.message;
-      logger.error(message, err);
-      reject(message);
+      logger.debug(message, err);
+      reject(new Error(message));
     };
 
     const onTimeout = (request: any) => {
       request.destroy();
-      logger.error("  Timeout", url);
-      reject("Timeout");
+      logger.debug("Timeout", url);
+      reject(new Error("Timeout"));
     }
 
+    const filename = path.basename(url);
     const onRequest = (response: any) => {
       switch (response.statusCode) {
       case 200:
-        const chunks: Array<Buffer> = [];
-        response.on("data", (chunk: Buffer) => chunks.push(chunk));
-        response.on("end", () => resolve(Buffer.concat(chunks)));
+        logger.debug(`Conncted to ${response.req.host}`);
+        logger.debug(`Downloading ${filename}`);
+        const builder = createBuilder(file);
+        response.on("data", (chunk: Buffer) => builder.append(chunk));
+        response.on("end", () => resolve(builder.toResult()));
         response.on('close', () => logger.info('  Close'));
         break;
 
@@ -60,8 +104,8 @@ export function requestGet(url: string): Promise<Buffer> {
         response.resume();
         logger.info(`Redirect to ${response.headers.location}`);
         const request = httpRequest(response.headers.location, httpOptions, onRequest);
-        request.on('timeout', onTimeout.bind(null, request));
-        request.on('error', onError);
+        request.on("timeout", onTimeout.bind(null, request));
+        request.on("error", onError);
         request.end();
         break;
 
@@ -76,78 +120,16 @@ export function requestGet(url: string): Promise<Buffer> {
 
     logger.info(`wget ${url}`);
     const request = httpRequest(url, httpOptions, onRequest);
-    request.on('timeout', onTimeout.bind(null, request));
-    request.on('error', onError);
+    request.on("timeout", onTimeout.bind(null, request));
+    request.on("error", onError);
     request.end();
   });
 };
 
-export function downloadFile(url: string, file: string): Promise<any> {
-  return new Promise((resolve, reject) => {
-    const filename = path.basename(url);
+export function requestGet(url: string): Promise<Buffer> {
+  return fetchImpl(url);
+}
 
-    const client = (() => {
-      if (file) {
-        const fd = fs.openSync(file, "w");
-        return {
-          onData: (chunk: Buffer) => {
-            fs.writeSync(fd, chunk);
-          },
-          onEnd: () => {
-            fs.closeSync(fd);
-            resolve(undefined);
-          },
-        };
-      }
-      else {
-        const chunks: Array<Buffer> = [];
-        return {
-          onData: (chunk: Buffer) => {
-            chunks.push(chunk);
-          },
-          onEnd: () => {
-            resolve(Buffer.concat(chunks));
-          },
-        };
-      }
-    })();
-  
-    const startRequest = (url: string, callback: any) => {
-      const request = httpRequest(url, httpOptions, callback);
-      if (request) {
-        request.on('error', (error) => reject(error));
-        request.end(); 
-      }
-      else {
-        reject(`Url scheme not supported for ${url}`);
-      }
-    };
-
-    const onRequest = (response: any) => {
-      switch (response.statusCode) {
-      case 200:
-        logger.info(`Conncted to ${response.req.host}`);
-        logger.info(`Downloading ${filename}`);
-        response.on('data', client.onData);
-        response.on('end', client.onEnd);
-        response.on('close', () => logger.info(`Done`));
-        break;
-
-      case 301:
-      case 302:
-        response.resume();
-        logger.info(`Resolving ${response.headers.location}`);
-        startRequest(response.headers.location, onRequest);
-        break;
-
-      default:
-        response.resume();
-        reject(`Did not get an OK from the server. Code: ${response.statusCode}`);
-        break;
-      }
-    };
-
-    logger.info(`Request to ${url}`);
-    startRequest(url, onRequest);
-  });
+export function downloadFile(url: string, file: string): Promise<undefined> {
+  return fetchImpl(url, file);
 }

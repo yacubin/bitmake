@@ -14,7 +14,7 @@ declare const _default$1: {
 	};
 };
 declare function _default(options: any): Promise<void>;
-declare function downloadFile(url: string, file: string): Promise<any>;
+declare function downloadFile(url: string, file: string): Promise<undefined>;
 declare function filenameToPragmaOnceMacro(filepath: string, deep: number): string;
 declare function generatedScriptNameComment(filename: string): string;
 declare function lineToMultipleComment(line: string): string;

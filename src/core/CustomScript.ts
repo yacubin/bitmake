@@ -22,7 +22,7 @@ const VARIABLES    = Symbol("VARIABLES");
 
 export class CustomScript {
   private [SCOPE]: SystemScope;
-  private [NAME]: string | null;
+  private [NAME]: string;
   private [SCRIPT]: FilePath | Function;
   private [INPUT]: FilePath | undefined;
   private [OUTPUT]: FilePath;
@@ -32,7 +32,7 @@ export class CustomScript {
 
   private constructor(options: CustomScript.Options) {
     this[SCOPE] = options.scope;
-    this[NAME] = options.name || null;
+    this[NAME] = options.name || "";
     this[INPUT] = options.input;
     this[SCRIPT] = options.script;
     this[OUTPUT] = options.output;
@@ -47,6 +47,10 @@ export class CustomScript {
 
   public mergeVariables(variables: any) {
     ScopeHelper.mergeVariables(this[VARIABLES], variables);
+  }
+
+  public get NAME() {
+    return this[NAME];
   }
 
   public get SCRIPT() {

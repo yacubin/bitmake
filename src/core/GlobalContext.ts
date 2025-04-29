@@ -377,7 +377,7 @@ export class GlobalContext {
           throw new Error(`There is no Function`);
         }
       };
-      goalList.addScript(handler, depends, script.OUTPUT.toString(), msg);
+      goalList.addScript(script.NAME, handler, depends, script.OUTPUT.toString(), msg);
     }
   
     for (const [name, target] of Object.entries(this[TARGETS].ENTRIES) as any) {
@@ -485,8 +485,13 @@ export class GlobalContext {
     }
   
     const install_files: string[] = [];
+    interface InstallGoalParams {
+      src: string;
+      dest: string;
+    };
+    const installPairs = new Array<InstallGoalParams>;
     for (const iter of this[INSTALL_LIST]) {
-      let src, dest;
+      let src: string, dest: any;
       if (iter.VALUE instanceof AbsolutePath) {
         if (scope.PREVENT_INSTALL_FILES)
           continue;
@@ -508,12 +513,22 @@ export class GlobalContext {
         const params = scopeValueAsPrimitives({src, dest});
         await install_script(params);
       };
-      goalList.addScript(handler, [ src ], dest.toString(), "");
+      //goalList.addScript(handler, [ src ], dest.toString(), "");
       install_files.push(dest.toString());
+      dest = dest.toString();
+      installPairs.push({src, dest});
     }
 
     if (install_files.length) {
-      goalList.addTarget(INSTALL_TARGET, install_files, "");
+      //goalList.addTarget(INSTALL_TARGET, install_files, "");
+    }
+
+    if (installPairs.length) {
+      const handler = async () => {
+        for (const iter of installPairs)
+          await install_script(scopeValueAsPrimitives(iter));
+      };
+      goalList.addScript(INSTALL_TARGET, handler, installPairs.map(i => i.src), "", "");
     }
   
     goalList.addTarget(ALL_TARGET, Object.keys(this[TARGETS].ENTRIES), "");
@@ -521,7 +536,7 @@ export class GlobalContext {
     return goalList;
   }
 
-  public toJSON(): object {
+  public toJSON() {
     return {
       TARGETS: this.TARGETS,
       CUSTOM_SCRIPTS: this[CUSTOM_SCRIPTS],

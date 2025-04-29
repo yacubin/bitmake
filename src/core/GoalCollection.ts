@@ -66,10 +66,10 @@ export class GoalCollection {
     return !!this.findScriptByOutput(output);
   }
 
-  public addScript(handler: ScriptHandler, depends: Array<string>, output: string, msg: string) {
+  public addScript(name: string, handler: ScriptHandler, depends: Array<string>, output: string, msg: string) {
     if (this.hasScriptByOutput(output.toString()))
       throw new Error(`Output "${output}" exists`);
-    this[ENTRIES].push({ name: "", type: GoalType.SCRIPT, handler, output, depends, msg } as ScriptGoal);
+    this[ENTRIES].push({ name, type: GoalType.SCRIPT, handler, output, depends, msg } as ScriptGoal);
   }
 
   public addExec(output: string, depends: Array<string>, command: string, args: Array<string>, cwd: string, msg: string) {

@@ -82,7 +82,7 @@ export function requestGet(url: string): Promise<Buffer> {
   });
 };
 
-export function downloadFile(url: string, file: string) {
+export function downloadFile(url: string, file: string): Promise<any> {
   return new Promise((resolve, reject) => {
     const filename = path.basename(url);
 
@@ -113,7 +113,7 @@ export function downloadFile(url: string, file: string) {
     })();
   
     const startRequest = (url: string, callback: any) => {
-      const request = https.request(url, httpOptions, callback);
+      const request = httpRequest(url, httpOptions, callback);
       if (request) {
         request.on('error', (error) => reject(error));
         request.end(); 

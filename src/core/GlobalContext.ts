@@ -484,7 +484,6 @@ export class GlobalContext {
       goalList.addTarget(name, [ target.FILE.toString() ], `Built target ${name}`);
     }
   
-    const install_files: string[] = [];
     interface InstallGoalParams {
       src: string;
       dest: string;
@@ -509,18 +508,8 @@ export class GlobalContext {
       }
       if (scope.DESTDIR)
         dest = scope.DESTDIR.join(dest).toString();
-      const handler = async () => {
-        const params = scopeValueAsPrimitives({src, dest});
-        await install_script(params);
-      };
-      //goalList.addScript(handler, [ src ], dest.toString(), "");
-      install_files.push(dest.toString());
       dest = dest.toString();
       installPairs.push({src, dest});
-    }
-
-    if (install_files.length) {
-      //goalList.addTarget(INSTALL_TARGET, install_files, "");
     }
 
     if (installPairs.length) {

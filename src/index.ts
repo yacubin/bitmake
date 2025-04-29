@@ -11,6 +11,8 @@
 
 import * as cxx from "@/cxx";
 
+import { spawnAsync } from "@/utils/ChildProcess";
+import { requestGet, downloadFile } from "@/utils/HttpRequest";
 import initHandler from "@/InitHandler";
 import buildHandler from "@/BuildHandler";
 
@@ -20,5 +22,12 @@ export default {
     default: buildHandler,
     init: initHandler,
     build: buildHandler,
+  },
+  process: {
+    spawn: spawnAsync,
+  },
+  utils: {
+    requestGet,
+    downloadFile,
   },
 };

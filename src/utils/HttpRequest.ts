@@ -16,16 +16,12 @@ import { createLogger } from "@/logger";
 
 const logger = createLogger(import.meta.url);
 
-interface IResultBuilder {
+interface IResolveBuilder {
   append(data: Buffer): void;
   toResult(): Buffer | undefined;
 };
 
-interface IResultFactory {
-  createBuilder(): IResultBuilder;
-};
-
-class BufferBuilder implements IResultBuilder {
+class BufferBuilder implements IResolveBuilder {
   private _chunks: Array<Buffer> = [];
 
   public append(chunk: Buffer): void {
@@ -37,7 +33,7 @@ class BufferBuilder implements IResultBuilder {
   }
 };
 
-class FileSyncWriter implements IResultBuilder {
+class FileSyncWriter implements IResolveBuilder {
   private _fd: number;
 
   public constructor(file: string) {
@@ -53,7 +49,7 @@ class FileSyncWriter implements IResultBuilder {
   }
 };
 
-function createBuilder(file?: string): IResultBuilder {
+function createBuilder(file?: string): IResolveBuilder {
   if (file)
     return new FileSyncWriter(file);
   return new BufferBuilder;
@@ -71,48 +67,46 @@ interface FetchOptions {
 
 function fetchImpl(url: string, file: string | undefined, options: FetchOptions): Promise<Buffer|undefined> {
   return new Promise((resolve, reject) => {
-    const doRequest = (url: string, redirect: boolean) => {
-      logger.info((redirect ? "Redirect to " : "wget ") + url);
-      const httpOptions = {
-        method: 'GET',
-        timeout: 5000,
-        headers: {
-          "User-Agent": PROJECT_NAME + "/" + PROJECT_VERSION,
-          "Accept": "*/*",
-        },
-      };
-      const request = httpRequest(url, httpOptions, onRequest);
-      request.on("timeout", onTimeout.bind(null, request));
-      request.on("error", onError);
-      request.end();
+    const httpOptions = {
+      method: 'GET',
+      timeout: 5000,
+      headers: {
+        "User-Agent": PROJECT_NAME + "/" + PROJECT_VERSION,
+        "Accept": "*/*",
+      },
     };
 
     let attempts = options.attempts || 0;
+    const doRequest = (url: string) => {
+      const request = httpRequest(url, httpOptions, onRequest);
 
-    const onError = (err: any) => {
-      const message = "Encountered an error trying to make a request: " + err.message;
-      if (attempts > 0) {
-        logger.warn(message, err);
-        attempts--;
-        doRequest(url, false);
-      }
-      else {
-        reject(new Error(message));
-      }
+      let hasError = false;
+      const onError = (err: Error) => {
+        request.destroy();
+        if (!hasError) {
+          hasError = true;
+          if (attempts > 0) {
+            logger.warn(err.message);
+            logger.info(`re-wget ${url} attempts ${attempts}`);
+            attempts--;
+            doRequest(url);
+          }
+          else {
+            reject(err);
+          }
+        }
+      };
+
+      request.on("timeout", () => {
+        onError(new Error("Timeout for " + url));
+      });
+
+      request.on("error", (err: Error) => {
+        onError(err);
+      });
+
+      request.end();
     };
-
-    const onTimeout = (request: any) => {
-      request.destroy();
-      const message = "Timeout for " + url;
-      if (attempts > 0) {
-        logger.warn(message);
-        attempts--;
-        doRequest(url, false);
-      }
-      else {
-        reject(new Error(message));
-      }
-    }
 
     const filename = path.basename(url);
     const onRequest = (response: http.IncomingMessage) => {
@@ -129,8 +123,10 @@ function fetchImpl(url: string, file: string | undefined, options: FetchOptions)
       case 301:
       case 302:
         response.resume();
-        if (response.headers.location)
-          doRequest(response.headers.location, true);
+        if (response.headers.location) {
+          logger.info("Redirect to " + response.headers.location);
+          doRequest(response.headers.location);
+        }
         break;
 
       default:
@@ -142,7 +138,8 @@ function fetchImpl(url: string, file: string | undefined, options: FetchOptions)
       }
     };
 
-    doRequest(url, false);
+    logger.info("wget " + url);
+    doRequest(url);
   });
 };
 

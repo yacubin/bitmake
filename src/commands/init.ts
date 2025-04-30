@@ -7,18 +7,19 @@
  * under the MIT License. See LICENSE file for details.
  */
 
+import path from "node:path";
 import fs from "node:fs";
 
 import { fileExists } from "@/utils/FileSystem";
-import { RunScriptContext } from "@/RunScriptContext";
+import { USER_CONFIG } from "@/Constants";
+import { CommandOptions } from "@/core/CommandOptions";
 import { requireResolve } from "@/utils/Module";
 import { createLogger } from "@/logger";
 
 const logger = createLogger(import.meta.url);
 
-export default async function(options: any) {
-  const ctx = new RunScriptContext(options);
-  const preset = ctx.env.preset;
+export default async function(options: CommandOptions) {
+  const preset = options.env.preset;
 
   let presetPath;
   if (preset) {
@@ -35,9 +36,10 @@ export default async function(options: any) {
   if (!presetPath)
     throw new Error(`Preset '${preset}' is not available`);
 
-  if (await fileExists(ctx.userConfigPath))
-    await fs.promises.rm(ctx.userConfigPath);
+  const userConfigPath = path.resolve(options.workDir, USER_CONFIG);
+  if (await fileExists(userConfigPath))
+    await fs.promises.rm(userConfigPath);
 
-  await fs.promises.copyFile(presetPath, ctx.userConfigPath);
+  await fs.promises.copyFile(presetPath, userConfigPath);
   logger.info(`Preset '${preset}' installed successfully`);
 }

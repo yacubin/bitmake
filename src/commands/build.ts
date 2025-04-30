@@ -19,15 +19,21 @@ import { spawnAsync } from "@/utils/ChildProcess";
 import { makeScriptAction } from "@/MakeScriptAction";
 import { arrayWrapper, assignObject } from "@/utils/Primitives";
 import { USER_CONFIG, BUILD_SETTINGS_FILE, REQUEST_ATTEMPTS } from "@/Constants";
+import { DEBUG_BUILD_TYPE, RELEASE_BUILD_TYPE } from "@/core/Types";
 import { requireResolve } from "@/utils/Module";
 import { downloadFile } from "@/utils/HttpRequest";
-import { RunScriptContext, RunScriptOptions } from "@/RunScriptContext";
+import { CommandOptions } from "@/core/CommandOptions";
 import { createLogger } from "@/logger";
 
 import { fileExists } from "@/utils/FileSystem";
 import { importModule } from "@/utils/Module";
 
 const logger = createLogger(import.meta.url);
+
+interface GeneralConfig {
+  workDir: string;
+  buildType: string;
+};
 
 function mergeEnvironment(...args: any) {
   const environment: any = {};
@@ -184,7 +190,7 @@ function resolveConfigStrings(config: any) {
   }
 }
 
-function makeBuildConfig(ctx: any, config: any) {
+function makeBuildConfig(gconfig: GeneralConfig, config: any) {
   for (const key of [ "sourceRoot", "wasmuxDir" ]) {
     if (config[key]) {
       throw new Error(`The ${key} variable cannot be changed to "${config.sourceRoot}"`);
@@ -193,9 +199,9 @@ function makeBuildConfig(ctx: any, config: any) {
 
   const rootConfig = rebaseConfig(config);
 
-  rootConfig.buildType = rootConfig.buildType || ctx.buildType;
-  rootConfig.sourceRoot = rootConfig.sourceRoot || ctx.workDir;
-  rootConfig.binaryRoot = rootConfig.binaryRoot || path.posix.resolve(ctx.workDir,"build");
+  rootConfig.buildType = rootConfig.buildType || gconfig.buildType;
+  rootConfig.sourceRoot = rootConfig.sourceRoot || gconfig.workDir;
+  rootConfig.binaryRoot = rootConfig.binaryRoot || path.posix.resolve(gconfig.workDir, "build");
 
   for (const [key, entry] of Object.entries(rootConfig) as any) {
     if (entry && typeof entry === "object" && entry.action) {
@@ -226,7 +232,7 @@ function makeBuildConfig(ctx: any, config: any) {
   return rootConfig;
 }
 
-async function doExtractArchive(ctx: RunScriptContext, environment: any, config: any, settings: any) {
+async function doExtractArchive(gconfig: GeneralConfig, environment: any, config: any, settings: any) {
   if (!config.sourceUrl)
     throw new Error("Unknown sourceUrl");
   if (!config.archiveDir)
@@ -437,7 +443,7 @@ const actionHandlers: any = {
   bitmake: makeScriptAction,
 };
 
-async function doTargetBuild(ctx: RunScriptContext, environment: any, config: any, settings: any) {
+async function doTargetBuild(gconfig: GeneralConfig, environment: any, config: any, settings: any) {
   if (config.preAction) {
     await settings.push("preAction");
     const newConfig: any = {};
@@ -447,7 +453,7 @@ async function doTargetBuild(ctx: RunScriptContext, environment: any, config: an
     delete newConfig.postAction;
     assignObject(newConfig, config.preAction);
     const newEnvironment = mergeEnvironment(config.preAction.environment, environment);
-    await doTargetBuild(ctx, newEnvironment, newConfig, settings);
+    await doTargetBuild(gconfig, newEnvironment, newConfig, settings);
     await settings.pop();
   }
 
@@ -462,7 +468,7 @@ async function doTargetBuild(ctx: RunScriptContext, environment: any, config: an
       delete newConfig.postAction;
       assignObject(newConfig, config.action[i]);
       const newEnvironment = mergeEnvironment(config.action[i].environment, environment);
-      await doTargetBuild(ctx, newEnvironment, newConfig, settings);
+      await doTargetBuild(gconfig, newEnvironment, newConfig, settings);
       await settings.pop();
     }
     await settings.pop();
@@ -486,12 +492,12 @@ async function doTargetBuild(ctx: RunScriptContext, environment: any, config: an
     delete newConfig.postAction;
     assignObject(newConfig, config.postAction);
     const newEnvironment = mergeEnvironment(config.postAction.environment, environment);
-    await doTargetBuild(ctx, newEnvironment, newConfig, settings);
+    await doTargetBuild(gconfig, newEnvironment, newConfig, settings);
     await settings.pop();
   }
 }
 
-async function getUserConfig(options: RunScriptOptions) {
+async function getUserConfig(options: CommandOptions) {
   let configPath;
   if (options.env.config) {
     configPath = path.isAbsolute(options.env.config) ? options.env.config : path.resolve(options.workDir, options.env.config);
@@ -537,10 +543,14 @@ async function getUserConfig(options: RunScriptOptions) {
   }
 }
 
-export default async (options: RunScriptOptions) => {
-  const ctx = new RunScriptContext(options);
+export default async (options: CommandOptions) => {
+  const gconfig: GeneralConfig = {
+    buildType: options.env.buildType == DEBUG_BUILD_TYPE ? options.env.buildType : RELEASE_BUILD_TYPE,
+    workDir: options.workDir,
+  };
+
   const userConfig = await getUserConfig(options);
-  const buildConfig = makeBuildConfig(ctx, userConfig);
+  const buildConfig = makeBuildConfig(gconfig, userConfig);
 
   if (buildConfig.RECIPE_CONTENT_FILE) {
     const jsonConfig = JSON.stringify(buildConfig, null, 2);
@@ -558,9 +568,9 @@ export default async (options: RunScriptOptions) => {
         logger.info(`Started action: ${key}`);
         const environment = mergeEnvironment(entry.environment, process.env);
         if (entry.sourceUrl) {
-          await doExtractArchive(ctx, environment, entry, settings);
+          await doExtractArchive(gconfig, environment, entry, settings);
         }
-        await doTargetBuild(ctx, environment, entry, settings);
+        await doTargetBuild(gconfig, environment, entry, settings);
         await settings.set("completed", true);
         logger.info(`Completed action: ${key}`);
       }

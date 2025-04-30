@@ -10,19 +10,16 @@
 /// <reference path="global.d.ts" />
 
 import * as cxx from "@/cxx";
+import cmake from "@/cmake";
 
 import { spawnAsync } from "@/utils/ChildProcess";
 import { requestGet, downloadFile } from "@/utils/HttpRequest";
-import initHandler from "@/InitHandler";
-import buildHandler from "@/BuildHandler";
+import commands from "@/commands";
 
 export default {
   cxx,
-  handlers: {
-    default: buildHandler,
-    init: initHandler,
-    build: buildHandler,
-  },
+  cmake,
+  commands,
   process: {
     spawn: spawnAsync,
   },

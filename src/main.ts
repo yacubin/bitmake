@@ -9,25 +9,24 @@
 
 /// <reference path="global.d.ts" />
 
-import path from "node:path";
-
 import { Args }  from "@/utils/Args";
 import { importModule }  from "@/utils/Module";
 
 async function runScript() {
-  const handlerMap = (await importModule("./bitmake.js") as any).default.handlers;
+  const { commands } = (await importModule("./bitmake.js") as any).default;
   const options: any = {
     handler: "default",
-    nodeExecutable: null,
-    currentScript: null,
     workDir: process.cwd(),
     env: {},
   };
 
+  let nodeExecutable: string | undefined;
   if (process.argv.length > 0)
-    options.nodeExecutable = process.argv[0];
+    nodeExecutable = process.argv[0];
+
+  let currentScript: string | undefined;
   if (process.argv.length > 1)
-    options.currentScript = process.argv[1];
+    currentScript = process.argv[1];
 
   let argsIndex = process.argv.length;
   if (process.argv.length > 2) {
@@ -39,14 +38,12 @@ async function runScript() {
     }
   }
 
-  if (!handlerMap.hasOwnProperty(options.handler)) {
-    const scriptName = options.currentScript ? path.basename(options.currentScript) : "wasmux";
-    throw Error(`The ${scriptName} does not support the ${options.handler} command`);
-  }
-
   options.env = Args.toObject(process.argv.slice(argsIndex));
 
-  const handler = handlerMap[options.handler];
+  const handler = commands[options.handler];
+  if (!handler)
+    throw Error(`The ${PROJECT_NAME} does not support the ${options.handler} command`);
+
   const res = handler(options);
   if (res instanceof Promise) {
     await res;

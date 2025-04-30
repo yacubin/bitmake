@@ -20,7 +20,7 @@ import { makeScriptAction } from "@/MakeScriptAction";
 import { arrayWrapper, assignObject } from "@/utils/Primitives";
 import { USER_CONFIG, BUILD_SETTINGS_FILE, REQUEST_ATTEMPTS } from "@/Constants";
 import { requireResolve } from "@/utils/Module";
-import { requestGet } from "@/utils/HttpRequest";
+import { downloadFile } from "@/utils/HttpRequest";
 import { RunScriptContext, RunScriptOptions } from "@/RunScriptContext";
 import { createLogger } from "@/logger";
 
@@ -226,24 +226,7 @@ function makeBuildConfig(ctx: any, config: any) {
   return rootConfig;
 }
 
-async function tryRequestGet(sourceUrl: string, arcFile: string, attempts: number) {
-  for(;;) {
-    try {
-      const buffer = await requestGet(sourceUrl);
-      await fs.promises.writeFile(arcFile, buffer);
-      return;
-    }
-    catch (e) {
-      if (--attempts < 0) {
-        throw e;
-      }
-      console.warn(e);
-    }
-  }
-}
-
-async function doExtractArchive(ctx: RunScriptContext, environment: any, config: any, settings: any)
-{
+async function doExtractArchive(ctx: RunScriptContext, environment: any, config: any, settings: any) {
   if (!config.sourceUrl)
     throw new Error("Unknown sourceUrl");
   if (!config.archiveDir)
@@ -269,7 +252,7 @@ async function doExtractArchive(ctx: RunScriptContext, environment: any, config:
     arcFile = downloadUrls[config.sourceUrl];
   else {
     arcFile = path.join(config.archiveDir, arcName);
-    await tryRequestGet(config.sourceUrl, arcFile, REQUEST_ATTEMPTS);
+    await downloadFile(config.sourceUrl, arcFile, { attempts: REQUEST_ATTEMPTS });
     downloadUrls[config.sourceUrl] = arcFile;
     await settings.set("downloadUrls", downloadUrls);
   }

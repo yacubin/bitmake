@@ -21,6 +21,10 @@ interface IResultBuilder {
   toResult(): Buffer | undefined;
 };
 
+interface IResultFactory {
+  createBuilder(): IResultBuilder;
+};
+
 class BufferBuilder implements IResultBuilder {
   private _chunks: Array<Buffer> = [];
 
@@ -55,58 +59,78 @@ function createBuilder(file?: string): IResultBuilder {
   return new BufferBuilder;
 }
 
-const httpOptions = {
-  method: 'GET',
-  timeout: 5000,
-  headers: {
-    "User-Agent": PROJECT_NAME + "/" + PROJECT_VERSION,
-    "Accept": "*/*",
-  },
-};
-
-function httpRequest(url: string, options: http.RequestOptions | https.RequestOptions, callback: any) {
+function httpRequest(url: string, options: http.RequestOptions | https.RequestOptions, callback: any): http.ClientRequest {
   if (url.startsWith("https://"))
     return https.request(url, options, callback);
   return http.request(url, options, callback);
 };
 
-function fetchImpl(url: string): Promise<Buffer>;
-function fetchImpl(url: string, file: string): Promise<undefined>;
-function fetchImpl(url: string, file?: string): Promise<Buffer|undefined> {
+interface FetchOptions {
+  attempts?: number;
+};
+
+function fetchImpl(url: string, file: string | undefined, options: FetchOptions): Promise<Buffer|undefined> {
   return new Promise((resolve, reject) => {
+    const doRequest = (url: string, redirect: boolean) => {
+      logger.info((redirect ? "Redirect to " : "wget ") + url);
+      const httpOptions = {
+        method: 'GET',
+        timeout: 5000,
+        headers: {
+          "User-Agent": PROJECT_NAME + "/" + PROJECT_VERSION,
+          "Accept": "*/*",
+        },
+      };
+      const request = httpRequest(url, httpOptions, onRequest);
+      request.on("timeout", onTimeout.bind(null, request));
+      request.on("error", onError);
+      request.end();
+    };
+
+    let attempts = options.attempts || 0;
 
     const onError = (err: any) => {
       const message = "Encountered an error trying to make a request: " + err.message;
-      logger.debug(message, err);
-      reject(new Error(message));
+      if (attempts > 0) {
+        logger.warn(message, err);
+        attempts--;
+        doRequest(url, false);
+      }
+      else {
+        reject(new Error(message));
+      }
     };
 
     const onTimeout = (request: any) => {
       request.destroy();
-      logger.debug("Timeout", url);
-      reject(new Error("Timeout"));
+      const message = "Timeout for " + url;
+      if (attempts > 0) {
+        logger.warn(message);
+        attempts--;
+        doRequest(url, false);
+      }
+      else {
+        reject(new Error(message));
+      }
     }
 
     const filename = path.basename(url);
-    const onRequest = (response: any) => {
+    const onRequest = (response: http.IncomingMessage) => {
       switch (response.statusCode) {
       case 200:
-        logger.debug(`Conncted to ${response.req.host}`);
+        logger.debug(`Conncted to ${(response as any).req.host}`);
         logger.debug(`Downloading ${filename}`);
         const builder = createBuilder(file);
         response.on("data", (chunk: Buffer) => builder.append(chunk));
         response.on("end", () => resolve(builder.toResult()));
-        response.on('close', () => logger.info('  Close'));
+        response.on('close', () => logger.debug("Close"));
         break;
 
       case 301:
       case 302:
         response.resume();
-        logger.info(`Redirect to ${response.headers.location}`);
-        const request = httpRequest(response.headers.location, httpOptions, onRequest);
-        request.on("timeout", onTimeout.bind(null, request));
-        request.on("error", onError);
-        request.end();
+        if (response.headers.location)
+          doRequest(response.headers.location, true);
         break;
 
       default:
@@ -118,18 +142,14 @@ function fetchImpl(url: string, file?: string): Promise<Buffer|undefined> {
       }
     };
 
-    logger.info(`wget ${url}`);
-    const request = httpRequest(url, httpOptions, onRequest);
-    request.on("timeout", onTimeout.bind(null, request));
-    request.on("error", onError);
-    request.end();
+    doRequest(url, false);
   });
 };
 
-export function requestGet(url: string): Promise<Buffer> {
-  return fetchImpl(url);
+export function requestGet(url: string, options?: FetchOptions) {
+  return fetchImpl(url, undefined, options || {}) as Promise<Buffer>;
 }
 
-export function downloadFile(url: string, file: string): Promise<undefined> {
-  return fetchImpl(url, file);
+export function downloadFile(url: string, file: string, options?: FetchOptions) {
+  return fetchImpl(url, file, options || {}) as Promise<undefined>;
 }

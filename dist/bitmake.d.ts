@@ -14,13 +14,16 @@ declare const _default$1: {
 	};
 };
 declare function _default(options: any): Promise<void>;
-declare function downloadFile(url: string, file: string): Promise<undefined>;
+declare function downloadFile(url: string, file: string, options?: FetchOptions): Promise<undefined>;
 declare function filenameToPragmaOnceMacro(filepath: string, deep: number): string;
 declare function generatedScriptNameComment(filename: string): string;
 declare function lineToMultipleComment(line: string): string;
 declare function lineToSinglComment(line: string): string;
-declare function requestGet(url: string): Promise<Buffer>;
+declare function requestGet(url: string, options?: FetchOptions): Promise<Buffer>;
 declare function spawnAsync(command: string, args: string[], options?: any): Promise<Result>;
+export interface FetchOptions {
+	attempts?: number;
+}
 export interface RunScriptOptions {
 	handler: string;
 	nodeExecutable: string;

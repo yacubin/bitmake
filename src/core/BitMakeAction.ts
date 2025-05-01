@@ -21,12 +21,10 @@ import { importModule }  from "@/utils/Module";
 import { determineCompiler }  from "@/core/DetermineCompiler";
 import SystemVariables from "@/core/SystemVariables";
 import { SystemScope } from "@/core/SystemScope";
-import { INSTALL_TARGET } from "@/Constants";
+import { SettingsStorage } from "@/utils/SettingsStorage";
+import { INSTALL_TARGET, PACKAGE_JSON, MAKE_CACHE } from "@/Constants";
 
-const PACKAGE_JSON = "package.json";
-const MAKE_CACHE = "MakeCache.json";
-
-export async function makeScriptAction(config: any, environment: any, settings: any) {
+export async function bitmakeAction(config: any, environment: any, settings: SettingsStorage) {
   process.env = environment;
 
   let scope = {} as SystemScope;

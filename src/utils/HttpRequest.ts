@@ -16,53 +16,117 @@ import { createLogger } from "@/logger";
 
 const logger = createLogger(import.meta.url);
 
-const httpOptions = {
-  method: 'GET',
-  timeout: 5000,
-  headers: {
-    "User-Agent": PROJECT_NAME + "/" + PROJECT_VERSION,
-    "Accept": "*/*",
-  },
+interface IResolveBuilder {
+  append(data: Buffer): void;
+  toResult(): Buffer | undefined;
 };
 
-function httpRequest(url: string, options: http.RequestOptions | https.RequestOptions, callback: any) {
+class BufferBuilder implements IResolveBuilder {
+  private _chunks: Array<Buffer> = [];
+
+  public append(chunk: Buffer): void {
+    this._chunks.push(chunk);
+  }
+
+  public toResult(): Buffer {
+    return Buffer.concat(this._chunks);
+  }
+};
+
+class FileSyncWriter implements IResolveBuilder {
+  private _fd: number;
+
+  public constructor(file: string) {
+    this._fd = fs.openSync(file, "w");
+  }
+
+  public append(chunk: Buffer): void {
+    fs.writeSync(this._fd, chunk);
+  }
+
+  public toResult(): undefined {
+    fs.closeSync(this._fd);
+  }
+};
+
+function createBuilder(file?: string): IResolveBuilder {
+  if (file)
+    return new FileSyncWriter(file);
+  return new BufferBuilder;
+}
+
+function httpRequest(url: string, options: http.RequestOptions | https.RequestOptions, callback: any): http.ClientRequest {
   if (url.startsWith("https://"))
     return https.request(url, options, callback);
   return http.request(url, options, callback);
 };
 
-export function requestGet(url: string): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
+interface FetchOptions {
+  attempts?: number;
+};
 
-    const onError = (err: any) => {
-      const message = "Encountered an error trying to make a request: " + err.message;
-      logger.error(message, err);
-      reject(message);
+function fetchImpl(url: string, file: string | undefined, options: FetchOptions): Promise<Buffer|undefined> {
+  return new Promise((resolve, reject) => {
+    const httpOptions = {
+      method: 'GET',
+      timeout: 5000,
+      headers: {
+        "User-Agent": PROJECT_NAME + "/" + PROJECT_VERSION,
+        "Accept": "*/*",
+      },
     };
 
-    const onTimeout = (request: any) => {
-      request.destroy();
-      logger.error("  Timeout", url);
-      reject("Timeout");
-    }
+    let attempts = options.attempts || 0;
+    const doRequest = (url: string) => {
+      const request = httpRequest(url, httpOptions, onRequest);
 
-    const onRequest = (response: any) => {
+      let hasError = false;
+      const onError = (err: Error) => {
+        request.destroy();
+        if (!hasError) {
+          hasError = true;
+          if (attempts > 0) {
+            logger.warn(err.message);
+            logger.info(`re-wget ${url} attempts ${attempts}`);
+            attempts--;
+            doRequest(url);
+          }
+          else {
+            reject(err);
+          }
+        }
+      };
+
+      request.on("timeout", () => {
+        onError(new Error("Timeout for " + url));
+      });
+
+      request.on("error", (err: Error) => {
+        onError(err);
+      });
+
+      request.end();
+    };
+
+    const filename = path.basename(url);
+    const onRequest = (response: http.IncomingMessage) => {
       switch (response.statusCode) {
       case 200:
-        const chunks: Array<Buffer> = [];
-        response.on("data", (chunk: Buffer) => chunks.push(chunk));
-        response.on("end", () => resolve(Buffer.concat(chunks)));
-        response.on('close', () => logger.info('  Close'));
+        logger.debug(`Conncted to ${(response as any).req.host}`);
+        logger.debug(`Downloading ${filename}`);
+        const builder = createBuilder(file);
+        response.on("data", (chunk: Buffer) => builder.append(chunk));
+        response.on("end", () => resolve(builder.toResult()));
+        response.on('close', () => logger.debug("Close"));
         break;
 
       case 301:
       case 302:
         response.resume();
-        logger.info(`Redirect to ${response.headers.location}`);
-        const request = httpRequest(response.headers.location, httpOptions, onRequest);
-        request.on('timeout', onTimeout.bind(null, request));
-        request.on('error', onError);
-        request.end();
+        if (response.headers.location) {
+          logger.info("Redirect to " + response.headers.location);
+          doRequest(response.headers.location);
+        }
         break;
 
       default:
@@ -74,80 +138,15 @@ export function requestGet(url: string): Promise<Buffer> {
       }
     };
 
-    logger.info(`wget ${url}`);
-    const request = httpRequest(url, httpOptions, onRequest);
-    request.on('timeout', onTimeout.bind(null, request));
-    request.on('error', onError);
-    request.end();
+    logger.info("wget " + url);
+    doRequest(url);
   });
 };
 
-export function downloadFile(url: string, file: string) {
-  return new Promise((resolve, reject) => {
-    const filename = path.basename(url);
+export function requestGet(url: string, options?: FetchOptions) {
+  return fetchImpl(url, undefined, options || {}) as Promise<Buffer>;
+}
 
-    const client = (() => {
-      if (file) {
-        const fd = fs.openSync(file, "w");
-        return {
-          onData: (chunk: Buffer) => {
-            fs.writeSync(fd, chunk);
-          },
-          onEnd: () => {
-            fs.closeSync(fd);
-            resolve(undefined);
-          },
-        };
-      }
-      else {
-        const chunks: Array<Buffer> = [];
-        return {
-          onData: (chunk: Buffer) => {
-            chunks.push(chunk);
-          },
-          onEnd: () => {
-            resolve(Buffer.concat(chunks));
-          },
-        };
-      }
-    })();
-  
-    const startRequest = (url: string, callback: any) => {
-      const request = https.request(url, httpOptions, callback);
-      if (request) {
-        request.on('error', (error) => reject(error));
-        request.end(); 
-      }
-      else {
-        reject(`Url scheme not supported for ${url}`);
-      }
-    };
-
-    const onRequest = (response: any) => {
-      switch (response.statusCode) {
-      case 200:
-        logger.info(`Conncted to ${response.req.host}`);
-        logger.info(`Downloading ${filename}`);
-        response.on('data', client.onData);
-        response.on('end', client.onEnd);
-        response.on('close', () => logger.info(`Done`));
-        break;
-
-      case 301:
-      case 302:
-        response.resume();
-        logger.info(`Resolving ${response.headers.location}`);
-        startRequest(response.headers.location, onRequest);
-        break;
-
-      default:
-        response.resume();
-        reject(`Did not get an OK from the server. Code: ${response.statusCode}`);
-        break;
-      }
-    };
-
-    logger.info(`Request to ${url}`);
-    startRequest(url, onRequest);
-  });
+export function downloadFile(url: string, file: string, options?: FetchOptions) {
+  return fetchImpl(url, file, options || {}) as Promise<undefined>;
 }

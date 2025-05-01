@@ -12,7 +12,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { spawnAsync } from "@/utils/ChildProcess";
-import { CMAKE_LISTS_TXT, ValueType } from "@/cmake/Constants";
+import { CMAKE_LISTS_TXT, DEFAULT_GENERATOR, ValueType } from "@/cmake/Constants";
 import { convertToValue } from "@/cmake/Helper";
 
 function toVarType(key: string, val: any) {
@@ -30,18 +30,46 @@ function toVarType(key: string, val: any) {
   return ValueType.STRING;
 }
 
-function toCacheEntry(name: string, val: any) {
-  const type = toVarType(name, val);
-  const value = convertToValue(val);
-  return `${name}:${type}=${value}`;
+function makeCmdVariable(key: string, val: any, isCache: boolean) {
+  let name = key;
+  if (isCache)
+    name += ":" + toVarType(key, val);
+  return name + "=" + convertToValue(val);
+}
+
+function makeCmdVariables(variables: object, isCache: boolean): string[] {
+  const result: string[] = [];
+  for (const [key, val] of Object.entries(variables))
+    result.push("-D", makeCmdVariable(key, val, isCache));
+  return result;
+}
+
+interface ScriptModeOptions {
+  environment?: object;
+  workDir?: string;
+};
+
+export async function scriptMode(scriptFile: string, variables: object, options?: ScriptModeOptions) {
+  const spawnArgs = [
+    ...makeCmdVariables(variables, false),
+    "-P", scriptFile,
+  ];
+  const res: any = await spawnAsync("cmake", spawnArgs, {
+    cwd: options?.workDir,
+    env: options?.environment || process.env,
+  });
+  if (res.status !== 0) {
+    throw `cmake.scriptMode returned status ${res.status}`;
+  }
 }
 
 export async function configure(args: any) {
-  const spawnArgs = [ '-G', args.generator ];
-  for (const [key, val] of Object.entries(args.cacheVariables))
-    spawnArgs.push('-D', toCacheEntry(key, val));
-  spawnArgs.push('-S', args.sourceDir);
-  spawnArgs.push('-B', args.binaryDir);
+  const spawnArgs = [
+    "-G", args.generator,
+    ...makeCmdVariables(args.cacheVariables, true),
+    "-S", args.sourceDir,
+    "-B", args.binaryDir,
+  ];
 
   const res: any = await spawnAsync("cmake", spawnArgs, {
     cwd: args.binaryDir,
@@ -159,3 +187,13 @@ export function lineToMultipleComment(line: string) {
 export function generatedScriptNameComment(filename: string) {
   return lineToSinglComment("Generated from " + path.basename(filename));
 }
+
+export default {
+  DEFAULT_GENERATOR,
+  scriptMode,
+  configure,
+  build,
+  install,
+  ctest,
+  extract,
+};

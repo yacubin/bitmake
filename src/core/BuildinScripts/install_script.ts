@@ -9,9 +9,12 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { createLogger } from "@/logger";
 
-export default function(params: any) {
-  console.log("Installing: " + params.dest);
-  fs.mkdirSync(path.dirname(params.dest), { recursive: true });
-  fs.cpSync(params.src, params.dest, { force: true });
+const logger = createLogger(import.meta.url);
+
+export default async function(params: any) {
+  logger.info("Installing: " + params.dest);
+  await fs.promises.mkdir(path.dirname(params.dest), { recursive: true });
+  await fs.promises.cp(params.src, params.dest, { force: true });
 }

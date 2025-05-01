@@ -9,6 +9,7 @@
 
 import { ensureBoolean } from "@/utils/StrictType";
 import { AbsolutePath } from "@/core/Path";
+import { SystemScope } from "@/core/SystemScope";
 
 const NAME                = Symbol("NAME");
 const LANGUAGE            = Symbol("LANGUAGE");
@@ -54,7 +55,7 @@ export class SourceFile {
   private [DEFINES]: string[];
   private [COMPILE_FLAGS]: string[];
 
-  private constructor(scope: any, filename: AbsolutePath|string) {
+  private constructor(scope: SystemScope, filename: AbsolutePath|string) {
     this[NAME] = filename.toString();
     const fname = scope.SOURCE_DIR.resolve(filename);
   
@@ -65,8 +66,8 @@ export class SourceFile {
     this[OBJECT_FILE] = null;
     this[DEFINES] = [];
     this[COMPILE_FLAGS] = !language ? [] : [
-      ...scope[language + "_FLAGS"],
-      ...scope[language + "_FLAGS_" + scope.BUILD_TYPE.toUpperCase()],
+      ...(scope as any)[language + "_FLAGS"],
+      ...(scope as any)[language + "_FLAGS_" + scope.BUILD_TYPE.toUpperCase()],
     ];
   }
 

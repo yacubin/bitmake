@@ -9,7 +9,8 @@
 
 import fs from "node:fs";
 
-import { AbsolutePath } from "@/core/Path";
+import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
+import { FilePath, DirPath, AbsolutePath } from "@/core/Path";
 import { fileExists, fileExistsSync } from "@/utils/FileSystem";
 import { TargetCollection } from "@/core//TargetCollection";
 import { ScriptCollection } from "@/core/ScriptCollection";
@@ -19,16 +20,25 @@ import { GoalCollection } from "@/core/GoalCollection";
 import { InterfaceObjects } from "@/core/InterfaceObjects";
 import { InterfaceScript } from "@/core/InterfaceScript";
 import { SourceFile } from "@/core/SourceFile";
+import { MakeContext } from "@/core/MakeContext";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable } from "@/core/Target";
+import { ScopeHelper } from "@/core/Scope";
+import { SystemScope } from "@/core/SystemScope";
 import { importModule } from "@/utils/Module";
+import { createLogger } from "@/logger";
+import { InstallEntity } from "@/core/InstallEntity";
+import { CustomScript } from "@/core/CustomScript";
+import { ScriptContext } from "@/core/ScriptContext";
 
 import configure_file from "@/core/BuildinScripts/configure_file";
 import install_script from "@/core/BuildinScripts/install_script";
 
+const logger = createLogger(import.meta.url);
+
 const requireImpl = eval("require");
 
 const TARGETS = Symbol("TARGETS");
-const SCRIPTS = Symbol("SCRIPTS");
+const CUSTOM_SCRIPTS = Symbol("CUSTOM_SCRIPTS");
 const CACHE = Symbol("CACHE");
 const UNKNOWN_TARGETS = Symbol("UNKNOWN_TARGETS");
 const INTERFACE_SCRIPTS = Symbol("INTERFACE_SCRIPTS");
@@ -43,7 +53,7 @@ type UnknownTargets = {
 };
 
 type SubdirectoryAlias = {
-  [name: string]: AbsolutePath | string;
+  [name: string]: DirPath | null;
 };
 
 type InterfaceScripts = {
@@ -103,19 +113,19 @@ function scopeValueAsPrimitives(o: any): any {
 
 export class GlobalContext {
   private [TARGETS]: TargetCollection;
-  private [SCRIPTS]: ScriptCollection;
+  private [CUSTOM_SCRIPTS]: ScriptCollection;
   private [CACHE]: CacheVariableDescriptors;
   private [UNKNOWN_TARGETS]: UnknownTargets;
   private [INTERFACE_SCRIPTS]: InterfaceScripts;
-  private [INSTALL_LIST]: any;
+  private [INSTALL_LIST]: InstallEntity[];
   private [SCRIPT_VARIABLES_MAP]: any;
   private [SUBDIR_ALIAS]: SubdirectoryAlias;
-  private [SUBDIR_LIST]: any[];
+  private [SUBDIR_LIST]: SystemScope[];
   private [BUILTIN_SCRIPTS]: BuildinScripts;
 
   private constructor() {
     this[TARGETS] = TargetCollection.create();
-    this[SCRIPTS] = ScriptCollection.create();
+    this[CUSTOM_SCRIPTS] = ScriptCollection.create();
     this[CACHE] = {};
     this[UNKNOWN_TARGETS] = {};
     this[INTERFACE_SCRIPTS] = {};
@@ -137,10 +147,6 @@ export class GlobalContext {
     return this[TARGETS];
   }
 
-  public get SCRIPTS() {
-    return this[SCRIPTS];
-  }
-
   public get CACHE() {
     return this[CACHE];
   }
@@ -153,16 +159,49 @@ export class GlobalContext {
     return this[INTERFACE_SCRIPTS];
   }
 
-  public get INSTALL_LIST() {
-    return this[INSTALL_LIST];
-  }
-
   public get SCRIPT_VARIABLES_MAP() {
     return this[SCRIPT_VARIABLES_MAP];
   }
 
-  public get SUBDIR_ALIAS() {
-    return this[SUBDIR_ALIAS];
+  public addCustomScript(scope: SystemScope, script: any, params: any): CustomScript {
+    if (!params)
+      throw new Error("Argument with parameters is missing");
+
+    const sourceDir = scope.SOURCE_DIR;
+    const binaryDir = scope.BINARY_DIR;
+
+    let scriptObj: Function | FilePath | undefined;
+    if (typeof script === "string")
+      scriptObj = this.findScriptFunction(script);
+    if (!scriptObj)
+      scriptObj = FilePath.create(sourceDir.resolve(script));
+
+    let inputFile = params.input;
+    if (inputFile)
+      inputFile = FilePath.create(sourceDir.resolve(inputFile));
+
+    if (!params.output)
+      throw new Error("CustomScript parameters required output entity");
+    const outputFile = FilePath.create(sourceDir.resolve(params.output));
+
+    const options: CustomScript.Options = {
+      scope,
+      name: params.name,
+      script: scriptObj,
+      params,
+      output: outputFile,
+      input: inputFile,
+      workDir: binaryDir,
+      variables: params.variables || {},
+    };
+
+    const target = CustomScript.create(options);
+    if (options.name)
+      this[CUSTOM_SCRIPTS].set(options.name, target);
+    else
+      this[CUSTOM_SCRIPTS].add(target);
+
+    return target;
   }
 
   public getUknownTarget(name: string): UnknownTarget {
@@ -173,20 +212,30 @@ export class GlobalContext {
     return target;
   }
 
-  public addSystemVariables(variables: any) {
-    const script = variables.SCRIPT_FILE.toString();
-    if (this[SCRIPT_VARIABLES_MAP][script])
-      throw new Error(`SystemVariables exists for ${script}`);
-    this[SCRIPT_VARIABLES_MAP][script] = variables;
+  public registerSystemScope(name: string, scope: SystemScope) {
+    if (this[SCRIPT_VARIABLES_MAP][name])
+      throw new Error(`SystemVariables exists for ${name}`);
+    this[SCRIPT_VARIABLES_MAP][name] = scope;
   }
 
   public resolveSubdirectory(path: AbsolutePath | string) {
     const resolvedPath = this[SUBDIR_ALIAS][path.toString()];
-    return resolvedPath || path;
+    if (resolvedPath === undefined)
+      return path;
+    if (resolvedPath === null)
+      return undefined;
+    return resolvedPath;
   }
 
-  public addSubdirectoryAlias(src: AbsolutePath | string, dest: AbsolutePath | string) {
-    this[SUBDIR_ALIAS][src.toString()] = dest;
+  public addSubdirectoryAlias(src: DirPath, dest: DirPath | null) {
+    const srcStr = src.toString();
+    if (this[SUBDIR_ALIAS].hasOwnProperty(srcStr))
+      logger.warn(`Owerride "${srcStr}" subdirectory alias`);
+    this[SUBDIR_ALIAS][srcStr] = dest;
+  }
+
+  public addInstallEntry(entry: InstallEntity) {
+    return this[INSTALL_LIST].push(entry);
   }
 
   public addCacheVariables(variables: CacheVariableDescriptors) {
@@ -239,8 +288,8 @@ export class GlobalContext {
     fs.writeFileSync(filename, json, "utf-8");
   }
 
-  public addSubdirectory(context: any) {
-    this[SUBDIR_LIST].push(context);
+  public addSubdirectory(scope: any) {
+    this[SUBDIR_LIST].push(scope);
   }
 
   public findScriptFunction(name: string): Function | undefined {
@@ -249,43 +298,45 @@ export class GlobalContext {
   
   public async doSubdirectory() {
     while (this[SUBDIR_LIST].length) {
-      const context = this[SUBDIR_LIST].shift();
-  
-      const scope = context.__scope();
-  
-      let scriptFile;
+      const scope = this[SUBDIR_LIST].shift();
+      if (!scope)
+        continue;
+
+      let scriptFile: AbsolutePath | undefined;
       const fileList = [ ".js", ".mjs" ].map(i => "MakeScript" + i);
       for (const filename of fileList) {
-        const iter = scope.SOURCE_DIR.join(filename).toString();
-        if (await fileExists(iter)) {
+        const iter = scope.SOURCE_DIR.join(filename);
+        if (await fileExists(iter.toString())) {
           scriptFile = iter;
           break;
         }
       }
-  
+
       if (!scriptFile)
-        throw new Error("There are no files from the list " + fileList.join());
-  
+        throw new Error(`There are no files ${fileList.join(", ")} in "${scope.SOURCE_DIR}"`);
+
+      this.registerSystemScope(scriptFile.toString(), scope);
+
       scope.SCRIPT_FILE = scriptFile;
       scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
-  
-      this.addSystemVariables(scope);
-      this.copyCacheVariables(context);
-  
-      const module = await importModule(context.SCRIPT_FILE.toString());
-  
+
       const cwdSave = process.cwd();
-      process.chdir(context.SOURCE_DIR.toString());
-  
-      const result = module.default(context);
+      process.chdir(scope.SOURCE_DIR.toString());
+
+      const module = await importModule(scope.SCRIPT_FILE.toString());
+      if (!module.default)
+        throw new Error(`Subdirectory ${scope.SCRIPT_FILE.basename()} not contain default function`);
+      const mk = MakeContext.create(scope, this);
+      const result = module.default(mk);
       if (result instanceof Promise)
         await result;
-  
+      ScopeHelper.applyVariables(scope, mk);
+
       process.chdir(cwdSave);
     }
   }
 
-  public createGoals(scope: any) {
+  public createGoals(scope: SystemScope): GoalCollection {
     for (const iter of Object.values(this[UNKNOWN_TARGETS])) {
       const target = this[TARGETS].get(iter.NAME);
       target.addSources(iter.SOURCES);
@@ -296,21 +347,37 @@ export class GlobalContext {
     }
   
     for (const iter of Object.values(this[INTERFACE_SCRIPTS])) {
-      const script = this[SCRIPTS].get(iter.NAME);
-      for (const [key, vals] of Object.entries(iter.PROPERTIES))
-        script.addProperty(key, ...vals);
+      const script = this[CUSTOM_SCRIPTS].get(iter.NAME);
+      if (!script)
+        throw new Error(`There is no CustomScript named ${iter.NAME}`);
+      script.mergeVariables(iter.VARIABLES);
     }
   
     const goalList = GoalCollection.create();
-    for (const [name, script] of Object.entries(this[SCRIPTS].ENTRIES)) {   
+    for (const script of this[CUSTOM_SCRIPTS].ENTRIES) {   
       const depends = [];
-      if (script.SCRIPT instanceof AbsolutePath)
+      if (script.SCRIPT instanceof FilePath)
         depends.push(script.SCRIPT.toString());
       if (script.INPUT)
         depends.push(script.INPUT.toString());
-      const msg = "\x1b[36m" + "Generating " + script.TARGET_SCOPE.BINARY_DIR.relative(script.OUTPUT) + "\x1b[0m";
-      const params = { ...script.PROPERTIES, ...script.PARAMS };
-      goalList.addScript(script.SCRIPT, "", depends, script.OUTPUT.toString(), scopeValueAsPrimitives(params), msg);
+      const msg = "\x1b[36m" + "Generating " + script.workDir.relative(script.OUTPUT) + "\x1b[0m";
+      const params = { ...script.VARIABLES, ...script.PARAMS };
+      let func = script.SCRIPT;
+      const scope = script.SCOPE;
+      const handler = async () => {
+        if (func instanceof FilePath)
+          func = (await importModule(func.toString())).default;
+        if (func instanceof Function) {
+          const mk = ScriptContext.create(scope, this);
+          const result = func(mk, scopeValueAsPrimitives(params));
+          if (result instanceof Promise)
+            await result;
+        }
+        else {
+          throw new Error(`There is no Function`);
+        }
+      };
+      goalList.addScript(script.NAME, handler, depends, script.OUTPUT.toString(), msg);
     }
   
     for (const [name, target] of Object.entries(this[TARGETS].ENTRIES) as any) {
@@ -373,7 +440,7 @@ export class GlobalContext {
           goalList.addExec(target.FILE.toString(), depends, scope.LINKER, args, cwd, msg);
         }
         else {
-          console.log(`No objects for "${target.NAME}"`);
+          logger.info(`No objects for "${target.NAME}"`);
         }
       }
   
@@ -386,7 +453,7 @@ export class GlobalContext {
           goalList.addExec(target.FILE.toString(), depends, scope.AR, args, cwd, msg);
         }
         else {
-          console.log(`No objects for "${target.NAME}"`);
+          logger.info(`No objects for "${target.NAME}"`);
         }
       }
   
@@ -410,21 +477,25 @@ export class GlobalContext {
           goalList.addExec(target.FILE.toString(), depends.concat(libs), scope.CXX_COMPILER, args, cwd, msg);
         }
         else {
-          console.log(`No objects for "${target.NAME}"`);
+          logger.info(`No objects for "${target.NAME}"`);
         }
       }
   
       goalList.addTarget(name, [ target.FILE.toString() ], `Built target ${name}`);
     }
   
-    const install_files = [];
+    interface InstallGoalParams {
+      src: string;
+      dest: string;
+    };
+    const installPairs = new Array<InstallGoalParams>;
     for (const iter of this[INSTALL_LIST]) {
-      let src, dest;
+      let src: string, dest: any;
       if (iter.VALUE instanceof AbsolutePath) {
         if (scope.PREVENT_INSTALL_FILES)
           continue;
         src = iter.VALUE.toString();
-        const rfile = iter.BASE_DIR.relative(iter.VALUE);
+        const rfile = (iter.BASE_DIR as any).relative(iter.VALUE);
         dest = iter.DESTINATION.join(rfile);
       }
       else if (iter.VALUE instanceof InterfaceTarget) {
@@ -437,29 +508,33 @@ export class GlobalContext {
       }
       if (scope.DESTDIR)
         dest = scope.DESTDIR.join(dest).toString();
-      goalList.addScript(install_script, "", [ src ], dest, scopeValueAsPrimitives({src, dest}), "");
-      install_files.push(dest);
+      dest = dest.toString();
+      installPairs.push({src, dest});
+    }
+
+    if (installPairs.length) {
+      const handler = async () => {
+        for (const iter of installPairs)
+          await install_script(scopeValueAsPrimitives(iter));
+      };
+      goalList.addScript(INSTALL_TARGET, handler, installPairs.map(i => i.src), "", "");
     }
   
-    if (install_files.length) {
-      goalList.addTarget("install", install_files, "");
-    }
-  
-    goalList.addTarget("all", Object.keys(this[TARGETS].ENTRIES), "");
+    goalList.addTarget(ALL_TARGET, Object.keys(this[TARGETS].ENTRIES), "");
   
     return goalList;
   }
 
-  public toJSON(): object {
+  public toJSON() {
     return {
       TARGETS: this.TARGETS,
-      SCRIPTS: this.SCRIPTS,
+      CUSTOM_SCRIPTS: this[CUSTOM_SCRIPTS],
       CACHE: this.CACHE,
       UNKNOWN_TARGETS: this.UNKNOWN_TARGETS,
       INTERFACE_SCRIPTS: this.INTERFACE_SCRIPTS,
-      INSTALL_LIST: this.INSTALL_LIST,
+      INSTALL_LIST: this[INSTALL_LIST],
       SCRIPT_VARIABLES_MAP: this.SCRIPT_VARIABLES_MAP,
-      SUBDIR_ALIAS: this.SUBDIR_ALIAS,
+      SUBDIR_ALIAS: this[SUBDIR_ALIAS],
     };
   }
 };

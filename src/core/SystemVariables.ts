@@ -9,6 +9,7 @@
 
 import os from "node:os";
 import { DEBUG_BUILD_TYPE, RELEASE_BUILD_TYPE } from "@/core/Types";
+import { getSizeofVoidp } from "@/core/GetSizeofVoidp";
 
 export default {
   SYSTEM_NAME: {
@@ -103,7 +104,7 @@ export default {
   },
   ASM_COMPILER: {
     description: "Path to the assembler compiler detected",
-    value: "clang",
+    value: "",
   },
   ASM_FLAGS: {
     description: "Flags passed to the assembler compiler",
@@ -119,7 +120,7 @@ export default {
   },
   C_COMPILER: {
     description: "Path to the C compiler detected",
-    value: "clang",
+    value: "",
   },
   C_FLAGS: {
     description: "Flags passed to the C compiler",
@@ -135,7 +136,7 @@ export default {
   },
   CXX_COMPILER: {
     description: "Path to the C++ compiler detected",
-    value: "clang++",
+    value: "",
   },
   CXX_FLAGS: {
     description: "Flags passed to the C compiler",
@@ -151,31 +152,31 @@ export default {
   },
   AR: {
     description: "Path to the archiver tool used to create static libraries",
-    value: "llvm-ar",
+    value: "",
   },
   RANLIB: {
     description: "Tool used to generate an index to the contents of an archive (static library)",
-    value: "llvm-ranlib",
+    value: "",
   },
   LINKER: {
     description: "Path to the linker used to link object files and libraries into executables",
-    value: "wasm-ld",
+    value: "",
   },
   NM: {
     description: "Path to the tool used to list symbols from object files or archives",
-    value: "llvm-nm",
+    value: "",
   },
   OBJCOPY: {
     description: "Path to the tool used to copy and translate object files",
-    value: "llvm-objcopy",
+    value: "",
   },
   OBJDUMP: {
     description: "Path to the tool used to display information about object files, such as disassembly",
-    value: "llvm-objdump",
+    value: "",
   },
   STRIP: {
     description: "Path to the tool used to remove symbols from object files or executables to reduce size",
-    value: "llvm-strip",
+    value: "",
   },
   OBJECT_LIBRARY_PREFIX: {
     description: "Prefix used for object libraries",
@@ -228,5 +229,14 @@ export default {
   TARGET_GOALS_JSON: {
     description: "Filename for JSON of the Target Goals",
     type: "FilePath",
+  },
+  SIZEOF_VOID_P: {
+    description: "Defines the size (in bytes) of a void pointer on the target architecture",
+    type: [ 4, 8 ],
+    value: getSizeofVoidp(),
+  },
+  MAKE_PLUGIN_LIST: {
+    description: "List of paths to plugins",
+    value: [],
   },
 };

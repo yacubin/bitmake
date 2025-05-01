@@ -76,6 +76,7 @@ export default async (env, argv) => {
         type: "commonjs2",
       },
       libraryTarget: "umd",
+      libraryExport: "default",
     },
     module,
     plugins: [

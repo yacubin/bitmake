@@ -7,4 +7,24 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-export * as cxx from "@/cxx";
+/// <reference path="global.d.ts" />
+
+import * as cxx from "@/cxx";
+import cmake from "@/cmake";
+
+import { spawnAsync } from "@/utils/ChildProcess";
+import { requestGet, downloadFile } from "@/utils/HttpRequest";
+import commands from "@/commands";
+
+export default {
+  cxx,
+  cmake,
+  commands,
+  process: {
+    spawn: spawnAsync,
+  },
+  utils: {
+    requestGet,
+    downloadFile,
+  },
+};

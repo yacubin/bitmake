@@ -9,21 +9,34 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import url from "node:url";
 
-import * as cmake from "@/cmake";
+import cmake  from "@/cmake";
 import { makePatch } from "@/utils/MakePatch";
-import { saveIfDifferent, directoryExists, getPathString } from "@/utils/FileSystem";
+import { saveIfDifferent, directoryExists } from "@/utils/FileSystem";
 import { SettingsStorage } from "@/utils/SettingsStorage";
-import { spawnAsync } from "@/utils/ChildProcess";
-import { makeScriptAction } from "@/MakeScriptAction";
 import { arrayWrapper, assignObject } from "@/utils/Primitives";
-import { BUILD_SETTINGS_FILE } from "@/Constants";
+import { USER_CONFIG, BUILD_SETTINGS_FILE, REQUEST_ATTEMPTS } from "@/Constants";
+import { DEBUG_BUILD_TYPE, RELEASE_BUILD_TYPE } from "@/core/Types";
 import { requireResolve } from "@/utils/Module";
-import { requestGet } from "@/utils/HttpRequest";
-import { RunScriptContext } from "@/RunScriptContext";
+import { downloadFile } from "@/utils/HttpRequest";
+import { CommandOptions } from "@/core/CommandOptions";
 import { createLogger } from "@/logger";
+import { fileExists } from "@/utils/FileSystem";
+import { importModule } from "@/utils/Module";
+
+import { bitmakeAction } from "@/core/BitMakeAction";
+import { cmakeAction } from "@/core/CMakeAction";
+import { makeAction } from "@/core/MakeAction";
+import { processAction } from "@/core/ProcessAction";
+import { configureAction } from "@/core/ConfigureAction";
 
 const logger = createLogger(import.meta.url);
+
+interface IGeneralConfig {
+  workDir: string;
+  buildType: string;
+};
 
 function mergeEnvironment(...args: any) {
   const environment: any = {};
@@ -180,18 +193,16 @@ function resolveConfigStrings(config: any) {
   }
 }
 
-function makeBuildConfig(ctx: any, config: any) {
-  for (const key of [ "sourceRoot", "wasmuxDir" ]) {
-    if (config[key]) {
-      throw `The ${key} variable cannot be changed to "${config.sourceRoot}"`;
-    }
+function makeBuildConfig(gconfig: IGeneralConfig, config: any) {
+  if (config["sourceRoot"]) {
+    throw new Error(`Variable "sourceRoot" cannot be changed to "${config.sourceRoot}"`);
   }
 
   const rootConfig = rebaseConfig(config);
 
-  rootConfig.buildType = rootConfig.buildType || ctx.buildType;
-  rootConfig.sourceRoot = rootConfig.sourceRoot || ctx.workDir;
-  rootConfig.binaryRoot = rootConfig.binaryRoot || path.posix.resolve(ctx.workDir,"build");
+  rootConfig.buildType = rootConfig.buildType || gconfig.buildType;
+  rootConfig.sourceRoot = rootConfig.sourceRoot || gconfig.workDir;
+  rootConfig.binaryRoot = rootConfig.binaryRoot || path.posix.resolve(gconfig.workDir, "build");
 
   for (const [key, entry] of Object.entries(rootConfig) as any) {
     if (entry && typeof entry === "object" && entry.action) {
@@ -208,7 +219,7 @@ function makeBuildConfig(ctx: any, config: any) {
           entry.sourceDir = path.posix.join(entry.extractDir, entry.sourceDir);
       }
       else if (!entry.sourceDir) {
-        throw `Missing sourceDir for ${key} action"`;
+        throw new Error(`Missing sourceDir for ${key} action"`);
       }
       if (entry.binaryDir === null)
         entry.binaryDir = entry.sourceDir;
@@ -222,30 +233,13 @@ function makeBuildConfig(ctx: any, config: any) {
   return rootConfig;
 }
 
-async function tryRequestGet(sourceUrl: string, arcFile: string, attempts: number) {
-  for(;;) {
-    try {
-      const buffer = await requestGet(sourceUrl);
-      await fs.promises.writeFile(arcFile, buffer);
-      return;
-    }
-    catch (e) {
-      if (--attempts < 0) {
-        throw e;
-      }
-      console.warn(e);
-    }
-  }
-}
-
-async function doExtractArchive(ctx: RunScriptContext, environment: any, config: any, settings: any)
-{
+async function doExtractArchive(gconfig: IGeneralConfig, environment: any, config: any, settings: any) {
   if (!config.sourceUrl)
-    throw "Unknown sourceUrl";
+    throw new Error("Unknown sourceUrl");
   if (!config.archiveDir)
-    throw "Unknown archiveDir";
+    throw new Error("Unknown archiveDir");
   if (!config.extractDir)
-    throw "Unknown extractDir";
+    throw new Error("Unknown extractDir");
 
   if (!await directoryExists(config.archiveDir)) {
     console.log(`mkdir -p ${config.archiveDir}`);
@@ -265,7 +259,7 @@ async function doExtractArchive(ctx: RunScriptContext, environment: any, config:
     arcFile = downloadUrls[config.sourceUrl];
   else {
     arcFile = path.join(config.archiveDir, arcName);
-    await tryRequestGet(config.sourceUrl, arcFile, ctx.requestAttempts);
+    await downloadFile(config.sourceUrl, arcFile, { attempts: REQUEST_ATTEMPTS });
     downloadUrls[config.sourceUrl] = arcFile;
     await settings.set("downloadUrls", downloadUrls);
   }
@@ -291,7 +285,7 @@ async function doExtractArchive(ctx: RunScriptContext, environment: any, config:
       if (!await directoryExists(extractDir)) {
         console.log(`rm -fr ${extractDir}`);
         await fs.promises.rm(extractDir, { recursive: true });
-        throw `Support only directory for archive`;
+        throw new Error(`Support only directory for archive`);
       }
     }
   
@@ -326,131 +320,17 @@ async function doExtractArchive(ctx: RunScriptContext, environment: any, config:
 }
 
 const actionHandlers: any = {
-  none: async (config: any, environment: any, settings: any) => {
+  none: async (config: any, environment: any, settings: SettingsStorage) => {
     /* do nothing */
   },
-  cmake: async (config: any, environment: any, settings: any) => {
-    const sourceDir = getPathString(config.sourceDir);
-    const binaryDir = getPathString(config.binaryDir);
-    const cmakeArgs = {
-      environment: {
-        ...environment,
-        DESTDIR: config.destDir,
-      },
-      generator: config.generator || "Unix Makefiles",
-      cacheVariables: config.cacheVariables,
-      sourceDir,
-      binaryDir,
-    };
-
-    if (!cmakeArgs.cacheVariables.CMAKE_BUILD_TYPE) {
-      cmakeArgs.cacheVariables.CMAKE_BUILD_TYPE = config.buildType;
-    }
-
-    await cmake.configure(cmakeArgs);
-    await cmake.build(cmakeArgs);
-    await cmake.install(cmakeArgs);
-  },
-  configure: async (config: any, environment: any, settings: any) => {
-    const sourceDir = getPathString(config.sourceDir);
-    const binaryDir = getPathString(config.binaryDir);
-    let step = await settings.get("configure") || "config";
-    if (step === "config") {
-      const command = path.resolve(sourceDir, "configure");
-      const params = [];
-      if (Array.isArray(config.variables)) {
-        for (const iter of config.variables)
-          params.push(iter);
-      }
-      else if (config.variables) {
-        for (const [key,val] of Object.entries(config.variables)) {
-          if (key === "features" && Array.isArray(val)) {
-            for (const iter of val)
-              params.push(`--${iter}`);
-          }
-          else if (val === null)
-            params.push(`--${key}`);
-          else
-            params.push(`--${key}=${val}`);
-        }
-      }
-      if (config.features) {
-        for (const key of config.features)
-          params.push(`--${key}`);
-      }
-      const res1 = await spawnAsync(command, params, {
-        cwd: binaryDir,
-        env: environment,
-        extra: {
-          output: `ac.config.log`,
-        },
-      });
-      if (res1.status !== 0) {
-        throw `configure returned status ${res1.status}`;
-      }
-      step = "install";
-      await settings.set("configure", step);
-    }
-    if (step === "install") {
-      const args = [ 'install' ];
-      if (config.destDir) {
-        args.push(`DESTDIR=${config.destDir}`);
-      }
-      const res2 = await spawnAsync("make", args, {
-        cwd: binaryDir,
-        env: environment,
-        extra: {
-          output: `ac.build.log`,
-        },
-      });
-      if (res2.status !== 0) {
-        throw `make returned status ${res2.status}`;
-      }
-      step = "done";
-      await settings.set("configure", step);
-    }
-  },
-  make: async (config: any, environment: any, settings: any) => {
-    const binaryDir = getPathString(config.binaryDir);
-    const args = config.args || [];
-    if (config.destDir) {
-      args.push(`DESTDIR=${config.destDir}`);
-    }
-    const res2 = await spawnAsync("make", args, {
-      cwd: binaryDir,
-      env: environment,
-      extra: {
-        output: `make.log`,
-      },
-    });
-    if (res2.status !== 0) {
-      throw `make returned status ${res2.status}`;
-    }
-  },
-  process: async (config: any, environment: any, settings: any) => {
-    if (!config.command)
-      throw "Required command field for process action";
-    const sourceDir = getPathString(config.sourceDir);
-    const binaryDir = getPathString(config.binaryDir);
-    let { command } = config;
-    if (!path.isAbsolute(command) && (command.includes(path.posix.delimiter) || command.includes(path.win32.delimiter))) {
-      command = path.resolve(sourceDir, command);
-    }
-    const res = await spawnAsync(command, config.args || [], {
-      cwd: binaryDir,
-      env: environment,
-      extra: {
-        output: `process.log`,
-      },
-    });
-    if (res.status !== 0) {
-      throw `process returned status ${res.status}`;
-    }
-  },
-  bitmake: makeScriptAction,
+  cmake: cmakeAction,
+  configure: configureAction,
+  make: makeAction,
+  process: processAction,
+  bitmake: bitmakeAction,
 };
 
-async function doTargetBuild(ctx: RunScriptContext, environment: any, config: any, settings: any) {
+async function doTargetBuild(gconfig: IGeneralConfig, environment: any, config: any, settings: SettingsStorage) {
   if (config.preAction) {
     await settings.push("preAction");
     const newConfig: any = {};
@@ -460,14 +340,14 @@ async function doTargetBuild(ctx: RunScriptContext, environment: any, config: an
     delete newConfig.postAction;
     assignObject(newConfig, config.preAction);
     const newEnvironment = mergeEnvironment(config.preAction.environment, environment);
-    await doTargetBuild(ctx, newEnvironment, newConfig, settings);
+    await doTargetBuild(gconfig, newEnvironment, newConfig, settings);
     await settings.pop();
   }
 
   if (Array.isArray(config.action)) {
     await settings.push("action");
     for (var i = 0; i < config.action.length; ++i) {
-      await settings.push(i);
+      await settings.push(i.toString());
       const newConfig: any = {};
       assignObject(newConfig, config);
       delete newConfig.action;
@@ -475,7 +355,7 @@ async function doTargetBuild(ctx: RunScriptContext, environment: any, config: an
       delete newConfig.postAction;
       assignObject(newConfig, config.action[i]);
       const newEnvironment = mergeEnvironment(config.action[i].environment, environment);
-      await doTargetBuild(ctx, newEnvironment, newConfig, settings);
+      await doTargetBuild(gconfig, newEnvironment, newConfig, settings);
       await settings.pop();
     }
     await settings.pop();
@@ -499,14 +379,65 @@ async function doTargetBuild(ctx: RunScriptContext, environment: any, config: an
     delete newConfig.postAction;
     assignObject(newConfig, config.postAction);
     const newEnvironment = mergeEnvironment(config.postAction.environment, environment);
-    await doTargetBuild(ctx, newEnvironment, newConfig, settings);
+    await doTargetBuild(gconfig, newEnvironment, newConfig, settings);
     await settings.pop();
   }
 }
 
-export default async (ctx: RunScriptContext) => {
-  const userConfig = await ctx.getUserConfig();
-  const buildConfig = makeBuildConfig(ctx, userConfig);
+async function getUserConfig(options: CommandOptions) {
+  let configPath;
+  if (options.env.config) {
+    configPath = path.isAbsolute(options.env.config) ? options.env.config : path.resolve(options.workDir, options.env.config);
+    if (!await fileExists(configPath))
+      throw `Configuration '${options.env.config}' file does not exist`;
+  }
+  else {
+    const userConfigPath = path.resolve(options.workDir, USER_CONFIG);
+    if (await fileExists(userConfigPath))
+      configPath = userConfigPath;
+    else {
+      logger.warn(`Config file '${USER_CONFIG}' is not available`);
+    }
+  }
+
+  if (!configPath) {
+    return {
+      "bundle:output": {
+        action: "bitmake",
+        variables: {
+          INSTALL_PREFIX: "/usr",
+        },
+        sourceDir: "${sourceRoot}",
+        destDir: "${binaryRoot}/output",
+      }
+    };
+  }
+
+  const configUrl = url.pathToFileURL(configPath);
+  const configModule = await importModule(configUrl);
+  switch (typeof configModule.default) {
+  case "function":
+    const userConfig = configModule.default(options.env, {});
+    if (userConfig instanceof Promise)
+      return await userConfig;
+    return userConfig;
+
+  case "object":
+    return configModule.default;
+
+  default:
+    throw new Error(`Unknown user configuration type`);
+  }
+}
+
+export default async (options: CommandOptions) => {
+  const gconfig: IGeneralConfig = {
+    buildType: options.env.buildType == DEBUG_BUILD_TYPE ? options.env.buildType : RELEASE_BUILD_TYPE,
+    workDir: options.workDir,
+  };
+
+  const userConfig = await getUserConfig(options);
+  const buildConfig = makeBuildConfig(gconfig, userConfig);
 
   if (buildConfig.RECIPE_CONTENT_FILE) {
     const jsonConfig = JSON.stringify(buildConfig, null, 2);
@@ -524,9 +455,9 @@ export default async (ctx: RunScriptContext) => {
         logger.info(`Started action: ${key}`);
         const environment = mergeEnvironment(entry.environment, process.env);
         if (entry.sourceUrl) {
-          await doExtractArchive(ctx, environment, entry, settings);
+          await doExtractArchive(gconfig, environment, entry, settings);
         }
-        await doTargetBuild(ctx, environment, entry, settings);
+        await doTargetBuild(gconfig, environment, entry, settings);
         await settings.set("completed", true);
         logger.info(`Completed action: ${key}`);
       }

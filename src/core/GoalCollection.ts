@@ -12,7 +12,6 @@ import fs from "node:fs";
 import { spawnSync } from "node:child_process";
 
 import { AbsolutePath } from "@/core/Path";
-import { importModule } from "@/utils/Module";
 
 const ENTRIES = Symbol("ENTRIES");
 
@@ -30,9 +29,10 @@ interface BaseGoal {
   output: string;
 };
 
+type ScriptHandler = () => Promise<void>;
+
 interface ScriptGoal extends BaseGoal {
-  script: AbsolutePath | Function;
-  params: any;
+  handler: ScriptHandler;
 };
 
 interface ExecGoal extends BaseGoal {
@@ -66,10 +66,10 @@ export class GoalCollection {
     return !!this.findScriptByOutput(output);
   }
 
-  public addScript(script: AbsolutePath | Function, name: string, depends: Array<string>, output: string, params: any, msg: string) {
+  public addScript(name: string, handler: ScriptHandler, depends: Array<string>, output: string, msg: string) {
     if (this.hasScriptByOutput(output.toString()))
       throw new Error(`Output "${output}" exists`);
-    this[ENTRIES].push({ name, type: GoalType.SCRIPT, script, output, depends, params, msg } as ScriptGoal);
+    this[ENTRIES].push({ name, type: GoalType.SCRIPT, handler, output, depends, msg } as ScriptGoal);
   }
 
   public addExec(output: string, depends: Array<string>, command: string, args: Array<string>, cwd: string, msg: string) {
@@ -125,16 +125,8 @@ export class GoalCollection {
         console.info(percent + msg);
       }
       if (type === GoalType.SCRIPT) {
-        const { script, params } = goal as ScriptGoal;
-        let module;
-        if (typeof script === "function")
-          module = script;
-        else
-          module = (await importModule(script.toString())).default;
-        const result = module(params);
-        if (result instanceof Promise) {
-          await result;
-        }
+        const { handler } = goal as ScriptGoal;
+        await handler();
       }
       else if (type === GoalType.EXEC) {
         const { command, args, cwd, output } = goal as ExecGoal;

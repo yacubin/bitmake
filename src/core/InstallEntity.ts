@@ -8,7 +8,8 @@
  */
 
 import { InterfaceTarget } from "@/core/InterfaceTarget";
-import { AbsolutePath } from "@/core/Path";
+import { DirPath, FilePath, AbsolutePath } from "@/core/Path";
+import { SystemScope } from "@/core/SystemScope";
 
 const VALUE       = Symbol("VALUE");
 const DESTINATION = Symbol("DESTINATION");
@@ -16,11 +17,11 @@ const BASE_DIR    = Symbol("BASE_DIR");
 
 export class InstallEntity {
   private [VALUE]: AbsolutePath | InterfaceTarget;
-  private [DESTINATION]: AbsolutePath;
-  private [BASE_DIR]: AbsolutePath | null;
+  private [DESTINATION]: DirPath;
+  private [BASE_DIR]: DirPath | null;
 
-  private constructor(scope: any, value: string | AbsolutePath | InterfaceTarget, params: string | any) {
-    let destination: string|AbsolutePath|undefined;
+  private constructor(scope: SystemScope, value: string | AbsolutePath | InterfaceTarget, params: string | any) {
+    let destination: string | AbsolutePath | undefined;
     let baseDir;
     if (typeof params === "string")
       destination = params;
@@ -37,7 +38,7 @@ export class InstallEntity {
   
     if (typeof value === "string" || value instanceof AbsolutePath) {
       value = scope.SOURCE_DIR.resolve(value.toString()) as AbsolutePath;
-      value = AbsolutePath.createFile(value);
+      value = FilePath.create(value);
       baseDir = baseDir || value.dirname();
     }
     else if (!(value instanceof InterfaceTarget)) {
@@ -45,8 +46,8 @@ export class InstallEntity {
     }
   
     this[VALUE] = value;
-    this[DESTINATION] = AbsolutePath.createDir(scope.INSTALL_PREFIX.resolve(destination.toString()).toString());
-    this[BASE_DIR] = baseDir ? AbsolutePath.createDir(baseDir.toString()) : null;
+    this[DESTINATION] = DirPath.create(scope.INSTALL_PREFIX.resolve(destination.toString()).toString());
+    this[BASE_DIR] = baseDir ? DirPath.create(baseDir.toString()) : null;
   }
   
   public static create(scope: any, value: string | AbsolutePath | InterfaceTarget, params: string | any) {

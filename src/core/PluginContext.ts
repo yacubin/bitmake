@@ -7,39 +7,50 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { AbsolutePath } from "@/core/Path";
+import { DirPath } from "@/core/Path";
+import { GlobalContext } from "@/core/GlobalContext";
+import { SystemScope } from "@/core/SystemScope";
+import { findProgramSync } from "@/core/FindProgram";
 
 const GLOBAL = Symbol("GLOBAL");
 const SCOPE = Symbol("SCOPE");
 
-export class PluginContext {
-  private [SCOPE]: any;
-  private [GLOBAL]: any;
+export namespace PluginContext {
 
-  private constructor(scope: any, global: any) {
-    this[SCOPE] = scope;
-    this[GLOBAL] = global;
-  }
+interface IPluginContext extends SystemScope {
+  findProgram(name: string): string | undefined;
+  addSubdirectoryAlias(src: any, dest: any): void;
 
-  public static create(protoScope: any, global: any) {
-    const ctx = Object.create(protoScope);
-    ctx[SCOPE] = protoScope;
-    ctx[GLOBAL] = global;
-
-    const proto: any = PluginContext.prototype;
-    const names = Object.getOwnPropertyNames(proto).filter(name => typeof proto[name] === 'function' && name !== 'constructor');
-    for (const name of names) {
-      ctx[name] = proto[name];
-    }
-
-    return Object.seal(ctx);
-  }
-
-  public addSubdirectoryAlias(src: AbsolutePath | string, dest: AbsolutePath | string) {
-    this[GLOBAL].addSubdirectoryAlias(AbsolutePath.createDir(src), AbsolutePath.createDir(dest));
-  }
-
-  public toJSON(): object {
-    return {};
-  }
+  [GLOBAL]: GlobalContext;
+  [SCOPE]: SystemScope;
 };
+
+function addSubdirectoryAlias(this: IPluginContext, src: any, dest: any) {
+  const srcPath = DirPath.create(this[SCOPE].SCRIPT_DIR.resolve(src));
+  const destPath = (dest === null) ? null : DirPath.create(this[SCOPE].SCRIPT_DIR.resolve(dest));
+  this[GLOBAL].addSubdirectoryAlias(srcPath, destPath);
+}
+
+export function create(scope: SystemScope, global: GlobalContext): IPluginContext {
+  const mk = Object.create(scope, {
+    findProgram: {
+      value: findProgramSync,
+      enumerable: false,
+      writable: false,
+      configurable: false,
+    },
+    addSubdirectoryAlias: {
+      value: addSubdirectoryAlias,
+      enumerable: false,
+      writable: false,
+      configurable: false,
+    },
+  });
+
+  mk[SCOPE] = scope;
+  mk[GLOBAL] = global;
+
+  return mk;
+}
+
+} // namespace PluginContext

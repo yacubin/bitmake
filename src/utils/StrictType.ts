@@ -10,11 +10,23 @@
 export function ensureBoolean(value: any) {
   if (typeof value === "boolean")
     return value;
-  throw new Error(`The '${value}' is not a boolean`);
+  throw new TypeError(`The '${value}' is not a boolean`);
+}
+
+export function ensureNumber(value: any) {
+  if (typeof value === "number")
+    return value;
+  throw new TypeError(`The '${value}' is not a string`);
 }
 
 export function ensureString(value: any) {
   if (typeof value === "string")
     return value;
-  throw new Error(`The '${value}' is not a string`);
+  throw new TypeError(`The '${value}' is not a string`);
+}
+
+export function ensureArray(value: any) {
+  if (Array.isArray(value))
+    return Array.from(value);
+  throw new TypeError(`The '${value}' is not a array`);
 }

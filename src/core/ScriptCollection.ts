@@ -9,13 +9,16 @@
 
 import { CustomScript } from "@/core/CustomScript";
 
+const MAP = Symbol("MAP");
 const ENTRIES = Symbol("ENTRIES");
 
 export class ScriptCollection {
-  private [ENTRIES]: { [name: string]: CustomScript };
+  private [MAP]: { [name: string]: CustomScript };
+  private [ENTRIES]: CustomScript[];
 
   private constructor() {
-    this[ENTRIES] = {};
+    this[MAP] = {};
+    this[ENTRIES] = [];
   }
 
   public static create() {
@@ -26,14 +29,21 @@ export class ScriptCollection {
     return this[ENTRIES];
   }
 
-  public get(name: string) {
-    return this[ENTRIES][name];
+  public get(name: string): CustomScript | undefined {
+    return this[MAP][name];
   }
 
-  public set(name: string, target: any) {
-    if (this[ENTRIES][name])
+  public set(name: string, target: CustomScript) {
+    if (!name)
+      throw new Error("Not supported mpty name for CustomScript");
+    if (this[MAP][name])
       throw new Error(`Script "${name}" exists`);
-    this[ENTRIES][name] = target;
+    this[MAP][name] = target;
+    this[ENTRIES].push(target);
+  }
+
+  public add(target: CustomScript) {
+    this[ENTRIES].push(target);
   }
   
   public toJSON(): object {

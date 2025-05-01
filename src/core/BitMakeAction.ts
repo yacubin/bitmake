@@ -78,12 +78,26 @@ export async function bitmakeAction(config: any, environment: any, settings: Set
 
     process.chdir(scope.SCRIPT_DIR.toString());
     const module = await importModule(scope.SCRIPT_FILE.toString());
+    
     if (!module.default)
-      throw new Error(`Plugin ${scope.SCRIPT_FILE.basename()} not contain default function`);
+      throw new Error(`Plugin ${scope.SCRIPT_FILE.basename()} not contain default export`);
+
     const mk = PluginContext.create(scope, global);
-    const result = module.default(mk);
+    if (typeof module.default !== "function")
+      throw new Error(`Plugin ${scope.SCRIPT_FILE.basename()} export has no function or class`);
+    let result: any;
+    if (/^class\s/.test(Function.prototype.toString.call(module.default))) {
+      if (typeof module.default.prototype.apply !== "function")
+        throw new Error(`Plugin class of ${scope.SCRIPT_FILE.basename()} has no apply method`);
+      result = (new module.default).apply(mk);
+    }
+    else {
+      result = module.default(mk);
+    }
+
     if (result instanceof Promise)
       await result;
+
     ScopeHelper.applyVariables(scope, mk);
 
     process.chdir(cwdSave);

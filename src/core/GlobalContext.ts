@@ -12,7 +12,7 @@ import fs from "node:fs";
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
 import { FilePath, DirPath, AbsolutePath } from "@/core/Path";
 import { fileExists, fileExistsSync } from "@/utils/FileSystem";
-import { TargetCollection } from "@/core//TargetCollection";
+import { TargetCollection, TargetStructCollection } from "@/core//TargetCollection";
 import { ScriptCollection } from "@/core/ScriptCollection";
 import { InterfaceTarget } from "@/core/InterfaceTarget";
 import { UnknownTarget } from "@/core/UnknownTarget";
@@ -47,6 +47,7 @@ const SCRIPT_VARIABLES_MAP = Symbol("SCRIPT_VARIABLES_MAP");
 const SUBDIR_ALIAS = Symbol("SUBDIR_ALIAS");
 const SUBDIR_LIST = Symbol("SUBDIR_LIST");
 const BUILTIN_SCRIPTS = Symbol("BUILTIN_SCRIPTS");
+const TARGET_COLLECTION = Symbol("TARGET_COLLECTION");
 
 type UnknownTargets = {
   [name: string]: UnknownTarget;
@@ -112,6 +113,7 @@ function scopeValueAsPrimitives(o: any): any {
 }
 
 export class GlobalContext {
+  private [TARGET_COLLECTION] = new TargetStructCollection;
   private [TARGETS]: TargetCollection;
   private [CUSTOM_SCRIPTS]: ScriptCollection;
   private [CACHE]: CacheVariableDescriptors;
@@ -204,14 +206,6 @@ export class GlobalContext {
     return target;
   }
 
-  public getUknownTarget(name: string): UnknownTarget {
-    let target = this[UNKNOWN_TARGETS][name];
-    if (!target) {
-      this[UNKNOWN_TARGETS][name] = target = UnknownTarget.create(name);
-    }
-    return target;
-  }
-
   public registerSystemScope(name: string, scope: SystemScope) {
     if (this[SCRIPT_VARIABLES_MAP][name])
       throw new Error(`SystemVariables exists for ${name}`);
@@ -282,7 +276,48 @@ export class GlobalContext {
       }
     }
   }
-  
+
+  public addStaticLibrary(scope: SystemScope, name: string, ...sources: any[]): StaticLibrary {
+    const impl = this[TARGET_COLLECTION].get(name);
+    const target = StaticLibrary.create(impl, scope);
+    target.addSources(...sources);
+    this[TARGETS].set(name, target);
+    return target;
+  }
+
+  public addObjectLibrary(scope: SystemScope, name: string, ...sources: any[]): ObjectLibrary {
+    const impl = this[TARGET_COLLECTION].get(name);
+    const target = ObjectLibrary.create(impl, scope);
+    target.addSources(...sources);
+    this[TARGETS].set(name, target);
+    return target;
+  }
+
+  public addSharedLibrary(scope: SystemScope, name: string, ...sources: any[]): SharedLibrary {
+    const impl = this[TARGET_COLLECTION].get(name);
+    const target = SharedLibrary.create(impl, scope);
+    target.addSources(...sources);
+    this[TARGETS].set(name, target);
+    return target;
+  }
+
+  public addExecutable(scope: SystemScope, name: string, ...sources: any[]): Executable {
+    const impl = this[TARGET_COLLECTION].get(name);
+    const target = Executable.create(impl, scope);
+    target.addSources(...sources);
+    this[TARGETS].set(name, target);
+    return target;
+  }
+
+  public getUknownTarget(name: string): UnknownTarget {
+    let target = this[UNKNOWN_TARGETS][name];
+    if (!target) {
+      const impl = this[TARGET_COLLECTION].get(name);
+      this[UNKNOWN_TARGETS][name] = target = UnknownTarget.create(impl);
+    }
+    return target;
+  }
+
   public writeCacheVariables(filename: string) {
     const json = JSON.stringify(this[CACHE], null, 2);
     fs.writeFileSync(filename, json, "utf-8");
@@ -535,6 +570,7 @@ export class GlobalContext {
       INSTALL_LIST: this[INSTALL_LIST],
       SCRIPT_VARIABLES_MAP: this.SCRIPT_VARIABLES_MAP,
       SUBDIR_ALIAS: this[SUBDIR_ALIAS],
+      TARGET_COLLECTION: this[TARGET_COLLECTION],
     };
   }
 };

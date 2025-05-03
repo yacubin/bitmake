@@ -13,6 +13,7 @@ import { InterfaceObjects } from "@/core/InterfaceObjects";
 import { IncludeDirectory } from "@/core/IncludeDirectory";
 import { SourceFile } from "@/core/SourceFile";
 import { SystemScope } from "@/core/SystemScope";
+import { UnknownTarget } from "@/core/UnknownTarget";
 import { ScopeHelper } from "@/core/Scope";
 
 const UNKNOWN_TARGET = Symbol("UNKNOWN_TARGET");
@@ -20,7 +21,7 @@ const SCOPE = Symbol("SCOPE");
 
 export class InterfaceTarget {
   private [SCOPE]: SystemScope;
-  private [UNKNOWN_TARGET]: any;
+  private [UNKNOWN_TARGET]: UnknownTarget;
 
   private constructor(scope: any, utarget: any) {
     this[SCOPE] = ScopeHelper.clone({}, scope);

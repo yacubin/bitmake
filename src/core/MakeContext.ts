@@ -114,10 +114,10 @@ const methods = {
   
     const SOURCE_DIR = path.isAbsolute(sourceDir) ? AbsolutePath.create(sourceDir) : this[SCOPE].SOURCE_DIR.join(sourceDir);
     const BINARY_DIR = path.isAbsolute(binaryDir) ? AbsolutePath.create(binaryDir) : this[SCOPE].BINARY_DIR.join(binaryDir);
-  
+
     const newScope = ScopeHelper.clone({}, this[SCOPE]);
     ScopeHelper.applyVariables(newScope, this);
-  
+
     const resolvePath = this[GLOBAL].resolveSubdirectory(SOURCE_DIR);
     if (!resolvePath) {
       logger.info(`Source dir "${SOURCE_DIR}" was disabled`);
@@ -157,37 +157,21 @@ const methods = {
       this[GLOBAL].addInstallEntry(entity);
     }
   },
-  
+
   addStaticLibrary(this: IMakeContext, name: any, ...sources: any[]): StaticLibrary {
-    const target = StaticLibrary.create(this[SCOPE], name);
-    target.addSources(...sources);
-  
-    this[GLOBAL].TARGETS.set(name, target);
-    return target;
+    return this[GLOBAL].addStaticLibrary(this[SCOPE], name, ...sources);
   },
 
   addObjectLibrary(this: IMakeContext, name: any, ...sources: any[]): ObjectLibrary {
-    const target = ObjectLibrary.create(this[SCOPE], name);
-    target.addSources(...sources);
-  
-    this[GLOBAL].TARGETS.set(name, target);
-    return target;
+    return this[GLOBAL].addObjectLibrary(this[SCOPE], name, ...sources);
   },
 
   addSharedLibrary(this: IMakeContext, name: any, ...sources: any[]): SharedLibrary {
-    const target = SharedLibrary.create(this[SCOPE], name);
-    target.addSources(...sources);
-
-    this[GLOBAL].TARGETS.set(name, target);
-    return target;
+    return this[GLOBAL].addSharedLibrary(this[SCOPE], name, ...sources);
   },
 
   addExecutable(this: IMakeContext, name: string, ...sources: any[]): Executable {
-    const target = Executable.create(this[SCOPE], name);
-    target.addSources(...sources);
-  
-    this[GLOBAL].TARGETS.set(name, target);
-    return target;
+    return this[GLOBAL].addExecutable(this[SCOPE], name, ...sources);
   },
 
   executeScript(this: IMakeContext, script: any, options: any) {

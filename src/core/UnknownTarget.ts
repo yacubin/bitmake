@@ -7,7 +7,9 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-const NAME = Symbol("NAME");
+import { TargetStruct } from "@/core/TargetStruct";
+
+const IMPL = Symbol("NAME");
 const INCLUDES = Symbol("INCLUDES");
 const SOURCES = Symbol("SOURCES");
 const DEFINES = Symbol("DEFINES");
@@ -15,15 +17,15 @@ const COMPILE_OPTIONS = Symbol("COMPILE_OPTIONS");
 const LINK_OPTIONS = Symbol("LINK_OPTIONS");
 
 export class UnknownTarget {
-  private [NAME]: string;
+  private [IMPL]: TargetStruct;
   private [INCLUDES]: any[];
   private [SOURCES]: any[];
   private [DEFINES]: any[];
   private [COMPILE_OPTIONS]: any[];
   private [LINK_OPTIONS]: any[];
 
-  private constructor(name: string) {
-    this[NAME] = name;
+  private constructor(impl: TargetStruct) {
+    this[IMPL] = impl;
     this[INCLUDES] = [];
     this[SOURCES] = [];
     this[DEFINES] = [];
@@ -31,18 +33,18 @@ export class UnknownTarget {
     this[LINK_OPTIONS] = [];
   }
 
-  public static create(name: string) {
-    return Object.seal(new UnknownTarget(name));
+  public static create(impl: TargetStruct) {
+    return Object.seal(new UnknownTarget(impl));
   }
 
   public static ensureInstance(value: any) {
     if (value instanceof UnknownTarget)
       return value;
-    throw new Error(`The '${value}' is not a UnknownTarget`);
+    throw new TypeError(`The "${value}" is not a UnknownTarget`);
   }
 
   public get NAME () {
-    return this[NAME];
+    return this[IMPL].NAME;
   }
 
   public get INCLUDES () {
@@ -77,6 +79,6 @@ export class UnknownTarget {
   }
 
   public toString(): string {
-    return "${" + this[NAME] + "}";
+    return "${" + this[IMPL].NAME + "}";
   }
 };

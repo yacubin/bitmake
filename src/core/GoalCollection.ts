@@ -11,8 +11,6 @@ import path from "node:path";
 import fs from "node:fs";
 import { spawnSync } from "node:child_process";
 
-import { AbsolutePath } from "@/core/Path";
-
 const ENTRIES = Symbol("ENTRIES");
 
 enum GoalType {

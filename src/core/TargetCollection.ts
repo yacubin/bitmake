@@ -10,8 +10,37 @@
 import { IncludeDirectory } from "@/core/IncludeDirectory";
 import { InterfaceIncludes }from "@/core/InterfaceIncludes";
 import { InterfaceTarget } from "@/core/InterfaceTarget";
+import { TargetStruct } from "@/core/TargetStruct";
+import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
 
 const ENTRIES = Symbol("ENTRIES");
+
+export class TargetStructCollection {
+  private [ENTRIES]: Map<string, TargetStruct>;
+
+  constructor() {
+    this[ENTRIES] = new Map<string, TargetStruct>();
+  }
+
+  get(name: string): TargetStruct {
+    if (typeof name !== "string")
+      throw new Error(`Target "${name}" is not string type`);
+    if ([ ALL_TARGET, INSTALL_TARGET ].includes(name))
+      throw new Error(`Target "${name}" is reserved name`);
+    let result: TargetStruct | undefined = this[ENTRIES].get(name);
+    if (!result) {
+      result = new TargetStruct(name);
+      this[ENTRIES].set(name, result);
+    }
+    return result;
+  }
+
+  public toJSON(): object {
+    const result: any = {};
+    this[ENTRIES].forEach((v, k) => void (result[k] = v));
+    return result;
+  }
+};
 
 function getHeaders(target: any) {
   return target.SOURCES.filter((i: any) => i.HEADER_FILE_ONLY);

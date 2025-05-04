@@ -12,6 +12,7 @@ import { InterfaceIncludes }from "@/core/InterfaceIncludes";
 import { InterfaceTarget } from "@/core/InterfaceTarget";
 import { TargetStruct } from "@/core/TargetStruct";
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
+import { BaseTarget } from "./Target";
 
 const ENTRIES = Symbol("ENTRIES");
 
@@ -87,7 +88,7 @@ function getPublicLinkOptions(target: any) {
 }
 
 export class TargetCollection {
-  private [ENTRIES]: any;
+  private [ENTRIES]: { [name: string]: BaseTarget };
 
   private constructor() {
     this[ENTRIES] = {};

@@ -13,20 +13,16 @@ export interface GoalWorker {
   doWork(): Promise<void>;
   updateProgress(event: { loaded: number, total: number }): void;
 
+  get name(): string | undefined;
   get output(): string | undefined;
   get depends(): string[];
 };
 
-interface BaseGoal {
-  name: string;
-  worker: GoalWorker;
-};
-
 export class GoalCollection {
-  private [ENTRIES]: Array<BaseGoal>;
+  private [ENTRIES]: Array<GoalWorker>;
 
   private constructor() {
-    this[ENTRIES] = new Array<BaseGoal>;
+    this[ENTRIES] = new Array<GoalWorker>;
   }
 
   public get ENTRIES() {
@@ -37,47 +33,31 @@ export class GoalCollection {
     return Object.seal(new GoalCollection);
   }
 
-  public findScriptByOutput(output: string): BaseGoal | undefined {
-    if (!output)
-      return undefined;
-    return this[ENTRIES].find((i) => i.worker.output === output);
-  }
-
-  public hasScriptByOutput(output: string): boolean {
-    return !!this.findScriptByOutput(output);
-  }
-
-  public addScript(name: string, worker: GoalWorker) {
-    if (worker.output && this.hasScriptByOutput(worker.output))
+  public add(worker: GoalWorker) {
+    if (worker.name && this[ENTRIES].find((i) => i.name === worker.name))
+      throw new Error(`Nmae "${worker.name}" exists`);
+    if (worker.output && this[ENTRIES].find((i) => i.output === worker.output))
       throw new Error(`Output "${worker.output}" exists`);
-    this[ENTRIES].push({ name, worker });
+    this[ENTRIES].push(worker);
   }
 
-  public addExec(worker: GoalWorker) {
-    this[ENTRIES].push({ name: "", worker });
-  }
-
-  public addTarget(name: string, worker: GoalWorker) {
-    this[ENTRIES].push({ name, worker });
-  }
-
-  public getTarget(name: string): BaseGoal | undefined {
+  public getTarget(name: string): GoalWorker | undefined {
     if (!name)
       return undefined;
     return this[ENTRIES].find((i) => i.name === name);
   }
 
-  private addTargetListImpl(name: string, result: Array<BaseGoal>) {
-    if (result.find(i => i.name === name || i.worker.output === name)) {
+  private addTargetListImpl(name: string, result: Array<GoalWorker>) {
+    if (result.find(i => i.name === name || i.output === name)) {
       return;
     }
   
-    const goal = this[ENTRIES].find(i => i.name === name || (i.worker.output === name));
+    const goal = this[ENTRIES].find(i => i.name === name || (i.output === name));
     if (!goal) {
       return;
     }
   
-    for (const iter of goal.worker.depends) {
+    for (const iter of goal.depends) {
       this.addTargetListImpl(iter.toString(), result);
     }
   
@@ -85,7 +65,7 @@ export class GoalCollection {
   }
   
   public getTargetList(name:string) {
-    const result = new Array<BaseGoal>;
+    const result = new Array<GoalWorker>;
     this.addTargetListImpl(name, result);
     return result;
   }
@@ -94,12 +74,12 @@ export class GoalCollection {
     return this[ENTRIES];
   }
 
-  public static async buildGoals(collection: Array<BaseGoal>) {
+  public static async buildGoals(collection: Array<GoalWorker>) {
     const total = collection.length;
     let loaded = 0;
     for (const goal of collection) {
-      goal.worker.updateProgress({ loaded, total });
-      await goal.worker.doWork();
+      goal.updateProgress({ loaded, total });
+      await goal.doWork();
       loaded++;
     }
   }

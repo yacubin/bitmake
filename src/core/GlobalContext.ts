@@ -16,7 +16,7 @@ import { TargetCollection, TargetStructCollection } from "@/core//TargetCollecti
 import { ScriptCollection } from "@/core/ScriptCollection";
 import { InterfaceTarget } from "@/core/InterfaceTarget";
 import { UnknownTarget } from "@/core/UnknownTarget";
-import { GoalCollection, GoalWorker } from "@/core/GoalCollection";
+import { GoalCollection } from "@/core/GoalCollection";
 import { InterfaceObjects } from "@/core/InterfaceObjects";
 import { InterfaceScript } from "@/core/InterfaceScript";
 import { SourceFile } from "@/core/SourceFile";
@@ -30,6 +30,7 @@ import { InstallEntity } from "@/core/InstallEntity";
 import { CustomScript } from "@/core/CustomScript";
 import { ScriptContext } from "@/core/ScriptContext";
 import { spawnSync } from "node:child_process";
+import { spawnAsync } from "@/utils/ChildProcess";
 
 import configure_file from "@/core/BuildinScripts/configure_file";
 import install_script from "@/core/BuildinScripts/install_script";
@@ -114,15 +115,62 @@ function scopeValueAsPrimitives(o: any): any {
   throw new Error(`Unknown instance of ${o}`);
 }
 
-abstract class BaseGoalWorker {
-  private _message: string;
+type GoalHandler = () => Promise<void> | void;
+
+class GoalWorkerImpl {
+  private _message: string | undefined;
+  private _name: string | undefined;
   private _output: string | undefined;
   private _depends: string[];
+  private _callbacks: GoalHandler[];
 
-  constructor(message: string, output?: string) {
-    this._message = message;
-    this._output = output;
+  constructor(name?: string) {
+    this._name = name;
     this._depends = [];
+    this._callbacks = [];
+  }
+
+  get message(): string | undefined {
+    return this._message;
+  }
+
+  set message(value: string) {
+    this._message = value;
+  }
+
+  get name(): string | undefined {
+    return this._name;
+  }
+
+  get output(): string | undefined {
+    return this._output;
+  }
+
+  set output(value: string) {
+    this._output = value;
+  }
+
+  get depends(): string[] {
+    return this._depends;
+  }
+
+  public addDependency(...value: string[]) {
+    this._depends.push(...value);
+  }
+
+  public addCallback(handler: GoalHandler) {
+    this._callbacks.push(handler);
+  }
+
+  async doWork(): Promise<void> {
+    if (this._output)
+      await fs.promises.mkdir(path.posix.dirname(this._output), { recursive: true });
+
+    for (const func of this._callbacks) {
+      const res = func();
+      if (res instanceof Promise)
+        await res;
+    }
   }
 
   updateProgress(event: { loaded: number, total: number }): void {
@@ -133,108 +181,46 @@ abstract class BaseGoalWorker {
     }
   }
 
-  get output(): string | undefined {
-    return this._output;
+  addExec(command: string, args: string[], cwd: string): void {
+    this.addCallback(() => {
+      const result = spawnSync(command, args, { cwd, encoding: "utf-8" });
+      if (result.error || result.status) {
+        logger.info("cd " + cwd);
+        let cmd = args.join(" ");
+        cmd = command + (cmd ? " " : "") + cmd;
+        logger.info(cmd);
+        logger.info("");
+    
+        logger.error(result.stderr);
+    
+        if (result.error)
+            throw result.error;
+    
+        throw new Error(result.error as any || "Status " + result.status);
+      }
+      if (result.stdout) {
+        for (const line of result.stdout.trim().split("\n")) {
+          logger.info(line);
+        }
+      }
+    })
   }
 
-  get depends(): string[] {
-    return this._depends;
-  }
-
-  public addDependency(...value: string[]) {
-    this._depends.push(...value);
-  }
-};
-
-class ScriptGoalWorker extends BaseGoalWorker implements GoalWorker {
-  private global: GlobalContext;
-  private scope: SystemScope;
-  private script: FilePath | Function;
-  private params: any;
-
-  constructor(message: string, global: GlobalContext, scope: SystemScope, script: FilePath | Function, params: any, output?: string) {
-    super(message, output);
-    this.global = global;
-    this.scope = scope;
-    this.script = script;
-    this.params = params;
-  }
-
-  async doWork(): Promise<void> {
-    let func: any = this.script;
-    if (this.script instanceof FilePath)
-      func = (await importModule(func.toString())).default;
-    if (func instanceof Function) {
-      const mk = ScriptContext.create(this.scope, this.global);
-      const result = func(mk, scopeValueAsPrimitives(this.params));
-      if (result instanceof Promise)
-        await result;
-    }
-    else {
-      throw new Error(`There is no Function`);
-    }
-  }
-};
-
-class ExecGoalWorker extends BaseGoalWorker implements GoalWorker {
-  private command: string;
-  private args: string[];
-  private cwd: DirPath;
-
-  constructor(message: string, output: string, command: string, args: string[], cwd: DirPath) {
-    super(message, output);
-    this.command = command;
-    this.args = args;
-    this.cwd = cwd;
-  }
-
-  async doWork(): Promise<void> {
-    if (!this.output)
-      return;
-    await fs.promises.mkdir(path.posix.dirname(this.output), { recursive: true });
-    const result = spawnSync(this.command, this.args, { cwd: this.cwd.toString(), encoding: "utf-8" });
-    if (result.error || result.status) {
-      logger.info("cd " + this.cwd);
-      let cmd = this.args.join(" ");
-      cmd = this.command + (cmd ? " " : "") + cmd;
-      logger.info(cmd);
-      logger.info("");
-  
-      logger.error(result.stderr);
-  
-      if (result.error)
-          throw result.error;
-  
-      throw new Error(result.error as any || "Status " + result.status);
-    }
-  }
-};
-
-interface InstallGoalParams {
-  src: string;
-  dest: string;
-};
-
-class InstallGoalWorker extends BaseGoalWorker implements GoalWorker {
-  private entries: Array<InstallGoalParams>;
-
-  constructor(entries: Array<InstallGoalParams>, output?: string) {
-    super("", output);
-    this.entries = entries;
-  }
-
-  async doWork(): Promise<void> {
-    for (const iter of this.entries)
-      await install_script(scopeValueAsPrimitives(iter));
-  }
-};
-
-class TargetGoalWorker extends BaseGoalWorker implements GoalWorker {
-  constructor(message: string) {
-    super(message, undefined);
-  }
-
-  async doWork(): Promise<void> {
+  addScript(global: GlobalContext, scope: SystemScope, script: FilePath | Function, params: any): void {
+    this.addCallback(async () => {
+      let func: any = script;
+      if (script instanceof FilePath)
+        func = (await importModule(func.toString())).default;
+      if (func instanceof Function) {
+        const mk = ScriptContext.create(scope, global);
+        const result = func(mk, scopeValueAsPrimitives(params));
+        if (result instanceof Promise)
+          await result;
+      }
+      else {
+        throw new Error(`There is no Function`);
+      }
+    });
   }
 };
 
@@ -523,15 +509,18 @@ export class GlobalContext {
         depends.push(script.INPUT.toString());
       const msg = "\x1b[36m" + "Generating " + script.workDir.relative(script.OUTPUT) + "\x1b[0m";
       const params = { ...script.VARIABLES, ...script.PARAMS };
-      const worker = new ScriptGoalWorker(msg, this, script.SCOPE, script.SCRIPT, params, script.OUTPUT.toString());
+      const worker = new GoalWorkerImpl(script.NAME);
+      worker.message = msg;
+      worker.output = script.OUTPUT.toString();
       worker.addDependency(...depends);
-      goalList.addScript(script.NAME, worker);
+      worker.addScript(this, script.SCOPE, script.SCRIPT, params);
+      goalList.add(worker);
     }
   
-    for (const [name, target] of Object.entries(this[TARGETS].ENTRIES) as any) {
+    for (const [name, target] of Object.entries(this[TARGETS].ENTRIES)) {
       const headers = this[TARGETS].allHeadersOf(target);
       const depends = [];
-      for (const s of target.SOURCES) {
+      for (const s of target.SOURCES as any) {
         if (s instanceof InterfaceObjects) {
           const t = this[TARGETS].get(s.targetName);
           for (const f of t.SOURCES) {
@@ -565,14 +554,22 @@ export class GlobalContext {
         args.push("-o", relativeObject);
         args.push("-c", s.FILE);
   
-        const command = target.TARGET_SCOPE[s.LANGUAGE + "_COMPILER"].toString();
+        const command = (target.TARGET_SCOPE as any)[s.LANGUAGE + "_COMPILER"].toString();
         const output = DirPath.create(target.TARGET_SCOPE.BINARY_DIR.join(relativeObject));
         depends.push(output.toString());
 
-        const worker = new ExecGoalWorker(msg, output.toString(), command, args, target.TARGET_SCOPE.BINARY_DIR);
+        const worker = new GoalWorkerImpl;
+        worker.message = msg;
+        worker.output = output.toString();
         worker.addDependency(...headers);
         worker.addDependency(s.FILE);
-        goalList.addExec(worker);
+        worker.addExec(command, args, target.TARGET_SCOPE.BINARY_DIR.toString());
+        goalList.add(worker);
+      }
+
+      const generalGoal = new GoalWorkerImpl;
+      for (const params of target.IMPL.preBuildList) {
+        generalGoal.addExec(params.command.toString(), params.args.map(i => i.toString()), target.TARGET_SCOPE.BINARY_DIR.toString());
       }
 
       const linkOptions = this[TARGETS].allLinkOptionsOf(target);
@@ -585,10 +582,10 @@ export class GlobalContext {
             "-o", target.FILE_NAME,
             ...objs
           ];
-          const msg = `Linking CXX object library ${target.FILE_NAME}`;
-          const worker = new ExecGoalWorker(msg, target.FILE.toString(), scope.LINKER, args, target.FILE_DIR);
-          worker.addDependency(...depends);
-          goalList.addExec(worker);
+          generalGoal.message = `Linking CXX object library ${target.FILE_NAME}`;
+          generalGoal.output = target.FILE.toString();
+          generalGoal.addDependency(...depends);
+          generalGoal.addExec(scope.LINKER, args, target.FILE_DIR.toString());
         }
         else {
           logger.info(`No objects for "${target.NAME}"`);
@@ -599,10 +596,10 @@ export class GlobalContext {
         const objs = depends.filter(i => i.endsWith(".o") || i.endsWith(".obj")).map(i => target.FILE_DIR.relative(i));
         if (objs.length) {
           const args = [ "rc", target.FILE_NAME , ...objs ];
-          const msg = `Linking CXX static library ${target.FILE_NAME}`;
-          const worker = new ExecGoalWorker(msg, target.FILE.toString(), scope.AR, args, target.FILE_DIR);
-          worker.addDependency(...depends);
-          goalList.addExec(worker);
+          generalGoal.message = `Linking CXX static library ${target.FILE_NAME}`;
+          generalGoal.output = target.FILE.toString();
+          generalGoal.addDependency(...depends);
+          generalGoal.addExec(scope.AR, args, target.FILE_DIR.toString());
         }
         else {
           logger.info(`No objects for "${target.NAME}"`);
@@ -625,21 +622,33 @@ export class GlobalContext {
             ...libs.map(i => target.FILE_DIR.relative(i)),
           ];
 
-          const msg = `Linking CXX executable ${target.FILE_NAME}`;
-          const worker = new ExecGoalWorker(msg, target.FILE.toString(), scope.CXX_COMPILER, args, target.FILE_DIR);
-          worker.addDependency(...depends);
-          worker.addDependency(...libs);
-          goalList.addExec(worker);
+          generalGoal.message = `Linking CXX executable ${target.FILE_NAME}`;
+          generalGoal.output = target.FILE.toString();
+          generalGoal.addDependency(...depends);
+          generalGoal.addDependency(...libs);
+          generalGoal.addExec(scope.CXX_COMPILER, args, target.FILE_DIR.toString());
         }
         else {
           logger.info(`No objects for "${target.NAME}"`);
         }
       }
 
-      const worker = new TargetGoalWorker(`Built target ${name}`);
+      for (const params of target.IMPL.postBuildList) {
+        generalGoal.addExec(params.command.toString(), params.args.map(i => i.toString()), target.TARGET_SCOPE.BINARY_DIR.toString());
+      }
+      
+      goalList.add(generalGoal);
+
+      const worker = new GoalWorkerImpl(name);
+      worker.message = `Built target ${name}`;
       worker.addDependency(target.FILE.toString());
-      goalList.addTarget(name, worker);
+      goalList.add(worker);
     }
+
+    interface InstallGoalParams {
+      src: string;
+      dest: string;
+    };
 
     const installPairs = new Array<InstallGoalParams>;
     for (const iter of this[INSTALL_LIST]) {
@@ -666,14 +675,18 @@ export class GlobalContext {
     }
 
     if (installPairs.length) {
-      const worker = new InstallGoalWorker(installPairs);
+      const worker = new GoalWorkerImpl(INSTALL_TARGET);
       installPairs.forEach(i => void worker.addDependency(i.src));
-      goalList.addScript(INSTALL_TARGET, worker);
+      worker.addCallback(async () => {
+        for (const iter of installPairs)
+          await install_script(scopeValueAsPrimitives(iter));
+      });
+      goalList.add(worker);
     }
 
-    const worker = new TargetGoalWorker("");
+    const worker = new GoalWorkerImpl(ALL_TARGET);
     Object.keys(this[TARGETS].ENTRIES).forEach(i => void worker.addDependency(i))
-    goalList.addTarget(ALL_TARGET, worker);
+    goalList.add(worker);
   
     return goalList;
   }

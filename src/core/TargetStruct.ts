@@ -210,6 +210,8 @@ export class TargetStruct {
     return {
       name: this.name,
       targetFile: this.targetFile,
+      preBuildList: this.preBuildList,
+      postBuildList: this.postBuildList,
     }
   }
 };

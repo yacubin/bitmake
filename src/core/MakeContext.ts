@@ -133,6 +133,8 @@ const methods = {
   addCustomScript(this: IMakeContext, script: any, params: any): CustomScript {
     const newScope = ScopeHelper.clone({}, this[SCOPE]);
     ScopeHelper.applyVariables(newScope, this);
+    for (const [key, val] of Object.entries(params))
+      newScope[key] = val;
     return this[GLOBAL].addCustomScript(newScope, script, params);
   },
   

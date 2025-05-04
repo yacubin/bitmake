@@ -47,6 +47,7 @@ export class CustomScript {
 
   public mergeVariables(variables: any) {
     ScopeHelper.mergeVariables(this[VARIABLES], variables);
+    ScopeHelper.mergeVariables(this[SCOPE], variables);
   }
 
   public get NAME() {

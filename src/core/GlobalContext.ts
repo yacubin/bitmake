@@ -30,7 +30,6 @@ import { InstallEntity } from "@/core/InstallEntity";
 import { CustomScript } from "@/core/CustomScript";
 import { ScriptContext } from "@/core/ScriptContext";
 import { spawnSync } from "node:child_process";
-import { spawnAsync } from "@/utils/ChildProcess";
 
 import configure_file from "@/core/BuildinScripts/configure_file";
 import install_script from "@/core/BuildinScripts/install_script";
@@ -281,31 +280,28 @@ export class GlobalContext {
     if (!params)
       throw new Error("Argument with parameters is missing");
 
-    const sourceDir = scope.SOURCE_DIR;
-    const binaryDir = scope.BINARY_DIR;
-
     let scriptObj: Function | FilePath | undefined;
     if (typeof script === "string")
       scriptObj = this.findScriptFunction(script);
     if (!scriptObj)
-      scriptObj = FilePath.create(sourceDir.resolve(script));
+      scriptObj = FilePath.create(scope.SOURCE_DIR.resolve(script));
 
-    let inputFile = params.input;
+    let inputFile = params.SCRIPT_INPUT;
     if (inputFile)
-      inputFile = FilePath.create(sourceDir.resolve(inputFile));
+      inputFile = FilePath.create(scope.SOURCE_DIR.resolve(inputFile));
 
-    if (!params.output)
+    if (!params.SCRIPT_OUTPUT)
       throw new Error("CustomScript parameters required output entity");
-    const outputFile = FilePath.create(sourceDir.resolve(params.output));
+    const outputFile = FilePath.create(scope.SOURCE_DIR.resolve(params.SCRIPT_OUTPUT));
 
     const options: CustomScript.Options = {
       scope,
-      name: params.name,
+      name: params.SCRIPT_NAME,
       script: scriptObj,
       params,
       output: outputFile,
       input: inputFile,
-      workDir: binaryDir,
+      workDir: scope.BINARY_DIR,
       variables: params.variables || {},
     };
 

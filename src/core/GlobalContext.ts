@@ -33,6 +33,7 @@ import { spawnSync } from "node:child_process";
 
 import configure_file from "@/core/BuildinScripts/configure_file";
 import install_script from "@/core/BuildinScripts/install_script";
+import path from "node:path";
 
 const logger = createLogger(import.meta.url);
 
@@ -115,11 +116,13 @@ function scopeValueAsPrimitives(o: any): any {
 
 abstract class BaseGoalWorker {
   private _message: string;
-  private _outputFile: FilePath | undefined;
+  private _output: string | undefined;
+  private _depends: string[];
 
-  constructor(message: string, outputFile: FilePath | undefined) {
+  constructor(message: string, output?: string) {
     this._message = message;
-    this._outputFile = outputFile;
+    this._output = output;
+    this._depends = [];
   }
 
   updateProgress(event: { loaded: number, total: number }): void {
@@ -130,8 +133,16 @@ abstract class BaseGoalWorker {
     }
   }
 
-  get outputFile(): FilePath | undefined {
-    return this._outputFile;
+  get output(): string | undefined {
+    return this._output;
+  }
+
+  get depends(): string[] {
+    return this._depends;
+  }
+
+  public addDependency(...value: string[]) {
+    this._depends.push(...value);
   }
 };
 
@@ -141,8 +152,8 @@ class ScriptGoalWorker extends BaseGoalWorker implements GoalWorker {
   private script: FilePath | Function;
   private params: any;
 
-  constructor(message: string, global: GlobalContext, scope: SystemScope, script: FilePath | Function, params: any, outputFile?: FilePath) {
-    super(message, outputFile);
+  constructor(message: string, global: GlobalContext, scope: SystemScope, script: FilePath | Function, params: any, output?: string) {
+    super(message, output);
     this.global = global;
     this.scope = scope;
     this.script = script;
@@ -170,17 +181,17 @@ class ExecGoalWorker extends BaseGoalWorker implements GoalWorker {
   private args: string[];
   private cwd: DirPath;
 
-  constructor(message: string, outputFile: FilePath, command: string, args: string[], cwd: DirPath) {
-    super(message, outputFile);
+  constructor(message: string, output: string, command: string, args: string[], cwd: DirPath) {
+    super(message, output);
     this.command = command;
     this.args = args;
     this.cwd = cwd;
   }
 
   async doWork(): Promise<void> {
-    if (!this.outputFile)
+    if (!this.output)
       return;
-    await fs.promises.mkdir(this.outputFile.dirname().toString(), { recursive: true });
+    await fs.promises.mkdir(path.posix.dirname(this.output), { recursive: true });
     const result = spawnSync(this.command, this.args, { cwd: this.cwd.toString(), encoding: "utf-8" });
     if (result.error || result.status) {
       logger.info("cd " + this.cwd);
@@ -207,8 +218,8 @@ interface InstallGoalParams {
 class InstallGoalWorker extends BaseGoalWorker implements GoalWorker {
   private entries: Array<InstallGoalParams>;
 
-  constructor(entries: Array<InstallGoalParams>, outputFile?: FilePath) {
-    super("", outputFile);
+  constructor(entries: Array<InstallGoalParams>, output?: string) {
+    super("", output);
     this.entries = entries;
   }
 
@@ -512,8 +523,9 @@ export class GlobalContext {
         depends.push(script.INPUT.toString());
       const msg = "\x1b[36m" + "Generating " + script.workDir.relative(script.OUTPUT) + "\x1b[0m";
       const params = { ...script.VARIABLES, ...script.PARAMS };
-      const worker = new ScriptGoalWorker(msg, this, script.SCOPE, script.SCRIPT, params, script.OUTPUT);
-      goalList.addScript(script.NAME, worker, depends);
+      const worker = new ScriptGoalWorker(msg, this, script.SCOPE, script.SCRIPT, params, script.OUTPUT.toString());
+      worker.addDependency(...depends);
+      goalList.addScript(script.NAME, worker);
     }
   
     for (const [name, target] of Object.entries(this[TARGETS].ENTRIES) as any) {
@@ -557,8 +569,10 @@ export class GlobalContext {
         const output = DirPath.create(target.TARGET_SCOPE.BINARY_DIR.join(relativeObject));
         depends.push(output.toString());
 
-        const worker = new ExecGoalWorker(msg, output, command, args, target.TARGET_SCOPE.BINARY_DIR);
-        goalList.addExec([ ...headers, s.FILE ], worker);
+        const worker = new ExecGoalWorker(msg, output.toString(), command, args, target.TARGET_SCOPE.BINARY_DIR);
+        worker.addDependency(...headers);
+        worker.addDependency(s.FILE);
+        goalList.addExec(worker);
       }
 
       const linkOptions = this[TARGETS].allLinkOptionsOf(target);
@@ -572,8 +586,9 @@ export class GlobalContext {
             ...objs
           ];
           const msg = `Linking CXX object library ${target.FILE_NAME}`;
-          const worker = new ExecGoalWorker(msg, target.FILE, scope.LINKER, args, target.FILE_DIR);
-          goalList.addExec(depends, worker);
+          const worker = new ExecGoalWorker(msg, target.FILE.toString(), scope.LINKER, args, target.FILE_DIR);
+          worker.addDependency(...depends);
+          goalList.addExec(worker);
         }
         else {
           logger.info(`No objects for "${target.NAME}"`);
@@ -585,8 +600,9 @@ export class GlobalContext {
         if (objs.length) {
           const args = [ "rc", target.FILE_NAME , ...objs ];
           const msg = `Linking CXX static library ${target.FILE_NAME}`;
-          const worker = new ExecGoalWorker(msg, target.FILE, scope.AR, args, target.FILE_DIR);
-          goalList.addExec(depends, worker);
+          const worker = new ExecGoalWorker(msg, target.FILE.toString(), scope.AR, args, target.FILE_DIR);
+          worker.addDependency(...depends);
+          goalList.addExec(worker);
         }
         else {
           logger.info(`No objects for "${target.NAME}"`);
@@ -610,8 +626,10 @@ export class GlobalContext {
           ];
 
           const msg = `Linking CXX executable ${target.FILE_NAME}`;
-          const worker = new ExecGoalWorker(msg, target.FILE, scope.CXX_COMPILER, args, target.FILE_DIR);
-          goalList.addExec(depends.concat(libs), worker);
+          const worker = new ExecGoalWorker(msg, target.FILE.toString(), scope.CXX_COMPILER, args, target.FILE_DIR);
+          worker.addDependency(...depends);
+          worker.addDependency(...libs);
+          goalList.addExec(worker);
         }
         else {
           logger.info(`No objects for "${target.NAME}"`);
@@ -619,13 +637,10 @@ export class GlobalContext {
       }
 
       const worker = new TargetGoalWorker(`Built target ${name}`);
-      goalList.addTarget(name, [ target.FILE.toString() ], worker);
+      worker.addDependency(target.FILE.toString());
+      goalList.addTarget(name, worker);
     }
-  
-    interface InstallGoalParams {
-      src: string;
-      dest: string;
-    };
+
     const installPairs = new Array<InstallGoalParams>;
     for (const iter of this[INSTALL_LIST]) {
       let src: string, dest: any;
@@ -652,11 +667,13 @@ export class GlobalContext {
 
     if (installPairs.length) {
       const worker = new InstallGoalWorker(installPairs);
-      goalList.addScript(INSTALL_TARGET, worker, installPairs.map(i => i.src));
+      installPairs.forEach(i => void worker.addDependency(i.src));
+      goalList.addScript(INSTALL_TARGET, worker);
     }
 
     const worker = new TargetGoalWorker("");
-    goalList.addTarget(ALL_TARGET, Object.keys(this[TARGETS].ENTRIES), worker);
+    Object.keys(this[TARGETS].ENTRIES).forEach(i => void worker.addDependency(i))
+    goalList.addTarget(ALL_TARGET, worker);
   
     return goalList;
   }

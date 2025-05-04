@@ -7,19 +7,18 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { FilePath } from "@/core/Path";
-
 const ENTRIES = Symbol("ENTRIES");
 
 export interface GoalWorker {
   doWork(): Promise<void>;
   updateProgress(event: { loaded: number, total: number }): void;
-  get outputFile(): FilePath | undefined;
+
+  get output(): string | undefined;
+  get depends(): string[];
 };
 
 interface BaseGoal {
   name: string;
-  depends: Array<string>;
   worker: GoalWorker;
 };
 
@@ -41,25 +40,25 @@ export class GoalCollection {
   public findScriptByOutput(output: string): BaseGoal | undefined {
     if (!output)
       return undefined;
-    return this[ENTRIES].find((i) => i.worker.outputFile && i.worker.outputFile.toString() === output);
+    return this[ENTRIES].find((i) => i.worker.output === output);
   }
 
   public hasScriptByOutput(output: string): boolean {
     return !!this.findScriptByOutput(output);
   }
 
-  public addScript(name: string, worker: GoalWorker, depends: Array<string>) {
-    if (worker.outputFile && this.hasScriptByOutput(worker.outputFile.toString()))
-      throw new Error(`Output "${worker.outputFile.toString()}" exists`);
-    this[ENTRIES].push({ name, worker, depends });
+  public addScript(name: string, worker: GoalWorker) {
+    if (worker.output && this.hasScriptByOutput(worker.output))
+      throw new Error(`Output "${worker.output}" exists`);
+    this[ENTRIES].push({ name, worker });
   }
 
-  public addExec(depends: Array<string>, worker: GoalWorker) {
-    this[ENTRIES].push({ name: "", depends, worker });
+  public addExec(worker: GoalWorker) {
+    this[ENTRIES].push({ name: "", worker });
   }
 
-  public addTarget(name: string, depends: Array<string>, worker: GoalWorker) {
-    this[ENTRIES].push({ name, depends, worker });
+  public addTarget(name: string, worker: GoalWorker) {
+    this[ENTRIES].push({ name, worker });
   }
 
   public getTarget(name: string): BaseGoal | undefined {
@@ -69,16 +68,16 @@ export class GoalCollection {
   }
 
   private addTargetListImpl(name: string, result: Array<BaseGoal>) {
-    if (result.find(i => i.name === name || (i.worker.outputFile && i.worker.outputFile.toString() === name))) {
+    if (result.find(i => i.name === name || i.worker.output === name)) {
       return;
     }
   
-    const goal = this[ENTRIES].find(i => i.name === name || (i.worker.outputFile && i.worker.outputFile.toString() === name));
+    const goal = this[ENTRIES].find(i => i.name === name || (i.worker.output === name));
     if (!goal) {
       return;
     }
   
-    for (const iter of goal.depends) {
+    for (const iter of goal.worker.depends) {
       this.addTargetListImpl(iter.toString(), result);
     }
   

@@ -7,7 +7,6 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import path from "node:path";
 import fs from "node:fs";
 
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
@@ -115,17 +114,24 @@ function scopeValueAsPrimitives(o: any): any {
 }
 
 abstract class BaseGoalWorker {
-  private message: string;
-  constructor(message: string) {
-    this.message = message;
+  private _message: string;
+  private _outputFile: FilePath | undefined;
+
+  constructor(message: string, outputFile: FilePath | undefined) {
+    this._message = message;
+    this._outputFile = outputFile;
   }
 
   updateProgress(event: { loaded: number, total: number }): void {
-    if (this.message) {
+    if (this._message) {
       const relationOfLength = Math.round((++event.loaded / event.total) * 100);
       const percent = "[" + relationOfLength.toString().padStart(3, " ") + "%] ";
-      console.info(percent + this.message);
+      console.info(percent + this._message);
     }
+  }
+
+  get outputFile(): FilePath | undefined {
+    return this._outputFile;
   }
 };
 
@@ -135,8 +141,8 @@ class ScriptGoalWorker extends BaseGoalWorker implements GoalWorker {
   private script: FilePath | Function;
   private params: any;
 
-  constructor(message: string, global: GlobalContext, scope: SystemScope, script: FilePath | Function, params: any) {
-    super(message);
+  constructor(message: string, global: GlobalContext, scope: SystemScope, script: FilePath | Function, params: any, outputFile?: FilePath) {
+    super(message, outputFile);
     this.global = global;
     this.scope = scope;
     this.script = script;
@@ -160,21 +166,21 @@ class ScriptGoalWorker extends BaseGoalWorker implements GoalWorker {
 };
 
 class ExecGoalWorker extends BaseGoalWorker implements GoalWorker {
-  private output: FilePath;
   private command: string;
   private args: string[];
   private cwd: DirPath;
 
-  constructor(message: string, output: FilePath, command: string, args: string[], cwd: DirPath) {
-    super(message);
-    this.output = output;
+  constructor(message: string, outputFile: FilePath, command: string, args: string[], cwd: DirPath) {
+    super(message, outputFile);
     this.command = command;
     this.args = args;
     this.cwd = cwd;
   }
 
   async doWork(): Promise<void> {
-    await fs.promises.mkdir(this.output.dirname().toString(), { recursive: true });
+    if (!this.outputFile)
+      return;
+    await fs.promises.mkdir(this.outputFile.dirname().toString(), { recursive: true });
     const result = spawnSync(this.command, this.args, { cwd: this.cwd.toString(), encoding: "utf-8" });
     if (result.error || result.status) {
       logger.info("cd " + this.cwd);
@@ -201,8 +207,8 @@ interface InstallGoalParams {
 class InstallGoalWorker extends BaseGoalWorker implements GoalWorker {
   private entries: Array<InstallGoalParams>;
 
-  constructor(entries: Array<InstallGoalParams>) {
-    super("");
+  constructor(entries: Array<InstallGoalParams>, outputFile?: FilePath) {
+    super("", outputFile);
     this.entries = entries;
   }
 
@@ -214,7 +220,7 @@ class InstallGoalWorker extends BaseGoalWorker implements GoalWorker {
 
 class TargetGoalWorker extends BaseGoalWorker implements GoalWorker {
   constructor(message: string) {
-    super(message);
+    super(message, undefined);
   }
 
   async doWork(): Promise<void> {
@@ -506,8 +512,8 @@ export class GlobalContext {
         depends.push(script.INPUT.toString());
       const msg = "\x1b[36m" + "Generating " + script.workDir.relative(script.OUTPUT) + "\x1b[0m";
       const params = { ...script.VARIABLES, ...script.PARAMS };
-      const worker = new ScriptGoalWorker(msg, this, script.SCOPE, script.SCRIPT, params);
-      goalList.addScript(script.NAME, worker, depends, script.OUTPUT.toString());
+      const worker = new ScriptGoalWorker(msg, this, script.SCOPE, script.SCRIPT, params, script.OUTPUT);
+      goalList.addScript(script.NAME, worker, depends);
     }
   
     for (const [name, target] of Object.entries(this[TARGETS].ENTRIES) as any) {
@@ -552,7 +558,7 @@ export class GlobalContext {
         depends.push(output.toString());
 
         const worker = new ExecGoalWorker(msg, output, command, args, target.TARGET_SCOPE.BINARY_DIR);
-        goalList.addExec(output.toString(), [ ...headers, s.FILE ], worker);
+        goalList.addExec([ ...headers, s.FILE ], worker);
       }
 
       const linkOptions = this[TARGETS].allLinkOptionsOf(target);
@@ -567,7 +573,7 @@ export class GlobalContext {
           ];
           const msg = `Linking CXX object library ${target.FILE_NAME}`;
           const worker = new ExecGoalWorker(msg, target.FILE, scope.LINKER, args, target.FILE_DIR);
-          goalList.addExec(target.FILE.toString(), depends, worker);
+          goalList.addExec(depends, worker);
         }
         else {
           logger.info(`No objects for "${target.NAME}"`);
@@ -580,7 +586,7 @@ export class GlobalContext {
           const args = [ "rc", target.FILE_NAME , ...objs ];
           const msg = `Linking CXX static library ${target.FILE_NAME}`;
           const worker = new ExecGoalWorker(msg, target.FILE, scope.AR, args, target.FILE_DIR);
-          goalList.addExec(target.FILE.toString(), depends, worker);
+          goalList.addExec(depends, worker);
         }
         else {
           logger.info(`No objects for "${target.NAME}"`);
@@ -605,7 +611,7 @@ export class GlobalContext {
 
           const msg = `Linking CXX executable ${target.FILE_NAME}`;
           const worker = new ExecGoalWorker(msg, target.FILE, scope.CXX_COMPILER, args, target.FILE_DIR);
-          goalList.addExec(target.FILE.toString(), depends.concat(libs), worker);
+          goalList.addExec(depends.concat(libs), worker);
         }
         else {
           logger.info(`No objects for "${target.NAME}"`);
@@ -646,7 +652,7 @@ export class GlobalContext {
 
     if (installPairs.length) {
       const worker = new InstallGoalWorker(installPairs);
-      goalList.addScript(INSTALL_TARGET, worker, installPairs.map(i => i.src), "");
+      goalList.addScript(INSTALL_TARGET, worker, installPairs.map(i => i.src));
     }
 
     const worker = new TargetGoalWorker("");

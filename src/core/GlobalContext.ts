@@ -17,7 +17,7 @@ import { TargetCollection, TargetStructCollection } from "@/core//TargetCollecti
 import { ScriptCollection } from "@/core/ScriptCollection";
 import { InterfaceTarget } from "@/core/InterfaceTarget";
 import { UnknownTarget } from "@/core/UnknownTarget";
-import { GoalCollection } from "@/core/GoalCollection";
+import { GoalCollection, GoalWorker } from "@/core/GoalCollection";
 import { InterfaceObjects } from "@/core/InterfaceObjects";
 import { InterfaceScript } from "@/core/InterfaceScript";
 import { SourceFile } from "@/core/SourceFile";
@@ -114,18 +114,76 @@ function scopeValueAsPrimitives(o: any): any {
   throw new Error(`Unknown instance of ${o}`);
 }
 
-function makeExecHeandler(output: string, command: string, args: Array<string>, cwd: string, msg: string) {
-  return async function() {
-    await fs.promises.mkdir(path.posix.dirname(output), { recursive: true });
-    const result = spawnSync(command, args, { cwd, encoding: "utf-8" });
+abstract class BaseGoalWorker {
+  private message: string;
+  constructor(message: string) {
+    this.message = message;
+  }
+
+  updateProgress(event: { loaded: number, total: number }): void {
+    if (this.message) {
+      const relationOfLength = Math.round((++event.loaded / event.total) * 100);
+      const percent = "[" + relationOfLength.toString().padStart(3, " ") + "%] ";
+      console.info(percent + this.message);
+    }
+  }
+};
+
+class ScriptGoalWorker extends BaseGoalWorker implements GoalWorker {
+  private global: GlobalContext;
+  private scope: SystemScope;
+  private script: FilePath | Function;
+  private params: any;
+
+  constructor(message: string, global: GlobalContext, scope: SystemScope, script: FilePath | Function, params: any) {
+    super(message);
+    this.global = global;
+    this.scope = scope;
+    this.script = script;
+    this.params = params;
+  }
+
+  async doWork(): Promise<void> {
+    let func: any = this.script;
+    if (this.script instanceof FilePath)
+      func = (await importModule(func.toString())).default;
+    if (func instanceof Function) {
+      const mk = ScriptContext.create(this.scope, this.global);
+      const result = func(mk, scopeValueAsPrimitives(this.params));
+      if (result instanceof Promise)
+        await result;
+    }
+    else {
+      throw new Error(`There is no Function`);
+    }
+  }
+};
+
+class ExecGoalWorker extends BaseGoalWorker implements GoalWorker {
+  private output: FilePath;
+  private command: string;
+  private args: string[];
+  private cwd: DirPath;
+
+  constructor(message: string, output: FilePath, command: string, args: string[], cwd: DirPath) {
+    super(message);
+    this.output = output;
+    this.command = command;
+    this.args = args;
+    this.cwd = cwd;
+  }
+
+  async doWork(): Promise<void> {
+    await fs.promises.mkdir(this.output.dirname().toString(), { recursive: true });
+    const result = spawnSync(this.command, this.args, { cwd: this.cwd.toString(), encoding: "utf-8" });
     if (result.error || result.status) {
-      console.info("cd " + cwd);
-      let cmd = args.join(" ");
-      cmd = command + (cmd ? " " : "") + cmd;
-      console.info(cmd);
-      console.info("");
+      logger.info("cd " + this.cwd);
+      let cmd = this.args.join(" ");
+      cmd = this.command + (cmd ? " " : "") + cmd;
+      logger.info(cmd);
+      logger.info("");
   
-      console.error(result.stderr);
+      logger.error(result.stderr);
   
       if (result.error)
           throw result.error;
@@ -133,7 +191,35 @@ function makeExecHeandler(output: string, command: string, args: Array<string>, 
       throw new Error(result.error as any || "Status " + result.status);
     }
   }
-}
+};
+
+interface InstallGoalParams {
+  src: string;
+  dest: string;
+};
+
+class InstallGoalWorker extends BaseGoalWorker implements GoalWorker {
+  private entries: Array<InstallGoalParams>;
+
+  constructor(entries: Array<InstallGoalParams>) {
+    super("");
+    this.entries = entries;
+  }
+
+  async doWork(): Promise<void> {
+    for (const iter of this.entries)
+      await install_script(scopeValueAsPrimitives(iter));
+  }
+};
+
+class TargetGoalWorker extends BaseGoalWorker implements GoalWorker {
+  constructor(message: string) {
+    super(message);
+  }
+
+  async doWork(): Promise<void> {
+  }
+};
 
 export class GlobalContext {
   private [TARGET_COLLECTION] = new TargetStructCollection;
@@ -420,22 +506,8 @@ export class GlobalContext {
         depends.push(script.INPUT.toString());
       const msg = "\x1b[36m" + "Generating " + script.workDir.relative(script.OUTPUT) + "\x1b[0m";
       const params = { ...script.VARIABLES, ...script.PARAMS };
-      let func = script.SCRIPT;
-      const scope = script.SCOPE;
-      const handler = async () => {
-        if (func instanceof FilePath)
-          func = (await importModule(func.toString())).default;
-        if (func instanceof Function) {
-          const mk = ScriptContext.create(scope, this);
-          const result = func(mk, scopeValueAsPrimitives(params));
-          if (result instanceof Promise)
-            await result;
-        }
-        else {
-          throw new Error(`There is no Function`);
-        }
-      };
-      goalList.addScript(script.NAME, handler, depends, script.OUTPUT.toString(), msg);
+      const worker = new ScriptGoalWorker(msg, this, script.SCOPE, script.SCRIPT, params);
+      goalList.addScript(script.NAME, worker, depends, script.OUTPUT.toString());
     }
   
     for (const [name, target] of Object.entries(this[TARGETS].ENTRIES) as any) {
@@ -465,7 +537,7 @@ export class GlobalContext {
           ...s.DEFINES,
         ];
 
-        const args = [];
+        const args: string[] = [];
         args.push(...definitions.map(i => "-D" + i));
         args.push(...this[TARGETS].allIncludesOf(target).map(i => "-I" + i));
         args.push(...this[TARGETS].allCompileOptionsOf(target));
@@ -474,13 +546,13 @@ export class GlobalContext {
         args.push(...s.COMPILE_FLAGS.flat());
         args.push("-o", relativeObject);
         args.push("-c", s.FILE);
-        const cwd = target.TARGET_SCOPE.BINARY_DIR.toString();
   
         const command = target.TARGET_SCOPE[s.LANGUAGE + "_COMPILER"].toString();
-        const output = target.TARGET_SCOPE.BINARY_DIR.join(relativeObject).toString();
-        depends.push(output);
-  
-        goalList.addExec(output, [ ...headers, s.FILE ], msg, makeExecHeandler(output, command, args, cwd, msg));
+        const output = DirPath.create(target.TARGET_SCOPE.BINARY_DIR.join(relativeObject));
+        depends.push(output.toString());
+
+        const worker = new ExecGoalWorker(msg, output, command, args, target.TARGET_SCOPE.BINARY_DIR);
+        goalList.addExec(output.toString(), [ ...headers, s.FILE ], worker);
       }
 
       const linkOptions = this[TARGETS].allLinkOptionsOf(target);
@@ -493,9 +565,9 @@ export class GlobalContext {
             "-o", target.FILE_NAME,
             ...objs
           ];
-          const cwd = target.FILE_DIR.toString();
           const msg = `Linking CXX object library ${target.FILE_NAME}`;
-          goalList.addExec(target.FILE.toString(), depends, msg, makeExecHeandler(target.FILE.toString(), scope.LINKER, args, cwd, msg));
+          const worker = new ExecGoalWorker(msg, target.FILE, scope.LINKER, args, target.FILE_DIR);
+          goalList.addExec(target.FILE.toString(), depends, worker);
         }
         else {
           logger.info(`No objects for "${target.NAME}"`);
@@ -506,9 +578,9 @@ export class GlobalContext {
         const objs = depends.filter(i => i.endsWith(".o") || i.endsWith(".obj")).map(i => target.FILE_DIR.relative(i));
         if (objs.length) {
           const args = [ "rc", target.FILE_NAME , ...objs ];
-          const cwd = target.FILE_DIR.toString();
           const msg = `Linking CXX static library ${target.FILE_NAME}`;
-          goalList.addExec(target.FILE.toString(), depends, msg, makeExecHeandler(target.FILE.toString(), scope.AR, args, cwd, msg));
+          const worker = new ExecGoalWorker(msg, target.FILE, scope.AR, args, target.FILE_DIR);
+          goalList.addExec(target.FILE.toString(), depends, worker);
         }
         else {
           logger.info(`No objects for "${target.NAME}"`);
@@ -531,16 +603,17 @@ export class GlobalContext {
             ...libs.map(i => target.FILE_DIR.relative(i)),
           ];
 
-          const cwd = target.FILE_DIR.toString();
           const msg = `Linking CXX executable ${target.FILE_NAME}`;
-          goalList.addExec(target.FILE.toString(), depends.concat(libs), msg, makeExecHeandler(target.FILE.toString(), scope.CXX_COMPILER, args, cwd, msg));
+          const worker = new ExecGoalWorker(msg, target.FILE, scope.CXX_COMPILER, args, target.FILE_DIR);
+          goalList.addExec(target.FILE.toString(), depends.concat(libs), worker);
         }
         else {
           logger.info(`No objects for "${target.NAME}"`);
         }
       }
 
-      goalList.addTarget(name, [ target.FILE.toString() ], `Built target ${name}`);
+      const worker = new TargetGoalWorker(`Built target ${name}`);
+      goalList.addTarget(name, [ target.FILE.toString() ], worker);
     }
   
     interface InstallGoalParams {
@@ -572,14 +645,12 @@ export class GlobalContext {
     }
 
     if (installPairs.length) {
-      const handler = async () => {
-        for (const iter of installPairs)
-          await install_script(scopeValueAsPrimitives(iter));
-      };
-      goalList.addScript(INSTALL_TARGET, handler, installPairs.map(i => i.src), "", "");
+      const worker = new InstallGoalWorker(installPairs);
+      goalList.addScript(INSTALL_TARGET, worker, installPairs.map(i => i.src), "");
     }
-  
-    goalList.addTarget(ALL_TARGET, Object.keys(this[TARGETS].ENTRIES), "");
+
+    const worker = new TargetGoalWorker("");
+    goalList.addTarget(ALL_TARGET, Object.keys(this[TARGETS].ENTRIES), worker);
   
     return goalList;
   }

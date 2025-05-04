@@ -7,10 +7,6 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import path from "node:path";
-import fs from "node:fs";
-import { spawnSync } from "node:child_process";
-
 const ENTRIES = Symbol("ENTRIES");
 
 enum GoalType {
@@ -19,22 +15,17 @@ enum GoalType {
   TARGET = "target",
 };
 
+export interface GoalWorker {
+  doWork(): Promise<void>;
+  updateProgress(event: { loaded: number, total: number }): void;
+};
+
 interface BaseGoal {
   name: string;
   type: GoalType;
   depends: Array<string>;
-  msg: string;
   output: string;
-};
-
-type ScriptHandler = () => Promise<void>;
-
-interface ScriptGoal extends BaseGoal {
-  handler: ScriptHandler;
-};
-
-interface ExecGoal extends BaseGoal {
-  handler: ScriptHandler;
+  worker: GoalWorker;
 };
 
 export class GoalCollection {
@@ -55,29 +46,31 @@ export class GoalCollection {
   public findScriptByOutput(output: string): BaseGoal | undefined {
     if (!output)
       return undefined;
-    return this[ENTRIES].find((i) => i.type === GoalType.SCRIPT && i.output === output);
+    return this[ENTRIES].find((i) => i.output === output);
   }
 
   public hasScriptByOutput(output: string): boolean {
     return !!this.findScriptByOutput(output);
   }
 
-  public addScript(name: string, handler: ScriptHandler, depends: Array<string>, output: string, msg: string) {
+  public addScript(name: string, worker: GoalWorker, depends: Array<string>, output: string) {
     if (this.hasScriptByOutput(output.toString()))
       throw new Error(`Output "${output}" exists`);
-    this[ENTRIES].push({ name, type: GoalType.SCRIPT, handler, output, depends, msg } as ScriptGoal);
+    this[ENTRIES].push({ name, type: GoalType.SCRIPT, worker, output, depends });
   }
 
-  public addExec(output: string, depends: Array<string>, msg: string, handler: ScriptHandler) {
-    this[ENTRIES].push({ name: "", type: GoalType.EXEC, depends, output, msg, handler } as ExecGoal);
+  public addExec(output: string, depends: Array<string>, worker: GoalWorker) {
+    this[ENTRIES].push({ name: "", type: GoalType.EXEC, depends, output, worker });
   }
 
-  public addTarget(name: string, depends: Array<string>, msg: string) {
-    this[ENTRIES].push({ name, type: GoalType.TARGET, depends, output: "", msg });
+  public addTarget(name: string, depends: Array<string>, worker: GoalWorker) {
+    this[ENTRIES].push({ name, type: GoalType.TARGET, depends, output: "", worker });
   }
 
   public getTarget(name: string): BaseGoal | undefined {
-    return this[ENTRIES].find((i) => i.type === GoalType.TARGET && i.name === name);
+    if (!name)
+      return undefined;
+    return this[ENTRIES].find((i) => i.name === name);
   }
 
   private addTargetListImpl(name: string, result: Array<BaseGoal>) {
@@ -108,24 +101,12 @@ export class GoalCollection {
   }
 
   public static async buildGoals(collection: Array<BaseGoal>) {
-    let msgIndex = 0;
+    const total = collection.length;
+    let loaded = 0;
     for (const goal of collection) {
-      const { type, msg } = goal;
-      if (msg) {
-        const relationOfLength = Math.round((++msgIndex / collection.length) * 100);
-        const percent = "[" + relationOfLength.toString().padStart(3, " ") + "%] ";
-        console.info(percent + msg);
-      }
-      if (type === GoalType.SCRIPT) {
-        const { handler } = goal as ScriptGoal;
-        await handler();
-      }
-      else if (type === GoalType.EXEC) {
-        const { handler } = goal as ExecGoal;
-        await handler();
-      }
-      else if (type === GoalType.TARGET) {
-      }
+      goal.worker.updateProgress({ loaded, total });
+      await goal.worker.doWork();
+      loaded++;
     }
   }
 };

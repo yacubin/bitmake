@@ -7,6 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
+import path from "node:path";
 import fs from "node:fs";
 
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
@@ -29,6 +30,7 @@ import { createLogger } from "@/logger";
 import { InstallEntity } from "@/core/InstallEntity";
 import { CustomScript } from "@/core/CustomScript";
 import { ScriptContext } from "@/core/ScriptContext";
+import { spawnSync } from "node:child_process";
 
 import configure_file from "@/core/BuildinScripts/configure_file";
 import install_script from "@/core/BuildinScripts/install_script";
@@ -110,6 +112,27 @@ function scopeValueAsPrimitives(o: any): any {
     }
   }
   throw new Error(`Unknown instance of ${o}`);
+}
+
+function makeExecHeandler(output: string, command: string, args: Array<string>, cwd: string, msg: string) {
+  return async function() {
+    await fs.promises.mkdir(path.posix.dirname(output), { recursive: true });
+    const result = spawnSync(command, args, { cwd, encoding: "utf-8" });
+    if (result.error || result.status) {
+      console.info("cd " + cwd);
+      let cmd = args.join(" ");
+      cmd = command + (cmd ? " " : "") + cmd;
+      console.info(cmd);
+      console.info("");
+  
+      console.error(result.stderr);
+  
+      if (result.error)
+          throw result.error;
+  
+      throw new Error(result.error as any || "Status " + result.status);
+    }
+  }
 }
 
 export class GlobalContext {
@@ -457,9 +480,9 @@ export class GlobalContext {
         const output = target.TARGET_SCOPE.BINARY_DIR.join(relativeObject).toString();
         depends.push(output);
   
-        goalList.addExec(output, [ ...headers, s.FILE ], command, args, cwd, msg);
+        goalList.addExec(output, [ ...headers, s.FILE ], msg, makeExecHeandler(output, command, args, cwd, msg));
       }
-  
+
       const linkOptions = this[TARGETS].allLinkOptionsOf(target);
       if (target instanceof ObjectLibrary) {
         const objs = depends.filter(i => i.endsWith(".o") || i.endsWith(".obj")).map(i => target.FILE_DIR.relative(i));
@@ -472,7 +495,7 @@ export class GlobalContext {
           ];
           const cwd = target.FILE_DIR.toString();
           const msg = `Linking CXX object library ${target.FILE_NAME}`;
-          goalList.addExec(target.FILE.toString(), depends, scope.LINKER, args, cwd, msg);
+          goalList.addExec(target.FILE.toString(), depends, msg, makeExecHeandler(target.FILE.toString(), scope.LINKER, args, cwd, msg));
         }
         else {
           logger.info(`No objects for "${target.NAME}"`);
@@ -485,7 +508,7 @@ export class GlobalContext {
           const args = [ "rc", target.FILE_NAME , ...objs ];
           const cwd = target.FILE_DIR.toString();
           const msg = `Linking CXX static library ${target.FILE_NAME}`;
-          goalList.addExec(target.FILE.toString(), depends, scope.AR, args, cwd, msg);
+          goalList.addExec(target.FILE.toString(), depends, msg, makeExecHeandler(target.FILE.toString(), scope.AR, args, cwd, msg));
         }
         else {
           logger.info(`No objects for "${target.NAME}"`);
@@ -495,7 +518,7 @@ export class GlobalContext {
       if (target instanceof SharedLibrary) {
         throw new Error("Not implemented");
       }
-  
+
       if (target instanceof Executable) {
         const objs = depends.filter(i => i.endsWith(".o") || i.endsWith(".obj")).map(i => target.FILE_DIR.relative(i));
         if (objs.length) {
@@ -507,15 +530,16 @@ export class GlobalContext {
             "-o", target.FILE_NAME,
             ...libs.map(i => target.FILE_DIR.relative(i)),
           ];
+
           const cwd = target.FILE_DIR.toString();
           const msg = `Linking CXX executable ${target.FILE_NAME}`;
-          goalList.addExec(target.FILE.toString(), depends.concat(libs), scope.CXX_COMPILER, args, cwd, msg);
+          goalList.addExec(target.FILE.toString(), depends.concat(libs), msg, makeExecHeandler(target.FILE.toString(), scope.CXX_COMPILER, args, cwd, msg));
         }
         else {
           logger.info(`No objects for "${target.NAME}"`);
         }
       }
-  
+
       goalList.addTarget(name, [ target.FILE.toString() ], `Built target ${name}`);
     }
   

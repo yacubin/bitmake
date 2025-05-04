@@ -34,9 +34,7 @@ interface ScriptGoal extends BaseGoal {
 };
 
 interface ExecGoal extends BaseGoal {
-  command: string;
-  args: Array<string>;
-  cwd: string;
+  handler: ScriptHandler;
 };
 
 export class GoalCollection {
@@ -70,12 +68,12 @@ export class GoalCollection {
     this[ENTRIES].push({ name, type: GoalType.SCRIPT, handler, output, depends, msg } as ScriptGoal);
   }
 
-  public addExec(output: string, depends: Array<string>, command: string, args: Array<string>, cwd: string, msg: string) {
-    this[ENTRIES].push({ name: "", type: GoalType.EXEC, depends, output, command, args, cwd, msg } as ExecGoal);
+  public addExec(output: string, depends: Array<string>, msg: string, handler: ScriptHandler) {
+    this[ENTRIES].push({ name: "", type: GoalType.EXEC, depends, output, msg, handler } as ExecGoal);
   }
 
   public addTarget(name: string, depends: Array<string>, msg: string) {
-    this[ENTRIES].push({ name, type: GoalType.TARGET, depends, msg, output: "" });
+    this[ENTRIES].push({ name, type: GoalType.TARGET, depends, output: "", msg });
   }
 
   public getTarget(name: string): BaseGoal | undefined {
@@ -110,15 +108,11 @@ export class GoalCollection {
   }
 
   public static async buildGoals(collection: Array<BaseGoal>) {
-    let msgCount = 0;
-    for (const iter of collection)
-      msgCount += iter.msg ? 1 : 0;
-  
     let msgIndex = 0;
     for (const goal of collection) {
       const { type, msg } = goal;
       if (msg) {
-        const relationOfLength = Math.round((++msgIndex / msgCount) * 100);
+        const relationOfLength = Math.round((++msgIndex / collection.length) * 100);
         const percent = "[" + relationOfLength.toString().padStart(3, " ") + "%] ";
         console.info(percent + msg);
       }
@@ -127,23 +121,8 @@ export class GoalCollection {
         await handler();
       }
       else if (type === GoalType.EXEC) {
-        const { command, args, cwd, output } = goal as ExecGoal;
-        fs.mkdirSync(path.posix.dirname(output), { recursive: true });
-        const result = spawnSync(command, args, { cwd, encoding: "utf-8" });
-        if (result.error || result.status) {
-          console.info("cd " + cwd);
-          let cmd = args.join(" ");
-          cmd = command + (cmd ? " " : "") + cmd;
-          console.info(cmd);
-          console.info("");
-  
-          console.error(result.stderr);
-
-          if (result.error)
-              throw result.error;
-  
-          throw new Error(result.error as any || "Status " + result.status);
-        }
+        const { handler } = goal as ExecGoal;
+        await handler();
       }
       else if (type === GoalType.TARGET) {
       }

@@ -14,11 +14,11 @@ import { IncludeDirectory } from "@/core/IncludeDirectory";
 import { InterfaceTarget } from "@/core/InterfaceTarget";
 import { InterfaceIncludes } from "@/core/InterfaceIncludes";
 import { InterfaceObjects } from "@/core/InterfaceObjects";
-import { AbsolutePath } from "@/core/Path";
+import { AbsolutePath, DirPath, FilePath } from "@/core/Path";
 import { ScopeHelper } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
 import { normalizeDefinitions } from "@/core/DefinitionHelper";
-import { TargetStruct, TargetType } from "@/core/TargetStruct";
+import { TargetStruct, TargetType, LiveString } from "@/core/TargetStruct";
 
 const IMPL                = Symbol("IMPL");
 const TARGET_SCOPE        = Symbol("TARGET_SCOPE");
@@ -54,7 +54,7 @@ export class BaseTarget {
     if (targetFile.prefix === undefined)
       targetFile.prefix = prefix;
     if (targetFile.outputName === undefined)
-      targetFile.outputName = impl.NAME;
+      targetFile.outputName = impl.name;
     if (targetFile.suffix === undefined)
       targetFile.suffix = suffix;
 
@@ -69,7 +69,7 @@ export class BaseTarget {
   }
 
   public get NAME() {
-    return this[IMPL].NAME;
+    return this[IMPL].name;
   }
 
   public get TARGET_SCOPE() {
@@ -122,6 +122,10 @@ export class BaseTarget {
     return this[POSITION_INDEPENDENT_CODE];
   }
 
+  public get IMPL(): TargetStruct {
+    return this[IMPL];
+  }
+
   public addSources(...sources: Array<InterfaceObjects | SourceFile | AbsolutePath | string>) {
     for (let it of sources.flat(1)) {
       if (it instanceof InterfaceObjects || it instanceof SourceFile)
@@ -135,7 +139,7 @@ export class BaseTarget {
         const rfile1 = this[TARGET_SCOPE].BINARY_DIR.relative(it.FILE);
         const rfile2 = this[TARGET_SCOPE].SOURCE_DIR.relative(it.FILE);
         const rfile = (rfile2.length < rfile1.length ? rfile2 : rfile1).replace("../", "__/");
-        it.OBJECT_FILE = this[TARGET_SCOPE].BINARY_DIR.join("MakeFiles", this[IMPL].NAME + ".dir",  rfile + ".obj");
+        it.OBJECT_FILE = this[TARGET_SCOPE].BINARY_DIR.join("MakeFiles", this[IMPL].name + ".dir",  rfile + ".obj");
       }
   
       this[SOURCES].push(it);
@@ -207,13 +211,16 @@ export class BaseTarget {
   }
 
   public addPreBuild(command: any, args: any[]) {
+    this[IMPL].addPreBuild(command, args);
   }
 
   public addPostBuild(command: any, args: any[]) {
+    this[IMPL].addPostBuild(command, args);
   }
 
-  public get targetFile() {
-    return this[IMPL].targetFile;
+  public get targetFile(): LiveString {
+    const targetFile = this[IMPL].targetFile;
+    return LiveString.create(() => FilePath.create(targetFile.file).toString());
   }
 
   public toJSON(): object {
@@ -281,7 +288,7 @@ export class BaseLibrary extends BaseTarget {
 export class ObjectLibrary extends BaseLibrary {
   private constructor(impl: TargetStruct, scope: SystemScope) {
     super(impl, scope, scope.OBJECT_LIBRARY_PREFIX, scope.OBJECT_LIBRARY_SUFFIX);
-    this[IMPL].TYPE = TargetType.ObjectLibrary;
+    this[IMPL].type = TargetType.ObjectLibrary;
     this.LINK_OPTIONS.push(...(scope as any).OBJECT_LINKER_FLAGS.map((VALUE: any) => ({ VALUE })));
   }
 
@@ -293,7 +300,7 @@ export class ObjectLibrary extends BaseLibrary {
 export class StaticLibrary extends BaseLibrary {
   private constructor(impl: TargetStruct, scope: SystemScope) {
     super(impl, scope, scope.STATIC_LIBRARY_PREFIX, scope.STATIC_LIBRARY_SUFFIX);
-    this[IMPL].TYPE = TargetType.StaticLibrary;
+    this[IMPL].type = TargetType.StaticLibrary;
     this.LINK_OPTIONS.push(...(scope as any).STATIC_LINKER_FLAGS.map((VALUE: any) => ({ VALUE })));
   }
 
@@ -305,7 +312,7 @@ export class StaticLibrary extends BaseLibrary {
 export class SharedLibrary extends BaseLibrary {
   private constructor(impl: TargetStruct, scope: SystemScope) {
     super(impl, scope, scope.SHARED_LIBRARY_PREFIX, scope.SHARED_LIBRARY_SUFFIX);
-    this[IMPL].TYPE = TargetType.SharedLibrary;
+    this[IMPL].type = TargetType.SharedLibrary;
     this.LINK_OPTIONS.push(...(scope as any).SHARED_LINKER_FLAGS.map((VALUE: any) => ({ VALUE })));
   }
 
@@ -317,7 +324,7 @@ export class SharedLibrary extends BaseLibrary {
 export class Executable extends BaseTarget {
   private constructor(impl: TargetStruct, scope: SystemScope) {
     super(impl, scope, "", scope.EXECUTABLE_SUFFIX);
-    this[IMPL].TYPE = TargetType.Executable;
+    this[IMPL].type = TargetType.Executable;
     this.LINK_OPTIONS.push(...(scope as any).EXE_LINKER_FLAGS.map((VALUE: any) => ({ VALUE })));
   }
 

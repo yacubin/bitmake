@@ -44,7 +44,7 @@ export class UnknownTarget {
   }
 
   public get NAME () {
-    return this[IMPL].NAME;
+    return this[IMPL].name;
   }
 
   public get INCLUDES () {
@@ -79,6 +79,6 @@ export class UnknownTarget {
   }
 
   public toString(): string {
-    return "${" + this[IMPL].NAME + "}";
+    return "${" + this[IMPL].name + "}";
   }
 };

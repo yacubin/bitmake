@@ -7,12 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { DirPath, AbsolutePath } from "@/core/Path";
-
-const PREFIX      = Symbol("PREFIX");
-const SUFFIX      = Symbol("SUFFIX");
-const OUTPUT_NAME = Symbol("OUTPUT_NAME");
-const FILE_DIR    = Symbol("FILE_DIR");
+import { DirPath, AbsolutePath, FilePath } from "@/core/Path";
 
 export enum TargetType {
   Unknown = "Unknown",
@@ -21,6 +16,29 @@ export enum TargetType {
   ObjectLibrary = "ObjectLibrary",
   Executable = "Executable",
 };
+
+const FUNC = Symbol("FUNC");
+
+export class LiveString {
+  private [FUNC]: () => string;
+
+  private constructor(func: () => string) {
+    this[FUNC] = func;
+  }
+
+  public static create(func: () => string) {
+    return Object.seal(new LiveString(func));
+  }
+
+  toString(): string {
+    return this[FUNC]();
+  }
+};
+
+const PREFIX      = Symbol("PREFIX");
+const SUFFIX      = Symbol("SUFFIX");
+const OUTPUT_NAME = Symbol("OUTPUT_NAME");
+const FILE_DIR    = Symbol("FILE_DIR");
 
 export class TargetFile {
   private [FILE_DIR]?: DirPath
@@ -100,14 +118,51 @@ export class TargetFile {
   }
 };
 
+export interface TargetCommand {
+  command: string | LiveString;
+  args: Array<string | LiveString>;
+};
+
+function makeTargetCommand(_command: any, _args: any[]): TargetCommand {
+  let command: string | LiveString;
+  if (typeof _command === "string")
+    command = _command;
+  else if (_command instanceof LiveString)
+    command = _command;
+  else if (_command instanceof FilePath)
+    command = _command.toString();
+  else
+    throw new TypeError(`Wrong type ${_command} for command`);
+
+  const args = new Array<string | LiveString>;
+  for (const iter of _args) {
+    if (typeof iter === "string")
+      args.push(iter);
+    else if (iter instanceof LiveString)
+      args.push(iter);
+    else if (iter instanceof FilePath)
+      args.push(iter.toString());
+    else if (iter instanceof DirPath)
+      args.push(iter.toString());
+    else
+      throw new TypeError(`Wrong type ${iter} for argument`);
+  }
+
+  return { command, args };
+}
+
 const NAME        = Symbol("NAME");
 const TYPE        = Symbol("TYPE");
 const TARGET_FILE = Symbol("TARGET_FILE");
+const PRE_BUILD   = Symbol("PRE_BUILD");
+const POST_BUILD  = Symbol("POST_BUILD");
 
 export class TargetStruct {
   private [NAME]: string;
   private [TYPE]: TargetType;
   private [TARGET_FILE]: TargetFile;
+  private [PRE_BUILD] = new Array<TargetCommand>;
+  private [POST_BUILD] = new Array<TargetCommand>;
 
   constructor(name: string) {
     this[NAME] = name;
@@ -115,15 +170,15 @@ export class TargetStruct {
     this[TARGET_FILE] = TargetFile.create();
   }
 
-  get NAME() {
+  get name() {
     return this[NAME];
   }
 
-  get TYPE() {
+  get type() {
     return this[TYPE];
   }
 
-  set TYPE(value: TargetType) {
+  set type(value: TargetType) {
     if (this[TYPE] === value)
       return;
     if (this[TYPE] !== TargetType.Unknown)
@@ -135,10 +190,26 @@ export class TargetStruct {
     return this[TARGET_FILE];
   }
 
+  public addPreBuild(command: any, args: any[]) {
+    this[PRE_BUILD].push(makeTargetCommand(command, args));
+  }
+
+  public addPostBuild(command: any, args: any[]) {
+    this[POST_BUILD].push(makeTargetCommand(command, args));
+  }
+
+  get preBuildList() {
+    return this[PRE_BUILD];
+  }
+
+  get postBuildList() {
+    return this[POST_BUILD];
+  }
+
   public toJSON(): object {
     return {
-      NAME: this[NAME],
-      TARGET_FILE: this[TARGET_FILE],
+      name: this.name,
+      targetFile: this.targetFile,
     }
   }
 };

@@ -441,7 +441,7 @@ export class GlobalContext {
           ...this[TARGETS].allDefinitionsOf(target),
           ...s.DEFINES,
         ];
-  
+
         const args = [];
         args.push(...definitions.map(i => "-D" + i));
         args.push(...this[TARGETS].allIncludesOf(target).map(i => "-I" + i));

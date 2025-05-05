@@ -298,7 +298,6 @@ export class GlobalContext {
       scope,
       name: params.SCRIPT_NAME,
       script: scriptObj,
-      params,
       output: outputFile,
       input: inputFile,
       workDir: scope.BINARY_DIR,
@@ -504,7 +503,7 @@ export class GlobalContext {
       if (script.INPUT)
         depends.push(script.INPUT.toString());
       const msg = "\x1b[36m" + "Generating " + script.workDir.relative(script.OUTPUT) + "\x1b[0m";
-      const params = { ...script.VARIABLES, ...script.PARAMS };
+      const params = { ...script.VARIABLES };
       const worker = new GoalWorkerImpl(script.NAME);
       worker.message = msg;
       worker.output = script.OUTPUT.toString();

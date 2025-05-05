@@ -9,6 +9,8 @@
 
 import { DirPath, FilePath, AbsolutePath } from "@/core/Path";
 import { InterfaceIncludes } from "@/core/InterfaceIncludes";
+import { InterfaceObjects } from "@/core/InterfaceObjects";
+import { SourceFile } from "@/core/SourceFile";
 import { normalizeDefinitions } from "@/core/DefinitionHelper";
 
 export function normalizeIncludes(baseDir: DirPath, ...includes: any[]): Array<DirPath|InterfaceIncludes> {
@@ -210,6 +212,10 @@ class TargetItems<T> {
     }
     return firstList.concat(lastList);
   }
+
+  get ITEMS() {
+    return this[ITEMS];
+  }
 };
 
 const NAME            = Symbol("NAME");
@@ -221,6 +227,7 @@ const DEFINES         = Symbol("DEFINES");
 const INCLUDES        = Symbol("INCLUDES");
 const COMPILE_OPTIONS = Symbol("COMPILE_OPTIONS");
 const LINK_OPTIONS    = Symbol("LINK_OPTIONS");
+const SOURCES         = Symbol("SOURCES");
 
 export class TargetStruct {
   private [NAME]: string;
@@ -232,6 +239,7 @@ export class TargetStruct {
   private [INCLUDES] = new TargetItems<DirPath|InterfaceIncludes>;
   private [COMPILE_OPTIONS] = new TargetItems<string|string[]>;
   private [LINK_OPTIONS] = new TargetItems<string|string[]>;
+  private [SOURCES] = new TargetItems<InterfaceObjects|SourceFile>;
 
   constructor(name: string) {
     this[NAME] = name;
@@ -343,6 +351,32 @@ export class TargetStruct {
     return this[INCLUDES].getPublicItems();
   }
 
+  public addSource(origin: TargetItemOrigin, publicOnly: boolean, value: InterfaceObjects|SourceFile) {
+    this[SOURCES].addItem(origin, publicOnly, value);
+  }
+
+  public addSources(origin: TargetItemOrigin, ...sources: any[]) {
+    for (const iter of sources.flat())
+      this.addSource(origin, false, iter);
+  }
+
+  public getSourceFiles(): SourceFile[] {
+    return this[SOURCES].ITEMS.map(i => i.value).filter(i => i instanceof SourceFile);
+  }
+
+  public getInterfaceObjectsList(): InterfaceObjects[] {
+    return this[SOURCES].ITEMS.map(i => i.value).filter(i => i instanceof InterfaceObjects);
+  }
+
+  public getHeaders(): SourceFile[] {
+    const result = new Array<SourceFile>;
+    for (const iter of this[SOURCES].ITEMS) {
+      if (iter.value instanceof SourceFile && iter.value.HEADER_FILE_ONLY)
+        result.push(iter.value);
+    }
+    return result;
+  }
+
   public toJSON(): object {
     return {
       name: this.name,
@@ -353,6 +387,7 @@ export class TargetStruct {
       includes: this[INCLUDES],
       compileOptions: this[COMPILE_OPTIONS],
       linkOptions: this[LINK_OPTIONS],
+      sources: this[SOURCES],
     }
   }
 };

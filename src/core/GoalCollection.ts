@@ -51,16 +51,16 @@ export class GoalCollection {
     if (result.find(i => i.name === name || i.output === name)) {
       return;
     }
-  
+
     const goal = this[ENTRIES].find(i => i.name === name || (i.output === name));
     if (!goal) {
       return;
     }
-  
+
     for (const iter of goal.depends) {
       this.addTargetListImpl(iter.toString(), result);
     }
-  
+
     result.push(goal);
   }
   

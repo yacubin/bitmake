@@ -42,10 +42,6 @@ export class TargetStructCollection {
   }
 };
 
-function getHeaders(target: any) {
-  return target.SOURCES.filter((i: any) => i.HEADER_FILE_ONLY);
-}
-
 function getLibraries(target: any) {
   return target.LIBRARIES.map((i: any) => i.VALUE);
 }
@@ -117,8 +113,8 @@ export class TargetCollection {
       if (iter instanceof InterfaceIncludes || iter instanceof InterfaceTarget) {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
-          const target = this.get(iter.targetName);
-          for (const header of getHeaders(target).map((i: any) => i.FILE.toString())) {
+          const target = this.get(iter.targetName) as BaseTarget;
+          for (const header of target.IMPL.getHeaders().map((i: any) => i.FILE.toString())) {
             if (!headers.includes(header.toString()))
               headers.push(header.toString());
           }
@@ -131,7 +127,7 @@ export class TargetCollection {
 
   public allHeadersOf(params: any) {
     const target = ((typeof params === "string") ? this.get(params) : params) as BaseTarget;
-    const headers = getHeaders(target).map((i: any) => i.FILE.toString());
+    const headers = target.IMPL.getHeaders().map((i: any) => i.FILE.toString());
     const targetSet = new Set([ target.NAME ]);
     this.__getAllHeaders(headers, targetSet, target.IMPL.getIncludes());
     this.__getAllHeaders(headers, targetSet, getLibraries(target));

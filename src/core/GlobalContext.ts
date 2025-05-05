@@ -21,7 +21,7 @@ import { InterfaceObjects } from "@/core/InterfaceObjects";
 import { InterfaceScript } from "@/core/InterfaceScript";
 import { SourceFile } from "@/core/SourceFile";
 import { MakeContext } from "@/core/MakeContext";
-import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable } from "@/core/Target";
+import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget } from "@/core/Target";
 import { ScopeHelper } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
 import { importModule } from "@/utils/Module";
@@ -479,11 +479,6 @@ export class GlobalContext {
   }
 
   public createGoals(scope: SystemScope): GoalCollection {
-    for (const iter of Object.values(this[UNKNOWN_TARGETS])) {
-      const target = this[TARGETS].get(iter.NAME);
-      target.addSources(iter.SOURCES);
-    }
-  
     for (const iter of Object.values(this[INTERFACE_SCRIPTS])) {
       const script = this[CUSTOM_SCRIPTS].get(iter.NAME);
       if (!script)
@@ -507,23 +502,39 @@ export class GlobalContext {
       worker.addScript(this, script.SCOPE, script.SCRIPT, params);
       goalList.add(worker);
     }
-  
-    for (const [name, target] of Object.entries(this[TARGETS].ENTRIES)) {
-      const headers = this[TARGETS].allHeadersOf(target);
-      const depends = [];
-      for (const s of target.SOURCES as any) {
-        if (s instanceof InterfaceObjects) {
-          const t = this[TARGETS].get(s.targetName);
-          for (const f of t.SOURCES) {
-            if (f instanceof SourceFile && f.OBJECT_FILE)
-              depends.push(f.OBJECT_FILE.toString());
-          }
+
+    for (const target of Object.values(this[TARGETS].ENTRIES)) {
+      for (const it of target.IMPL.getSourceFiles()) {
+        if (!it.LANGUAGE)
           continue;
+        const rfile1 = target.TARGET_SCOPE.BINARY_DIR.relative(it.FILE);
+        const rfile2 =  target.TARGET_SCOPE.SOURCE_DIR.relative(it.FILE);
+        const rfile = (rfile2.length < rfile1.length ? rfile2 : rfile1).replace("../", "__/");
+        it.OBJECT_FILE =  target.TARGET_SCOPE.BINARY_DIR.join("MakeFiles", target.NAME + ".dir",  rfile + ".obj");
+      }
+    }
+
+    for (const [name, target] of Object.entries(this[TARGETS].ENTRIES)) {
+      const depends = [];
+      for (const s of target.IMPL.getInterfaceObjectsList()) {
+        const t = this[TARGETS].get(s.targetName) as BaseTarget;
+        for (const f of t.IMPL.getSourceFiles()) {
+          if (f.OBJECT_FILE)
+            depends.push(f.OBJECT_FILE.toString());
         }
+      }
   
+      const headers = this[TARGETS].allHeadersOf(target);
+      for (const s of target.IMPL.getSourceFiles()) {  
         if (s.HEADER_FILE_ONLY)
           continue;
-  
+        
+        if (!s.OBJECT_FILE_DIR)
+          throw new Error(`OBJECT_FILE_DIR is null`);
+        
+        if (!s.OBJECT_FILE)
+          throw new Error(`OBJECT_FILE is null`);
+
         fs.mkdirSync(s.OBJECT_FILE_DIR.toString(), { recursive: true });
   
         const relativeObject = target.TARGET_SCOPE.BINARY_DIR.relative(s.OBJECT_FILE);
@@ -543,7 +554,7 @@ export class GlobalContext {
           args.push("-fPIC");
         args.push(...s.COMPILE_FLAGS.flat());
         args.push("-o", relativeObject);
-        args.push("-c", s.FILE);
+        args.push("-c", s.FILE.toString());
   
         const command = (target.TARGET_SCOPE as any)[s.LANGUAGE + "_COMPILER"].toString();
         const output = DirPath.create(target.TARGET_SCOPE.BINARY_DIR.join(relativeObject));
@@ -553,7 +564,7 @@ export class GlobalContext {
         worker.message = msg;
         worker.output = output.toString();
         worker.addDependency(...headers);
-        worker.addDependency(s.FILE);
+        worker.addDependency(s.FILE.toString());
         worker.addExec(command, args, target.TARGET_SCOPE.BINARY_DIR.toString());
         goalList.add(worker);
       }

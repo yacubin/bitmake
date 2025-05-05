@@ -65,7 +65,7 @@ export class InterfaceTarget {
         it = SourceFile.create(this[SCOPE], it);
       else
         throw new Error(`Not support instance ${it}`);
-      this[UNKNOWN_TARGET].SOURCES.push(it);
+      this[UNKNOWN_TARGET].IMPL.addSource("indirectly", false, it);
     }
   }
 

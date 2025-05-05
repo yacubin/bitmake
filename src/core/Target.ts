@@ -19,14 +19,12 @@ import { TargetStruct, TargetType, LiveString } from "@/core/TargetStruct";
 
 const IMPL                = Symbol("IMPL");
 const TARGET_SCOPE        = Symbol("TARGET_SCOPE");
-const SOURCES             = Symbol("SOURCES");
 const LIBRARIES           = Symbol("LIBRARIES");
 const POSITION_INDEPENDENT_CODE = Symbol("POSITION_INDEPENDENT_CODE");
 
 export class BaseTarget {
   private [IMPL]: TargetStruct;
   private [TARGET_SCOPE]: SystemScope;
-  private [SOURCES]: any[];
   private [LIBRARIES]: any[];
   private [POSITION_INDEPENDENT_CODE]: boolean;
 
@@ -45,7 +43,6 @@ export class BaseTarget {
     this[IMPL].addIncludes("initialize", false, scope.SOURCE_DIR, ...scope.INCLUDES);
 
     this[TARGET_SCOPE] = ScopeHelper.clone({}, scope);
-    this[SOURCES] = [];
     this[LIBRARIES] = [];
     this[POSITION_INDEPENDENT_CODE] = scope.POSITION_INDEPENDENT_CODE;
   }
@@ -56,10 +53,6 @@ export class BaseTarget {
 
   public get TARGET_SCOPE() {
     return this[TARGET_SCOPE];
-  }
-
-  public get SOURCES(): string[] {
-    return this[SOURCES];
   }
 
   public get LIBRARIES(): string[] {
@@ -93,22 +86,14 @@ export class BaseTarget {
   }
 
   public addSources(...sources: Array<InterfaceObjects | SourceFile | AbsolutePath | string>) {
-    for (let it of sources.flat(1)) {
+    for (let it of sources.flat()) {
       if (it instanceof InterfaceObjects || it instanceof SourceFile)
         {}
       else if (typeof it === "string" || AbsolutePath.isAbsolute(it))
         it = SourceFile.create(this[TARGET_SCOPE], it);
       else
         throw new Error(`Not support instance ${it}`);
-  
-      if (it instanceof SourceFile && it.LANGUAGE) {
-        const rfile1 = this[TARGET_SCOPE].BINARY_DIR.relative(it.FILE);
-        const rfile2 = this[TARGET_SCOPE].SOURCE_DIR.relative(it.FILE);
-        const rfile = (rfile2.length < rfile1.length ? rfile2 : rfile1).replace("../", "__/");
-        it.OBJECT_FILE = this[TARGET_SCOPE].BINARY_DIR.join("MakeFiles", this[IMPL].name + ".dir",  rfile + ".obj");
-      }
-  
-      this[SOURCES].push(it);
+      this[IMPL].addSource("directly", false, it);
     }
   }
 
@@ -132,9 +117,10 @@ export class BaseTarget {
 
   public getSourceFiles(...sources: any[]): SourceFileList {
     const result = [];
-    for (const it of sources.flat(1)) {
+    const sourceFiles = this[IMPL].getSourceFiles();
+    for (const it of sources.flat()) {
       const filename = this[TARGET_SCOPE].SOURCE_DIR.resolve(it).toString();
-      const src = this[SOURCES].find(i => i instanceof SourceFile && i.FILE.toString() === filename);
+      const src = sourceFiles.find(i => i.FILE.toString() === filename);
       if (!src)
         throw new Error(`Cannot find "${it}"`);
       result.push(src);
@@ -143,7 +129,7 @@ export class BaseTarget {
     if (result.length)
       return SourceFileList.create(this[TARGET_SCOPE], result);
   
-    return SourceFileList.create(this[TARGET_SCOPE], this[SOURCES].filter(i => i instanceof SourceFile));
+    return SourceFileList.create(this[TARGET_SCOPE], sourceFiles);
   }
 
   public setPrefix(prefix: any) {
@@ -179,7 +165,6 @@ export class BaseTarget {
     return {
       NAME: this.NAME,
       TARGET_SCOPE: this.TARGET_SCOPE,
-      SOURCES: this.SOURCES,
       LIBRARIES: this.LIBRARIES,
       FILE_DIR: this.FILE_DIR,
       FILE: this.FILE,

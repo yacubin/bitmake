@@ -96,14 +96,12 @@ export class InterfaceTarget {
     }
   }
 
-  public addDefinitions(...definitions: string[]): void {
-    for (const VALUE of definitions.flat(1))
-      this[UNKNOWN_TARGET].DEFINES.push({ VALUE });
+  public addDefinitions(...definitions: any): void {
+    this[UNKNOWN_TARGET].IMPL.addDefinitions("indirectly", false, ...definitions);
   }
 
-  public addPublicDefinitions(...definitions: string[]): void {
-    for (const VALUE of definitions.flat(1))
-      this[UNKNOWN_TARGET].DEFINES.push({ VALUE, PUBLIC_ONLY: true });
+  public addPublicDefinitions(...definitions: any): void {
+    this[UNKNOWN_TARGET].IMPL.addDefinitions("indirectly", true, ...definitions);
   }
 
   public addCompileOptions(...options: Array<string|string[]>): void {

@@ -8,6 +8,7 @@
  */
 
 import { DirPath, FilePath, AbsolutePath } from "@/core/Path";
+import { normalizeDefinitions } from "@/core/DefinitionHelper";
 
 export enum TargetType {
   Unknown = "Unknown",
@@ -151,15 +152,22 @@ function makeTargetCommand(_command: any, _args: any[]): TargetCommand {
   return { command, args };
 }
 
-type TargetCompileOptionOrigin = "initialize" | "indirectly" | "directly";
+type TargetPropertyOrigin = "initialize" | "indirectly" | "directly";
+
+interface TargetDefinition {
+  origin: TargetPropertyOrigin;
+  value: string;
+  publicOnly: boolean;
+};
+
 interface TargetCompileOption {
-  origin: TargetCompileOptionOrigin;
+  origin: TargetPropertyOrigin;
   value: string | string[];
   publicOnly: boolean;
 };
 
 interface TargetLinkOption {
-  origin: TargetCompileOptionOrigin;
+  origin: TargetPropertyOrigin;
   value: string | string[];
   publicOnly: boolean;
 };
@@ -169,6 +177,7 @@ const TYPE            = Symbol("TYPE");
 const TARGET_FILE     = Symbol("TARGET_FILE");
 const PRE_BUILD       = Symbol("PRE_BUILD");
 const POST_BUILD      = Symbol("POST_BUILD");
+const DEFINES         = Symbol("DEFINES");
 const COMPILE_OPTIONS = Symbol("COMPILE_OPTIONS");
 const LINK_OPTIONS    = Symbol("LINK_OPTIONS");
 
@@ -178,6 +187,7 @@ export class TargetStruct {
   private [TARGET_FILE]: TargetFile;
   private [PRE_BUILD] = new Array<TargetCommand>;
   private [POST_BUILD] = new Array<TargetCommand>;
+  private [DEFINES] = new Array<TargetDefinition>;
   private [COMPILE_OPTIONS] = new Array<TargetCompileOption>;
   private [LINK_OPTIONS] = new Array<TargetLinkOption>;
 
@@ -223,11 +233,11 @@ export class TargetStruct {
     return this[POST_BUILD];
   }
 
-  public addCompileOption(origin: TargetCompileOptionOrigin, publicOnly: boolean, value: string | string[]) {
+  public addCompileOption(origin: TargetPropertyOrigin, publicOnly: boolean, value: string | string[]) {
     this[COMPILE_OPTIONS].push({ value, origin, publicOnly });
   }
 
-  public addCompileOptions(origin: TargetCompileOptionOrigin, publicOnly: boolean, ...options: Array<string|string[]>) {
+  public addCompileOptions(origin: TargetPropertyOrigin, publicOnly: boolean, ...options: Array<string|string[]>) {
     for (const iter of options.flat())
       this.addCompileOption(origin, publicOnly, iter);
   }
@@ -258,11 +268,11 @@ export class TargetStruct {
     return firstList.concat(lastList);
   }
 
-  public addLinkOption(origin: TargetCompileOptionOrigin, publicOnly: boolean, value: string | string[]) {
+  public addLinkOption(origin: TargetPropertyOrigin, publicOnly: boolean, value: string | string[]) {
     this[LINK_OPTIONS].push({ value, origin, publicOnly });
   }
 
-  public addLinkOptions(origin: TargetCompileOptionOrigin, publicOnly: boolean, ...options: Array<string|string[]>) {
+  public addLinkOptions(origin: TargetPropertyOrigin, publicOnly: boolean, ...options: Array<string|string[]>) {
     for (const iter of options.flat())
       this.addLinkOption(origin, publicOnly, iter);
   }
@@ -293,12 +303,48 @@ export class TargetStruct {
     return firstList.concat(lastList);
   }
 
+  public addDefinition(origin: TargetPropertyOrigin, publicOnly: boolean, value: string) {
+    this[DEFINES].push({ value, origin, publicOnly });
+  }
+
+  public addDefinitions(origin: TargetPropertyOrigin, publicOnly: boolean, ...definitions: any) {
+    for (const iter of normalizeDefinitions(...definitions))
+      this.addDefinition(origin, publicOnly, iter);
+  }
+
+  public getDefinitions(): Array<string> {
+    const firstList = new Array<string>();
+    const lastList = new Array<string>();
+    for (const iter of this[DEFINES]) {
+      if (iter.origin !== "indirectly")
+        firstList.push(iter.value);
+      else
+        lastList.push(iter.value);
+    }
+    return firstList.concat(lastList);
+  }
+
+  public getPublicDefinitions(): Array<string> {
+    const firstList = new Array<string>();
+    const lastList = new Array<string>();
+    for (const iter of this[DEFINES]) {
+      if (!iter.publicOnly)
+        continue;
+      if (iter.origin !== "indirectly")
+        firstList.push(iter.value);
+      else
+        lastList.push(iter.value);
+    }
+    return firstList.concat(lastList);
+  }
+
   public toJSON(): object {
     return {
       name: this.name,
       targetFile: this.targetFile,
       preBuildList: this.preBuildList,
       postBuildList: this.postBuildList,
+      definitions: this[DEFINES],
       compileOptions: this[COMPILE_OPTIONS],
       linkOptions: this[LINK_OPTIONS],
     }

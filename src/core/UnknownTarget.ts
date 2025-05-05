@@ -12,19 +12,16 @@ import { TargetStruct } from "@/core/TargetStruct";
 const IMPL = Symbol("NAME");
 const INCLUDES = Symbol("INCLUDES");
 const SOURCES = Symbol("SOURCES");
-const DEFINES = Symbol("DEFINES");
 
 export class UnknownTarget {
   private [IMPL]: TargetStruct;
   private [INCLUDES]: any[];
   private [SOURCES]: any[];
-  private [DEFINES]: any[];
 
   private constructor(impl: TargetStruct) {
     this[IMPL] = impl;
     this[INCLUDES] = [];
     this[SOURCES] = [];
-    this[DEFINES] = [];
   }
 
   public static create(impl: TargetStruct) {
@@ -49,10 +46,6 @@ export class UnknownTarget {
     return this[SOURCES];
   }
 
-  public get DEFINES () {
-    return this[DEFINES];
-  }
-  
   public get IMPL(): TargetStruct {
     return this[IMPL];
   }
@@ -62,7 +55,6 @@ export class UnknownTarget {
       NAME: this.NAME,
       INCLUDES: this.INCLUDES,
       SOURCES: this.SOURCES,
-      DEFINES: this.DEFINES,
     };
   }
 

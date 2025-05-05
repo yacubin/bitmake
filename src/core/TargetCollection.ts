@@ -63,14 +63,6 @@ function getPublicLibraries(target: any) {
   return target.LIBRARIES.filter((i: any) => i.PUBLIC_ONLY).map((i: any) => i.VALUE);
 }
 
-function getDefinitions(target: any) {
-  return target.DEFINES.map((i: any) => i.VALUE);
-}
-
-function getPublicDefinitions(target: any) {
-  return target.DEFINES.filter((i: any) => i.PUBLIC_ONLY).map((i: any) => i.VALUE);
-}
-
 export class TargetCollection {
   private [ENTRIES]: { [name: string]: BaseTarget };
 
@@ -180,8 +172,8 @@ export class TargetCollection {
       if (iter instanceof InterfaceTarget) {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
-          const target = this.get(iter.targetName);
-          this.__getAllDefinitions(definitions, targetSet, getPublicDefinitions(target));
+          const target = this.get(iter.targetName) as BaseTarget;
+          this.__getAllDefinitions(definitions, targetSet, target.IMPL.getPublicDefinitions());
           this.__getAllDefinitions(definitions, targetSet, getPublicLibraries(target));
         }
       }
@@ -196,10 +188,10 @@ export class TargetCollection {
   }
 
   public allDefinitionsOf(params: any) {
-    const target = (typeof params === "string") ? this.get(params) : params;
+    const target = ((typeof params === "string") ? this.get(params) : params) as BaseTarget;
     const definitions: string[] = [];
     const targetSet = new Set([ target.NAME ]);
-    this.__getAllDefinitions(definitions, targetSet, getDefinitions(target));
+    this.__getAllDefinitions(definitions, targetSet, target.IMPL.getDefinitions());
     this.__getAllDefinitions(definitions, targetSet, getPublicLibraries(target));
     return definitions;
   }

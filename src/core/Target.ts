@@ -14,10 +14,9 @@ import { IncludeDirectory } from "@/core/IncludeDirectory";
 import { InterfaceTarget } from "@/core/InterfaceTarget";
 import { InterfaceIncludes } from "@/core/InterfaceIncludes";
 import { InterfaceObjects } from "@/core/InterfaceObjects";
-import { AbsolutePath, DirPath, FilePath } from "@/core/Path";
+import { AbsolutePath, FilePath } from "@/core/Path";
 import { ScopeHelper } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
-import { normalizeDefinitions } from "@/core/DefinitionHelper";
 import { TargetStruct, TargetType, LiveString } from "@/core/TargetStruct";
 
 const IMPL                = Symbol("IMPL");
@@ -39,7 +38,6 @@ export class BaseTarget {
   private [SOURCES]: any[];
   private [LIBRARIES]: any[];
   private [INCLUDES]: IncludeEntry[];
-  private [DEFINES]: any[];
   private [POSITION_INDEPENDENT_CODE]: boolean;
 
   protected constructor(impl: TargetStruct, scope: SystemScope, prefix: string, suffix: string) {
@@ -58,7 +56,6 @@ export class BaseTarget {
     this[SOURCES] = [];
     this[LIBRARIES] = [];
     this[INCLUDES] = scope.INCLUDES.map((VALUE: any) => ({ VALUE }));
-    this[DEFINES] = [];
     this[POSITION_INDEPENDENT_CODE] = scope.POSITION_INDEPENDENT_CODE;
   }
 
@@ -72,10 +69,6 @@ export class BaseTarget {
 
   public get INCLUDES() {
     return this[INCLUDES];
-  }
-
-  public get DEFINES(): string[] {
-    return this[DEFINES];
   }
 
   public get SOURCES(): string[] {
@@ -188,8 +181,7 @@ export class BaseTarget {
   }
 
   public addDefinitions(...definitions: any[]) {
-    for (const VALUE of normalizeDefinitions(...definitions))
-      this[DEFINES].push({ VALUE });
+    this[IMPL].addDefinitions("directly", false, ...definitions);
   }
 
   public addPreBuild(command: any, args: any[]) {
@@ -210,7 +202,6 @@ export class BaseTarget {
       NAME: this.NAME,
       TARGET_SCOPE: this.TARGET_SCOPE,
       INCLUDES: this.INCLUDES,
-      DEFINES: this.DEFINES,
       SOURCES: this.SOURCES,
       LIBRARIES: this.LIBRARIES,
       FILE_DIR: this.FILE_DIR,
@@ -241,9 +232,8 @@ export class BaseLibrary extends BaseTarget {
     }
   }
 
-  public addPublicDefinitions(...definitions: string[]) {
-    for (const VALUE of definitions.flat(1))
-      this[DEFINES].push({ VALUE, PUBLIC_ONLY: true });
+  public addPublicDefinitions(...definitions: any) {
+    this[IMPL].addDefinitions("directly", true, ...definitions);
   }
 
   public addPublicLibraries(...libraries: any[]) {

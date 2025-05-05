@@ -7,6 +7,10 @@
  * under the MIT License. See LICENSE file for details.
  */
 
+import { createLogger } from "@/logger";
+
+const logger = createLogger(import.meta.url);
+
 const ENTRIES = Symbol("ENTRIES");
 
 export interface GoalWorker {

@@ -7,9 +7,6 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import fs from "node:fs";
-import path from "node:path";
-
 import cmake  from "@/cmake";
 import { getPathString }  from "@/utils/FileSystem";
 import { SettingsStorage } from "@/utils/SettingsStorage";

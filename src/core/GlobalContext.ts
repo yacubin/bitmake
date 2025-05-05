@@ -7,7 +7,9 @@
  * under the MIT License. See LICENSE file for details.
  */
 
+import path from "node:path";
 import fs from "node:fs";
+import { spawnSync } from "node:child_process";
 
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
 import { FilePath, DirPath, AbsolutePath } from "@/core/Path";
@@ -26,11 +28,8 @@ import { createLogger } from "@/logger";
 import { InstallEntity } from "@/core/InstallEntity";
 import { CustomScript } from "@/core/CustomScript";
 import { ScriptContext } from "@/core/ScriptContext";
-import { spawnSync } from "node:child_process";
 
 import configure_file from "@/core/BuildinScripts/configure_file";
-import install_script from "@/core/BuildinScripts/install_script";
-import path from "node:path";
 
 const logger = createLogger(import.meta.url);
 
@@ -108,7 +107,7 @@ function scopeValueAsPrimitives(o: any): any {
 
 type GoalHandler = () => Promise<void> | void;
 
-class GoalWorkerImpl {
+export class GoalWorkerImpl {
   private _message: string | undefined;
   private _name: string | undefined;
   private _output: string | undefined;
@@ -238,7 +237,6 @@ export class GlobalContext {
     this[SUBDIR_LIST] = [];
     this[BUILTIN_SCRIPTS] = {
       configure_file,
-      install_script,
     };
   }
 
@@ -662,8 +660,11 @@ export class GlobalContext {
       const worker = new GoalWorkerImpl(INSTALL_TARGET);
       installPairs.forEach(i => void worker.addDependency(i.src));
       worker.addCallback(async () => {
-        for (const iter of installPairs)
-          await install_script(scopeValueAsPrimitives(iter));
+        for (const {src, dest} of installPairs) {
+          logger.info("Installing: " + dest);
+          await fs.promises.mkdir(path.dirname(dest), { recursive: true });
+          await fs.promises.cp(src.toString(), dest.toString(), { force: true });
+        }
       });
       goalList.add(worker);
     }

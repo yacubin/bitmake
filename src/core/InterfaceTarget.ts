@@ -12,19 +12,19 @@ import { InterfaceIncludes } from "@/core/InterfaceIncludes";
 import { InterfaceObjects } from "@/core/InterfaceObjects";
 import { SourceFile } from "@/core/SourceFile";
 import { SystemScope } from "@/core/SystemScope";
-import { UnknownTarget } from "@/core/UnknownTarget";
+import { TargetStruct } from "@/core/TargetStruct";
 import { ScopeHelper } from "@/core/Scope";
 
-const UNKNOWN_TARGET = Symbol("UNKNOWN_TARGET");
+const IMPL = Symbol("IMPL");
 const SCOPE = Symbol("SCOPE");
 
 export class InterfaceTarget {
   private [SCOPE]: SystemScope;
-  private [UNKNOWN_TARGET]: UnknownTarget;
+  private [IMPL]: TargetStruct;
 
-  private constructor(scope: any, utarget: any) {
+  private constructor(scope: SystemScope, impl: TargetStruct) {
     this[SCOPE] = ScopeHelper.clone({}, scope);
-    this[UNKNOWN_TARGET] = utarget;
+    this[IMPL] = impl;
   }
 
   public static create(scope: any, utarget: any) {
@@ -38,7 +38,7 @@ export class InterfaceTarget {
   }
 
   public get targetName(): string {
-    return this[UNKNOWN_TARGET].NAME;
+    return this[IMPL].name;
   }
 
   public get includes(): InterfaceIncludes {
@@ -65,39 +65,39 @@ export class InterfaceTarget {
         it = SourceFile.create(this[SCOPE], it);
       else
         throw new Error(`Not support instance ${it}`);
-      this[UNKNOWN_TARGET].IMPL.addSource("indirectly", false, it);
+        this[IMPL].addSource("indirectly", false, it);
     }
   }
 
   public addIncludes(...includes: any): void {
-    this[UNKNOWN_TARGET].IMPL.addIncludes("indirectly", false, this[SCOPE].SOURCE_DIR, ...includes);
+    this[IMPL].addIncludes("indirectly", false, this[SCOPE].SOURCE_DIR, ...includes);
   }
 
   public addPublicIncludes(...includes: Array<InterfaceIncludes|AbsolutePath|string>): void {
-    this[UNKNOWN_TARGET].IMPL.addIncludes("indirectly", true, this[SCOPE].SOURCE_DIR, ...includes);
+    this[IMPL].addIncludes("indirectly", true, this[SCOPE].SOURCE_DIR, ...includes);
   }
 
   public addDefinitions(...definitions: any): void {
-    this[UNKNOWN_TARGET].IMPL.addDefinitions("indirectly", false, ...definitions);
+    this[IMPL].addDefinitions("indirectly", false, ...definitions);
   }
 
   public addPublicDefinitions(...definitions: any): void {
-    this[UNKNOWN_TARGET].IMPL.addDefinitions("indirectly", true, ...definitions);
+    this[IMPL].addDefinitions("indirectly", true, ...definitions);
   }
 
   public addCompileOptions(...options: Array<string|string[]>): void {
-    this[UNKNOWN_TARGET].IMPL.addCompileOptions("indirectly", false, ...options);
+    this[IMPL].addCompileOptions("indirectly", false, ...options);
   }
 
   public addPublicCompileOptions(...options: string[]): void {
-    this[UNKNOWN_TARGET].IMPL.addCompileOptions("indirectly", true, ...options);
+    this[IMPL].addCompileOptions("indirectly", true, ...options);
   }
 
   public addLinkOptions(...options: Array<string|string[]>): void {
-    this[UNKNOWN_TARGET].IMPL.addLinkOptions("indirectly", false, ...options);
+    this[IMPL].addLinkOptions("indirectly", false, ...options);
   }
 
   public addPublicLinkOptions(...options: string[]): void {
-    this[UNKNOWN_TARGET].IMPL.addLinkOptions("indirectly", true, ...options);
+    this[IMPL].addLinkOptions("indirectly", true, ...options);
   }
 };

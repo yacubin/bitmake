@@ -136,11 +136,6 @@ const methods = {
     return this[GLOBAL].addCustomScript(newScope, script, params);
   },
   
-  target(this: IMakeContext, name: string): InterfaceTarget {
-    const utarget = this[GLOBAL].getUknownTarget(name);
-    return InterfaceTarget.create(this[SCOPE], utarget);
-  },
-  
   script(this: IMakeContext, name: string): InterfaceScript {
     let script = this[GLOBAL].INTERFACE_SCRIPTS[name];
     if (!script) {
@@ -172,6 +167,10 @@ const methods = {
 
   addExecutable(this: IMakeContext, name: string, ...sources: any[]): Executable {
     return this[GLOBAL].addExecutable(this[SCOPE], name, ...sources);
+  },
+
+  target(this: IMakeContext, name: string): InterfaceTarget {
+    return this[GLOBAL].getTarget(this[SCOPE], name);
   },
 
   executeScript(this: IMakeContext, script: any, options: any) {

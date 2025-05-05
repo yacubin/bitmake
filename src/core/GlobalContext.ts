@@ -15,11 +15,8 @@ import { fileExists, fileExistsSync } from "@/utils/FileSystem";
 import { TargetCollection, TargetStructCollection } from "@/core//TargetCollection";
 import { ScriptCollection } from "@/core/ScriptCollection";
 import { InterfaceTarget } from "@/core/InterfaceTarget";
-import { UnknownTarget } from "@/core/UnknownTarget";
 import { GoalCollection } from "@/core/GoalCollection";
-import { InterfaceObjects } from "@/core/InterfaceObjects";
 import { InterfaceScript } from "@/core/InterfaceScript";
-import { SourceFile } from "@/core/SourceFile";
 import { MakeContext } from "@/core/MakeContext";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget } from "@/core/Target";
 import { ScopeHelper } from "@/core/Scope";
@@ -42,7 +39,6 @@ const requireImpl = eval("require");
 const TARGETS = Symbol("TARGETS");
 const CUSTOM_SCRIPTS = Symbol("CUSTOM_SCRIPTS");
 const CACHE = Symbol("CACHE");
-const UNKNOWN_TARGETS = Symbol("UNKNOWN_TARGETS");
 const INTERFACE_SCRIPTS = Symbol("INTERFACE_SCRIPTS");
 const INSTALL_LIST = Symbol("INSTALL_LIST");
 const SCRIPT_VARIABLES_MAP = Symbol("SCRIPT_VARIABLES_MAP");
@@ -50,10 +46,6 @@ const SUBDIR_ALIAS = Symbol("SUBDIR_ALIAS");
 const SUBDIR_LIST = Symbol("SUBDIR_LIST");
 const BUILTIN_SCRIPTS = Symbol("BUILTIN_SCRIPTS");
 const TARGET_COLLECTION = Symbol("TARGET_COLLECTION");
-
-type UnknownTargets = {
-  [name: string]: UnknownTarget;
-};
 
 type SubdirectoryAlias = {
   [name: string]: DirPath | null;
@@ -228,7 +220,6 @@ export class GlobalContext {
   private [TARGETS]: TargetCollection;
   private [CUSTOM_SCRIPTS]: ScriptCollection;
   private [CACHE]: CacheVariableDescriptors;
-  private [UNKNOWN_TARGETS]: UnknownTargets;
   private [INTERFACE_SCRIPTS]: InterfaceScripts;
   private [INSTALL_LIST]: InstallEntity[];
   private [SCRIPT_VARIABLES_MAP]: any;
@@ -240,7 +231,6 @@ export class GlobalContext {
     this[TARGETS] = TargetCollection.create();
     this[CUSTOM_SCRIPTS] = ScriptCollection.create();
     this[CACHE] = {};
-    this[UNKNOWN_TARGETS] = {};
     this[INTERFACE_SCRIPTS] = {};
     this[INSTALL_LIST] = [];
     this[SCRIPT_VARIABLES_MAP] = {};
@@ -262,10 +252,6 @@ export class GlobalContext {
 
   public get CACHE() {
     return this[CACHE];
-  }
-
-  public get UNKNOWN_TARGETS() {
-    return this[UNKNOWN_TARGETS];
   }
 
   public get INTERFACE_SCRIPTS() {
@@ -416,13 +402,9 @@ export class GlobalContext {
     return target;
   }
 
-  public getUknownTarget(name: string): UnknownTarget {
-    let target = this[UNKNOWN_TARGETS][name];
-    if (!target) {
-      const impl = this[TARGET_COLLECTION].get(name);
-      this[UNKNOWN_TARGETS][name] = target = UnknownTarget.create(impl);
-    }
-    return target;
+  getTarget(scope: SystemScope, name: string): InterfaceTarget {
+    const impl = this[TARGET_COLLECTION].get(name);
+    return InterfaceTarget.create(scope, impl);
   }
 
   public writeCacheVariables(filename: string) {
@@ -698,7 +680,6 @@ export class GlobalContext {
       TARGETS: this.TARGETS,
       CUSTOM_SCRIPTS: this[CUSTOM_SCRIPTS],
       CACHE: this.CACHE,
-      UNKNOWN_TARGETS: this.UNKNOWN_TARGETS,
       INTERFACE_SCRIPTS: this.INTERFACE_SCRIPTS,
       INSTALL_LIST: this[INSTALL_LIST],
       SCRIPT_VARIABLES_MAP: this.SCRIPT_VARIABLES_MAP,

@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { DirPath, AbsolutePath, FilePath } from "@/core/Path";
+import { DirPath, FilePath, AbsolutePath } from "@/core/Path";
 
 export enum TargetType {
   Unknown = "Unknown",
@@ -151,11 +151,19 @@ function makeTargetCommand(_command: any, _args: any[]): TargetCommand {
   return { command, args };
 }
 
-const NAME        = Symbol("NAME");
-const TYPE        = Symbol("TYPE");
-const TARGET_FILE = Symbol("TARGET_FILE");
-const PRE_BUILD   = Symbol("PRE_BUILD");
-const POST_BUILD  = Symbol("POST_BUILD");
+type TargetCompileOptionOrigin = "initialize" | "indirectly" | "directly";
+interface TargetCompileOption {
+  origin: TargetCompileOptionOrigin;
+  value: string | string[];
+  publicOnly: boolean;
+};
+
+const NAME            = Symbol("NAME");
+const TYPE            = Symbol("TYPE");
+const TARGET_FILE     = Symbol("TARGET_FILE");
+const PRE_BUILD       = Symbol("PRE_BUILD");
+const POST_BUILD      = Symbol("POST_BUILD");
+const COMPILE_OPTIONS = Symbol("COMPILE_OPTIONS");
 
 export class TargetStruct {
   private [NAME]: string;
@@ -163,6 +171,7 @@ export class TargetStruct {
   private [TARGET_FILE]: TargetFile;
   private [PRE_BUILD] = new Array<TargetCommand>;
   private [POST_BUILD] = new Array<TargetCommand>;
+  private [COMPILE_OPTIONS] = new Array<TargetCompileOption>;
 
   constructor(name: string) {
     this[NAME] = name;
@@ -198,12 +207,47 @@ export class TargetStruct {
     this[POST_BUILD].push(makeTargetCommand(command, args));
   }
 
-  get preBuildList() {
+  public get preBuildList() {
     return this[PRE_BUILD];
   }
 
-  get postBuildList() {
+  public get postBuildList() {
     return this[POST_BUILD];
+  }
+
+  public addCompileOption(origin: TargetCompileOptionOrigin, publicOnly: boolean, value: string | string[]) {
+    this[COMPILE_OPTIONS].push({ value, origin, publicOnly });
+  }
+
+  public addCompileOptions(origin: TargetCompileOptionOrigin, publicOnly: boolean, ...options: Array<string|string[]>) {
+    for (const iter of options.flat())
+      this.addCompileOption(origin, publicOnly, iter);
+  }
+
+  public getCompileOptions(): Array<string|string[]> {
+    const firstList = new Array<string|string[]>();
+    const lastList = new Array<string|string[]>();
+    for (const iter of this[COMPILE_OPTIONS]) {
+      if (iter.origin !== "indirectly")
+        firstList.push(iter.value);
+      else
+        lastList.push(iter.value);
+    }
+    return firstList.concat(lastList);
+  }
+  
+  public getPublicCompileOptions(): Array<string|string[]> {
+    const firstList = new Array<string|string[]>();
+    const lastList = new Array<string|string[]>();
+    for (const iter of this[COMPILE_OPTIONS]) {
+      if (!iter.publicOnly)
+        continue;
+      if (iter.origin !== "indirectly")
+        firstList.push(iter.value);
+      else
+        lastList.push(iter.value);
+    }
+    return firstList.concat(lastList);
   }
 
   public toJSON(): object {
@@ -212,6 +256,7 @@ export class TargetStruct {
       targetFile: this.targetFile,
       preBuildList: this.preBuildList,
       postBuildList: this.postBuildList,
+      compileOptions: this[COMPILE_OPTIONS],
     }
   }
 };

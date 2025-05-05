@@ -22,7 +22,6 @@ import { TargetStruct, TargetType, LiveString } from "@/core/TargetStruct";
 
 const IMPL                = Symbol("IMPL");
 const TARGET_SCOPE        = Symbol("TARGET_SCOPE");
-const COMPILE_OPTIONS     = Symbol("COMPILE_OPTIONS");
 const LINK_OPTIONS        = Symbol("LINK_OPTIONS");
 const INCLUDES            = Symbol("INCLUDES");
 const DEFINES             = Symbol("DEFINES");
@@ -38,7 +37,6 @@ interface IncludeEntry {
 export class BaseTarget {
   private [IMPL]: TargetStruct;
   private [TARGET_SCOPE]: SystemScope;
-  private [COMPILE_OPTIONS]: any[];
   private [LINK_OPTIONS]: any[];
   private [SOURCES]: any[];
   private [LIBRARIES]: any[];
@@ -59,7 +57,6 @@ export class BaseTarget {
       targetFile.suffix = suffix;
 
     this[TARGET_SCOPE] = ScopeHelper.clone({}, scope);
-    this[COMPILE_OPTIONS] = [];
     this[LINK_OPTIONS] = [];
     this[SOURCES] = [];
     this[LIBRARIES] = [];
@@ -74,10 +71,6 @@ export class BaseTarget {
 
   public get TARGET_SCOPE() {
     return this[TARGET_SCOPE];
-  }
-
-  public get COMPILE_OPTIONS(): string[] {
-    return this[COMPILE_OPTIONS];
   }
 
   public get LINK_OPTIONS(): string[] {
@@ -165,10 +158,8 @@ export class BaseTarget {
     }
   }
 
-  public addCompileOptions(...options: string[]) {
-    for (const it of options.flat(1)) {
-      this[COMPILE_OPTIONS].push({ VALUE: it });
-    }
+  public addCompileOptions(...options: Array<string|string[]>) {
+    this[IMPL].addCompileOptions("directly", false, ...options);
   }
 
   public addLinkOptions(...options: string[]) {
@@ -227,7 +218,6 @@ export class BaseTarget {
     return {
       NAME: this.NAME,
       TARGET_SCOPE: this.TARGET_SCOPE,
-      COMPILE_OPTIONS: this.COMPILE_OPTIONS,
       LINK_OPTIONS: this.LINK_OPTIONS,
       INCLUDES: this.INCLUDES,
       DEFINES: this.DEFINES,
@@ -272,10 +262,8 @@ export class BaseLibrary extends BaseTarget {
     }
   }
 
-  public addPublicCompileOptions(...options: string[]) {
-    for (const it of options.flat(1)) {
-      this[COMPILE_OPTIONS].push({ VALUE: it, PUBLIC_ONLY: true });
-    }
+  public addPublicCompileOptions(...options: Array<string|string[]>) {
+    this[IMPL].addCompileOptions("directly", true, ...options);
   }
 
   public addPublicLinkOptions(...options: any[]) {

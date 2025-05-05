@@ -484,7 +484,6 @@ export class GlobalContext {
       target.addSources(iter.SOURCES);
       target.INCLUDES.push(...iter.INCLUDES);
       target.DEFINES.push(...iter.DEFINES);
-      target.COMPILE_OPTIONS.push(...iter.COMPILE_OPTIONS);
       target.LINK_OPTIONS.push(...iter.LINK_OPTIONS);
     }
   

@@ -13,7 +13,6 @@ const IMPL = Symbol("NAME");
 const INCLUDES = Symbol("INCLUDES");
 const SOURCES = Symbol("SOURCES");
 const DEFINES = Symbol("DEFINES");
-const COMPILE_OPTIONS = Symbol("COMPILE_OPTIONS");
 const LINK_OPTIONS = Symbol("LINK_OPTIONS");
 
 export class UnknownTarget {
@@ -21,7 +20,6 @@ export class UnknownTarget {
   private [INCLUDES]: any[];
   private [SOURCES]: any[];
   private [DEFINES]: any[];
-  private [COMPILE_OPTIONS]: any[];
   private [LINK_OPTIONS]: any[];
 
   private constructor(impl: TargetStruct) {
@@ -29,7 +27,6 @@ export class UnknownTarget {
     this[INCLUDES] = [];
     this[SOURCES] = [];
     this[DEFINES] = [];
-    this[COMPILE_OPTIONS] = [];
     this[LINK_OPTIONS] = [];
   }
 
@@ -59,12 +56,12 @@ export class UnknownTarget {
     return this[DEFINES];
   }
 
-  public get COMPILE_OPTIONS () {
-    return this[COMPILE_OPTIONS];
-  }
-
   public get LINK_OPTIONS () {
     return this[LINK_OPTIONS];
+  }
+  
+  public get IMPL(): TargetStruct {
+    return this[IMPL];
   }
 
   public toJSON(): object {
@@ -73,7 +70,6 @@ export class UnknownTarget {
       INCLUDES: this.INCLUDES,
       SOURCES: this.SOURCES,
       DEFINES: this.DEFINES,
-      COMPILE_OPTIONS: this.COMPILE_OPTIONS,
       LINK_OPTIONS: this.LINK_OPTIONS,
     };
   }

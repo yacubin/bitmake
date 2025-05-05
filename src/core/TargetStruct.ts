@@ -152,24 +152,48 @@ function makeTargetCommand(_command: any, _args: any[]): TargetCommand {
   return { command, args };
 }
 
-type TargetPropertyOrigin = "initialize" | "indirectly" | "directly";
+type TargetItemOrigin = "initialize" | "indirectly" | "directly";
 
-interface TargetDefinition {
-  origin: TargetPropertyOrigin;
-  value: string;
+interface TargetItem<T> {
+  origin: TargetItemOrigin;
+  value: T;
   publicOnly: boolean;
 };
 
-interface TargetCompileOption {
-  origin: TargetPropertyOrigin;
-  value: string | string[];
-  publicOnly: boolean;
-};
+const ITEMS = Symbol("ITEMS");
 
-interface TargetLinkOption {
-  origin: TargetPropertyOrigin;
-  value: string | string[];
-  publicOnly: boolean;
+class TargetItems<T> {
+  private [ITEMS] = new Array<TargetItem<T>>();
+
+  public addItem(origin: TargetItemOrigin, publicOnly: boolean, value: T) {
+    this[ITEMS].push({ origin, publicOnly, value });
+  }
+
+  public getItems(): Array<T> {
+    const firstList = new Array<T>();
+    const lastList = new Array<T>();
+    for (const iter of this[ITEMS]) {
+      if (iter.origin !== "indirectly")
+        firstList.push(iter.value);
+      else
+        lastList.push(iter.value);
+    }
+    return firstList.concat(lastList);
+  }
+
+  public getPublicItems(): Array<T> {
+    const firstList = new Array<T>();
+    const lastList = new Array<T>();
+    for (const iter of this[ITEMS]) {
+      if (!iter.publicOnly)
+        continue;
+      if (iter.origin !== "indirectly")
+        firstList.push(iter.value);
+      else
+        lastList.push(iter.value);
+    }
+    return firstList.concat(lastList);
+  }
 };
 
 const NAME            = Symbol("NAME");
@@ -187,9 +211,9 @@ export class TargetStruct {
   private [TARGET_FILE]: TargetFile;
   private [PRE_BUILD] = new Array<TargetCommand>;
   private [POST_BUILD] = new Array<TargetCommand>;
-  private [DEFINES] = new Array<TargetDefinition>;
-  private [COMPILE_OPTIONS] = new Array<TargetCompileOption>;
-  private [LINK_OPTIONS] = new Array<TargetLinkOption>;
+  private [DEFINES] = new TargetItems<string>();
+  private [COMPILE_OPTIONS] = new TargetItems<string|string[]>();
+  private [LINK_OPTIONS] = new TargetItems<string|string[]>();
 
   constructor(name: string) {
     this[NAME] = name;
@@ -233,109 +257,55 @@ export class TargetStruct {
     return this[POST_BUILD];
   }
 
-  public addCompileOption(origin: TargetPropertyOrigin, publicOnly: boolean, value: string | string[]) {
-    this[COMPILE_OPTIONS].push({ value, origin, publicOnly });
+  public addCompileOption(origin: TargetItemOrigin, publicOnly: boolean, value: string | string[]) {
+    this[COMPILE_OPTIONS].addItem(origin, publicOnly, value);
   }
 
-  public addCompileOptions(origin: TargetPropertyOrigin, publicOnly: boolean, ...options: Array<string|string[]>) {
+  public addCompileOptions(origin: TargetItemOrigin, publicOnly: boolean, ...options: Array<string|string[]>) {
     for (const iter of options.flat())
       this.addCompileOption(origin, publicOnly, iter);
   }
 
   public getCompileOptions(): Array<string|string[]> {
-    const firstList = new Array<string|string[]>();
-    const lastList = new Array<string|string[]>();
-    for (const iter of this[COMPILE_OPTIONS]) {
-      if (iter.origin !== "indirectly")
-        firstList.push(iter.value);
-      else
-        lastList.push(iter.value);
-    }
-    return firstList.concat(lastList);
+    return this[COMPILE_OPTIONS].getItems();
   }
   
   public getPublicCompileOptions(): Array<string|string[]> {
-    const firstList = new Array<string|string[]>();
-    const lastList = new Array<string|string[]>();
-    for (const iter of this[COMPILE_OPTIONS]) {
-      if (!iter.publicOnly)
-        continue;
-      if (iter.origin !== "indirectly")
-        firstList.push(iter.value);
-      else
-        lastList.push(iter.value);
-    }
-    return firstList.concat(lastList);
+    return this[COMPILE_OPTIONS].getPublicItems();
   }
 
-  public addLinkOption(origin: TargetPropertyOrigin, publicOnly: boolean, value: string | string[]) {
-    this[LINK_OPTIONS].push({ value, origin, publicOnly });
+  public addLinkOption(origin: TargetItemOrigin, publicOnly: boolean, value: string | string[]) {
+    return this[LINK_OPTIONS].addItem(origin, publicOnly, value);
   }
 
-  public addLinkOptions(origin: TargetPropertyOrigin, publicOnly: boolean, ...options: Array<string|string[]>) {
+  public addLinkOptions(origin: TargetItemOrigin, publicOnly: boolean, ...options: Array<string|string[]>) {
     for (const iter of options.flat())
       this.addLinkOption(origin, publicOnly, iter);
   }
 
   public getLinkOptions(): Array<string|string[]> {
-    const firstList = new Array<string|string[]>();
-    const lastList = new Array<string|string[]>();
-    for (const iter of this[LINK_OPTIONS]) {
-      if (iter.origin !== "indirectly")
-        firstList.push(iter.value);
-      else
-        lastList.push(iter.value);
-    }
-    return firstList.concat(lastList);
+    return this[LINK_OPTIONS].getItems();
   }
 
   public getPublicLinkOptions(): Array<string|string[]> {
-    const firstList = new Array<string|string[]>();
-    const lastList = new Array<string|string[]>();
-    for (const iter of this[LINK_OPTIONS]) {
-      if (!iter.publicOnly)
-        continue;
-      if (iter.origin !== "indirectly")
-        firstList.push(iter.value);
-      else
-        lastList.push(iter.value);
-    }
-    return firstList.concat(lastList);
+    return this[LINK_OPTIONS].getPublicItems();
   }
 
-  public addDefinition(origin: TargetPropertyOrigin, publicOnly: boolean, value: string) {
-    this[DEFINES].push({ value, origin, publicOnly });
+  public addDefinition(origin: TargetItemOrigin, publicOnly: boolean, value: string) {
+    this[DEFINES].addItem(origin, publicOnly, value);
   }
 
-  public addDefinitions(origin: TargetPropertyOrigin, publicOnly: boolean, ...definitions: any) {
+  public addDefinitions(origin: TargetItemOrigin, publicOnly: boolean, ...definitions: any) {
     for (const iter of normalizeDefinitions(...definitions))
       this.addDefinition(origin, publicOnly, iter);
   }
 
   public getDefinitions(): Array<string> {
-    const firstList = new Array<string>();
-    const lastList = new Array<string>();
-    for (const iter of this[DEFINES]) {
-      if (iter.origin !== "indirectly")
-        firstList.push(iter.value);
-      else
-        lastList.push(iter.value);
-    }
-    return firstList.concat(lastList);
+    return this[DEFINES].getItems();
   }
 
   public getPublicDefinitions(): Array<string> {
-    const firstList = new Array<string>();
-    const lastList = new Array<string>();
-    for (const iter of this[DEFINES]) {
-      if (!iter.publicOnly)
-        continue;
-      if (iter.origin !== "indirectly")
-        firstList.push(iter.value);
-      else
-        lastList.push(iter.value);
-    }
-    return firstList.concat(lastList);
+    return this[DEFINES].getPublicItems();
   }
 
   public toJSON(): object {

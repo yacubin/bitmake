@@ -158,12 +158,19 @@ interface TargetCompileOption {
   publicOnly: boolean;
 };
 
+interface TargetLinkOption {
+  origin: TargetCompileOptionOrigin;
+  value: string | string[];
+  publicOnly: boolean;
+};
+
 const NAME            = Symbol("NAME");
 const TYPE            = Symbol("TYPE");
 const TARGET_FILE     = Symbol("TARGET_FILE");
 const PRE_BUILD       = Symbol("PRE_BUILD");
 const POST_BUILD      = Symbol("POST_BUILD");
 const COMPILE_OPTIONS = Symbol("COMPILE_OPTIONS");
+const LINK_OPTIONS    = Symbol("LINK_OPTIONS");
 
 export class TargetStruct {
   private [NAME]: string;
@@ -172,6 +179,7 @@ export class TargetStruct {
   private [PRE_BUILD] = new Array<TargetCommand>;
   private [POST_BUILD] = new Array<TargetCommand>;
   private [COMPILE_OPTIONS] = new Array<TargetCompileOption>;
+  private [LINK_OPTIONS] = new Array<TargetLinkOption>;
 
   constructor(name: string) {
     this[NAME] = name;
@@ -250,6 +258,41 @@ export class TargetStruct {
     return firstList.concat(lastList);
   }
 
+  public addLinkOption(origin: TargetCompileOptionOrigin, publicOnly: boolean, value: string | string[]) {
+    this[LINK_OPTIONS].push({ value, origin, publicOnly });
+  }
+
+  public addLinkOptions(origin: TargetCompileOptionOrigin, publicOnly: boolean, ...options: Array<string|string[]>) {
+    for (const iter of options.flat())
+      this.addLinkOption(origin, publicOnly, iter);
+  }
+
+  public getLinkOptions(): Array<string|string[]> {
+    const firstList = new Array<string|string[]>();
+    const lastList = new Array<string|string[]>();
+    for (const iter of this[LINK_OPTIONS]) {
+      if (iter.origin !== "indirectly")
+        firstList.push(iter.value);
+      else
+        lastList.push(iter.value);
+    }
+    return firstList.concat(lastList);
+  }
+
+  public getPublicLinkOptions(): Array<string|string[]> {
+    const firstList = new Array<string|string[]>();
+    const lastList = new Array<string|string[]>();
+    for (const iter of this[LINK_OPTIONS]) {
+      if (!iter.publicOnly)
+        continue;
+      if (iter.origin !== "indirectly")
+        firstList.push(iter.value);
+      else
+        lastList.push(iter.value);
+    }
+    return firstList.concat(lastList);
+  }
+
   public toJSON(): object {
     return {
       name: this.name,
@@ -257,6 +300,7 @@ export class TargetStruct {
       preBuildList: this.preBuildList,
       postBuildList: this.postBuildList,
       compileOptions: this[COMPILE_OPTIONS],
+      linkOptions: this[LINK_OPTIONS],
     }
   }
 };

@@ -71,14 +71,6 @@ function getPublicDefinitions(target: any) {
   return target.DEFINES.filter((i: any) => i.PUBLIC_ONLY).map((i: any) => i.VALUE);
 }
 
-function getLinkOptions(target: any) {
-  return target.LINK_OPTIONS.map((i: any) => i.VALUE);
-}
-
-function getPublicLinkOptions(target: any) {
-  return target.LINK_OPTIONS.filter((i: any) => i.PUBLIC_ONLY).map((i: any) => i.VALUE);
-}
-
 export class TargetCollection {
   private [ENTRIES]: { [name: string]: BaseTarget };
 
@@ -250,8 +242,8 @@ export class TargetCollection {
       if (iter instanceof InterfaceTarget) {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
-          const target = this.get(iter.targetName);
-          this.__getLinkOptions(options, targetSet, getPublicLinkOptions(target));
+          const target = this.get(iter.targetName) as BaseTarget;
+          this.__getLinkOptions(options, targetSet, target.IMPL.getPublicLinkOptions());
           this.__getLinkOptions(options, targetSet, getPublicLibraries(target));
         }
       }
@@ -270,10 +262,10 @@ export class TargetCollection {
   }
 
   public allLinkOptionsOf(params: any) {
-    const target = (typeof params === "string") ? this.get(params) : params;
+    const target = ((typeof params === "string") ? this.get(params) : params) as BaseTarget;
     const options: string[] = [];
     const targetSet = new Set([ target.NAME ]);
-    this.__getLinkOptions(options, targetSet, getLinkOptions(target));
+    this.__getLinkOptions(options, targetSet, target.IMPL.getLinkOptions());
     this.__getLinkOptions(options, targetSet, getPublicLibraries(target));
     return options.flat();
   }

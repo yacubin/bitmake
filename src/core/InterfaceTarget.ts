@@ -110,10 +110,8 @@ export class InterfaceTarget {
     this[UNKNOWN_TARGET].IMPL.addCompileOptions("indirectly", false, ...options);
   }
 
-  public addLinkOptions(...options: string[]): void {
-    for (const it of options.flat(1)) {
-      this[UNKNOWN_TARGET].LINK_OPTIONS.push({ VALUE: it });
-    }
+  public addLinkOptions(...options: Array<string|string[]>): void {
+    this[UNKNOWN_TARGET].IMPL.addLinkOptions("indirectly", false, ...options);
   }
 
   public addPublicCompileOptions(...options: string[]): void {
@@ -121,8 +119,6 @@ export class InterfaceTarget {
   }
 
   public addPublicLinkOptions(...options: string[]): void {
-    for (const it of options.flat(1)) {
-      this[UNKNOWN_TARGET].LINK_OPTIONS.push({ VALUE: it, PUBLIC_ONLY: true });
-    }
+    this[UNKNOWN_TARGET].IMPL.addLinkOptions("indirectly", true, ...options);
   }
 };

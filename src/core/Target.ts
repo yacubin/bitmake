@@ -22,7 +22,6 @@ import { TargetStruct, TargetType, LiveString } from "@/core/TargetStruct";
 
 const IMPL                = Symbol("IMPL");
 const TARGET_SCOPE        = Symbol("TARGET_SCOPE");
-const LINK_OPTIONS        = Symbol("LINK_OPTIONS");
 const INCLUDES            = Symbol("INCLUDES");
 const DEFINES             = Symbol("DEFINES");
 const SOURCES             = Symbol("SOURCES");
@@ -37,7 +36,6 @@ interface IncludeEntry {
 export class BaseTarget {
   private [IMPL]: TargetStruct;
   private [TARGET_SCOPE]: SystemScope;
-  private [LINK_OPTIONS]: any[];
   private [SOURCES]: any[];
   private [LIBRARIES]: any[];
   private [INCLUDES]: IncludeEntry[];
@@ -57,7 +55,6 @@ export class BaseTarget {
       targetFile.suffix = suffix;
 
     this[TARGET_SCOPE] = ScopeHelper.clone({}, scope);
-    this[LINK_OPTIONS] = [];
     this[SOURCES] = [];
     this[LIBRARIES] = [];
     this[INCLUDES] = scope.INCLUDES.map((VALUE: any) => ({ VALUE }));
@@ -71,10 +68,6 @@ export class BaseTarget {
 
   public get TARGET_SCOPE() {
     return this[TARGET_SCOPE];
-  }
-
-  public get LINK_OPTIONS(): string[] {
-    return this[LINK_OPTIONS];
   }
 
   public get INCLUDES() {
@@ -162,10 +155,8 @@ export class BaseTarget {
     this[IMPL].addCompileOptions("directly", false, ...options);
   }
 
-  public addLinkOptions(...options: string[]) {
-    for (const it of options.flat(1)) {
-      this[LINK_OPTIONS].push({ VALUE: it });
-    }
+  public addLinkOptions(...options: Array<string|string[]>) {
+    this[IMPL].addLinkOptions("directly", false, ...options);
   }
 
   public getSourceFiles(...sources: any[]): SourceFileList {
@@ -218,7 +209,6 @@ export class BaseTarget {
     return {
       NAME: this.NAME,
       TARGET_SCOPE: this.TARGET_SCOPE,
-      LINK_OPTIONS: this.LINK_OPTIONS,
       INCLUDES: this.INCLUDES,
       DEFINES: this.DEFINES,
       SOURCES: this.SOURCES,
@@ -266,10 +256,8 @@ export class BaseLibrary extends BaseTarget {
     this[IMPL].addCompileOptions("directly", true, ...options);
   }
 
-  public addPublicLinkOptions(...options: any[]) {
-    for (const it of options.flat(1)) {
-      this[LINK_OPTIONS].push({ VALUE: it, PUBLIC_ONLY: true });
-    }
+  public addPublicLinkOptions(...options: Array<string|string[]>) {
+    this[IMPL].addLinkOptions("directly", true, ...options);
   }
 };
 
@@ -277,7 +265,7 @@ export class ObjectLibrary extends BaseLibrary {
   private constructor(impl: TargetStruct, scope: SystemScope) {
     super(impl, scope, scope.OBJECT_LIBRARY_PREFIX, scope.OBJECT_LIBRARY_SUFFIX);
     this[IMPL].type = TargetType.ObjectLibrary;
-    this.LINK_OPTIONS.push(...(scope as any).OBJECT_LINKER_FLAGS.map((VALUE: any) => ({ VALUE })));
+    this[IMPL].addLinkOptions("initialize", true, ...scope.OBJECT_LINKER_FLAGS);
   }
 
   public static create(impl: TargetStruct, scope: SystemScope) {
@@ -289,7 +277,7 @@ export class StaticLibrary extends BaseLibrary {
   private constructor(impl: TargetStruct, scope: SystemScope) {
     super(impl, scope, scope.STATIC_LIBRARY_PREFIX, scope.STATIC_LIBRARY_SUFFIX);
     this[IMPL].type = TargetType.StaticLibrary;
-    this.LINK_OPTIONS.push(...(scope as any).STATIC_LINKER_FLAGS.map((VALUE: any) => ({ VALUE })));
+    this[IMPL].addLinkOptions("initialize", true, ...scope.STATIC_LINKER_FLAGS);
   }
 
   public static create(impl: TargetStruct, scope: SystemScope) {
@@ -301,7 +289,7 @@ export class SharedLibrary extends BaseLibrary {
   private constructor(impl: TargetStruct, scope: SystemScope) {
     super(impl, scope, scope.SHARED_LIBRARY_PREFIX, scope.SHARED_LIBRARY_SUFFIX);
     this[IMPL].type = TargetType.SharedLibrary;
-    this.LINK_OPTIONS.push(...(scope as any).SHARED_LINKER_FLAGS.map((VALUE: any) => ({ VALUE })));
+    this[IMPL].addLinkOptions("initialize", true, ...scope.SHARED_LINKER_FLAGS);
   }
 
   public static create(impl: TargetStruct, scope: SystemScope) {
@@ -313,7 +301,7 @@ export class Executable extends BaseTarget {
   private constructor(impl: TargetStruct, scope: SystemScope) {
     super(impl, scope, "", scope.EXECUTABLE_SUFFIX);
     this[IMPL].type = TargetType.Executable;
-    this.LINK_OPTIONS.push(...(scope as any).EXE_LINKER_FLAGS.map((VALUE: any) => ({ VALUE })));
+    this[IMPL].addLinkOptions("initialize", true, ...scope.EXE_LINKER_FLAGS);
   }
 
   public static create(impl: TargetStruct, scope: SystemScope) {

@@ -484,7 +484,6 @@ export class GlobalContext {
       target.addSources(iter.SOURCES);
       target.INCLUDES.push(...iter.INCLUDES);
       target.DEFINES.push(...iter.DEFINES);
-      target.LINK_OPTIONS.push(...iter.LINK_OPTIONS);
     }
   
     for (const iter of Object.values(this[INTERFACE_SCRIPTS])) {

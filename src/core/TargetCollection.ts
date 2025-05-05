@@ -7,20 +7,19 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { IncludeDirectory } from "@/core/IncludeDirectory";
 import { InterfaceIncludes }from "@/core/InterfaceIncludes";
 import { InterfaceTarget } from "@/core/InterfaceTarget";
 import { TargetStruct } from "@/core/TargetStruct";
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
 import { BaseTarget } from "./Target";
+import { DirPath } from "./Path";
 
 const ENTRIES = Symbol("ENTRIES");
 
 export class TargetStructCollection {
-  private [ENTRIES]: Map<string, TargetStruct>;
+  private [ENTRIES] = new Map<string, TargetStruct>;
 
   constructor() {
-    this[ENTRIES] = new Map<string, TargetStruct>();
   }
 
   get(name: string): TargetStruct {
@@ -45,14 +44,6 @@ export class TargetStructCollection {
 
 function getHeaders(target: any) {
   return target.SOURCES.filter((i: any) => i.HEADER_FILE_ONLY);
-}
-
-function getIncludes(target: any) {
-  return target.INCLUDES.map((i: any) => i.VALUE);
-}
-
-function getPublicIncludes(target: any) {
-  return target.INCLUDES.filter((i: any) => i.PUBLIC_ONLY).map((i: any) => i.VALUE);
 }
 
 function getLibraries(target: any) {
@@ -98,11 +89,11 @@ export class TargetCollection {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
           const target = this.get(iter.targetName);
-          this.__getAllIncludes(includes, targetSet, getPublicIncludes(target));
+          this.__getAllIncludes(includes, targetSet, target.IMPL.getPublicIncludes());
           this.__getAllIncludes(includes, targetSet, getPublicLibraries(target));
         }
       }
-      else if (iter instanceof IncludeDirectory) {
+      else if (iter instanceof DirPath) {
         if (!includes.includes(iter.toString()))
           includes.push(iter.toString());
       }
@@ -113,10 +104,10 @@ export class TargetCollection {
   }
 
   public allIncludesOf(params: any): string[] {
-    const target = (typeof params === "string") ? this.get(params) : params;
+    const target = ((typeof params === "string") ? this.get(params) : params) as BaseTarget;
     const includes: string[] = [];
     const targetSet = new Set([ target.NAME ]);
-    this.__getAllIncludes(includes, targetSet, getIncludes(target));
+    this.__getAllIncludes(includes, targetSet, target.IMPL.getIncludes());
     this.__getAllIncludes(includes, targetSet, getLibraries(target));
     return includes;
   }
@@ -131,7 +122,7 @@ export class TargetCollection {
             if (!headers.includes(header.toString()))
               headers.push(header.toString());
           }
-          this.__getAllHeaders(headers, targetSet, getPublicIncludes(target));
+          this.__getAllHeaders(headers, targetSet, target.IMPL.getPublicIncludes());
           this.__getAllHeaders(headers, targetSet, getPublicLibraries(target));
         }
       }
@@ -139,10 +130,10 @@ export class TargetCollection {
   }
 
   public allHeadersOf(params: any) {
-    const target = (typeof params === "string") ? this.get(params) : params;
+    const target = ((typeof params === "string") ? this.get(params) : params) as BaseTarget;
     const headers = getHeaders(target).map((i: any) => i.FILE.toString());
     const targetSet = new Set([ target.NAME ]);
-    this.__getAllHeaders(headers, targetSet, getIncludes(target));
+    this.__getAllHeaders(headers, targetSet, target.IMPL.getIncludes());
     this.__getAllHeaders(headers, targetSet, getLibraries(target));
     return headers;
   }

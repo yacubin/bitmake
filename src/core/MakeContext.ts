@@ -15,7 +15,6 @@ import { InterfaceTarget } from "@/core/InterfaceTarget";
 import { InterfaceScript } from "@/core/InterfaceScript";
 import { InstallEntity } from "@/core/InstallEntity";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget } from "@/core/Target";
-import { IncludeDirectory } from "@/core/IncludeDirectory";
 import { CustomScript } from "@/core/CustomScript";
 import { GlobalContext } from "@/core/GlobalContext";
 import { ScopeHelper } from "@/core/Scope";
@@ -104,9 +103,8 @@ const methods = {
   
   addIncludeDirectories(this: IMakeContext, ...dirs: any[]) {
     const sourceDir = this[SCOPE].SOURCE_DIR;
-    for (const iter of dirs.flat(1)) {
-      this[SCOPE].INCLUDES.push(IncludeDirectory.create(iter, sourceDir));
-    }
+    for (const iter of dirs.flat())
+      this[SCOPE].INCLUDES.push(sourceDir.resolve(iter));
   },
   
   addSubdirectory(this: IMakeContext, sourceDir: any, binaryDir: any) {

@@ -10,9 +10,7 @@
 import { ensureString } from "@/utils/StrictType";
 import { SourceFile } from "@/core/SourceFile";
 import { SourceFileList } from "@/core/SourceFileList";
-import { IncludeDirectory } from "@/core/IncludeDirectory";
 import { InterfaceTarget } from "@/core/InterfaceTarget";
-import { InterfaceIncludes } from "@/core/InterfaceIncludes";
 import { InterfaceObjects } from "@/core/InterfaceObjects";
 import { AbsolutePath, FilePath } from "@/core/Path";
 import { ScopeHelper } from "@/core/Scope";
@@ -21,23 +19,15 @@ import { TargetStruct, TargetType, LiveString } from "@/core/TargetStruct";
 
 const IMPL                = Symbol("IMPL");
 const TARGET_SCOPE        = Symbol("TARGET_SCOPE");
-const INCLUDES            = Symbol("INCLUDES");
-const DEFINES             = Symbol("DEFINES");
 const SOURCES             = Symbol("SOURCES");
 const LIBRARIES           = Symbol("LIBRARIES");
 const POSITION_INDEPENDENT_CODE = Symbol("POSITION_INDEPENDENT_CODE");
-
-interface IncludeEntry {
-  VALUE: InterfaceIncludes | IncludeDirectory | string;
-  PUBLIC_ONLY?: boolean;
-};
 
 export class BaseTarget {
   private [IMPL]: TargetStruct;
   private [TARGET_SCOPE]: SystemScope;
   private [SOURCES]: any[];
   private [LIBRARIES]: any[];
-  private [INCLUDES]: IncludeEntry[];
   private [POSITION_INDEPENDENT_CODE]: boolean;
 
   protected constructor(impl: TargetStruct, scope: SystemScope, prefix: string, suffix: string) {
@@ -52,10 +42,11 @@ export class BaseTarget {
     if (targetFile.suffix === undefined)
       targetFile.suffix = suffix;
 
+    this[IMPL].addIncludes("initialize", false, scope.SOURCE_DIR, ...scope.INCLUDES);
+
     this[TARGET_SCOPE] = ScopeHelper.clone({}, scope);
     this[SOURCES] = [];
     this[LIBRARIES] = [];
-    this[INCLUDES] = scope.INCLUDES.map((VALUE: any) => ({ VALUE }));
     this[POSITION_INDEPENDENT_CODE] = scope.POSITION_INDEPENDENT_CODE;
   }
 
@@ -65,10 +56,6 @@ export class BaseTarget {
 
   public get TARGET_SCOPE() {
     return this[TARGET_SCOPE];
-  }
-
-  public get INCLUDES() {
-    return this[INCLUDES];
   }
 
   public get SOURCES(): string[] {
@@ -125,17 +112,8 @@ export class BaseTarget {
     }
   }
 
-  public addIncludes(...includes: Array<InterfaceIncludes | AbsolutePath | string>) {
-    for (const it of includes.flat(1)) {
-      let VALUE;
-      if (it instanceof InterfaceIncludes)
-        VALUE = it;
-      else if (typeof it === "string" || AbsolutePath.isAbsolute(it))
-        VALUE = IncludeDirectory.create(it, this[TARGET_SCOPE].SOURCE_DIR);
-      else
-        throw new Error(`Not support instance ${it}`);
-      this[INCLUDES].push({VALUE}); // IncludeDirectory[]
-    }
+  public addIncludes(...includes: any) {
+    this[IMPL].addIncludes("directly", false, this[TARGET_SCOPE].SOURCE_DIR, ...includes);
   }
 
   public addLibraries(...libraries: any) {
@@ -201,7 +179,6 @@ export class BaseTarget {
     return {
       NAME: this.NAME,
       TARGET_SCOPE: this.TARGET_SCOPE,
-      INCLUDES: this.INCLUDES,
       SOURCES: this.SOURCES,
       LIBRARIES: this.LIBRARIES,
       FILE_DIR: this.FILE_DIR,
@@ -219,17 +196,8 @@ export class BaseLibrary extends BaseTarget {
     this[POSITION_INDEPENDENT_CODE] = value;
   }
 
-  public addPublicIncludes(...includes: Array<InterfaceIncludes | AbsolutePath | string>) {
-    for (const it of includes.flat(1)) {
-      let VALUE;
-      if (it instanceof InterfaceIncludes)
-        VALUE = it;
-      else if (typeof it === "string" || AbsolutePath.isAbsolute(it))
-        VALUE = IncludeDirectory.create(it, this[TARGET_SCOPE].SOURCE_DIR);
-      else
-        throw new Error(`Not support instance ${it}`);
-      this[INCLUDES].push({VALUE, PUBLIC_ONLY: true}); // IncludeDirectory[]
-    }
+  public addPublicIncludes(...includes: any[]) {
+    this[IMPL].addIncludes("directly", true, this[TARGET_SCOPE].SOURCE_DIR, ...includes);
   }
 
   public addPublicDefinitions(...definitions: any) {

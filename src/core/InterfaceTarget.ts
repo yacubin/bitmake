@@ -10,7 +10,6 @@
 import { AbsolutePath } from "@/core/Path";
 import { InterfaceIncludes } from "@/core/InterfaceIncludes";
 import { InterfaceObjects } from "@/core/InterfaceObjects";
-import { IncludeDirectory } from "@/core/IncludeDirectory";
 import { SourceFile } from "@/core/SourceFile";
 import { SystemScope } from "@/core/SystemScope";
 import { UnknownTarget } from "@/core/UnknownTarget";
@@ -70,30 +69,12 @@ export class InterfaceTarget {
     }
   }
 
-  public addIncludes(...includes: Array<InterfaceIncludes|AbsolutePath|string>): void {
-    for (const it of includes.flat(1)) {
-      let VALUE;
-      if (it instanceof InterfaceIncludes)
-        VALUE = it;
-      else if (typeof it === "string" || AbsolutePath.isAbsolute(it))
-        VALUE = IncludeDirectory.create(it, this[SCOPE].SOURCE_DIR);
-      else
-        throw new Error(`Not support instance ${it}`);
-      this[UNKNOWN_TARGET].INCLUDES.push({ VALUE, PUBLIC_ONLY: false });
-    }
+  public addIncludes(...includes: any): void {
+    this[UNKNOWN_TARGET].IMPL.addIncludes("indirectly", false, this[SCOPE].SOURCE_DIR, ...includes);
   }
 
   public addPublicIncludes(...includes: Array<InterfaceIncludes|AbsolutePath|string>): void {
-    for (const it of includes.flat(1)) {
-      let VALUE;
-      if (it instanceof InterfaceIncludes)
-        VALUE = it;
-      else if (typeof it === "string" || AbsolutePath.isAbsolute(it))
-        VALUE = IncludeDirectory.create(it, this[SCOPE].SOURCE_DIR);
-      else
-        throw new Error(`Not support instance ${it}`);
-      this[UNKNOWN_TARGET].INCLUDES.push({ VALUE, PUBLIC_ONLY: true });
-    }
+    this[UNKNOWN_TARGET].IMPL.addIncludes("indirectly", true, this[SCOPE].SOURCE_DIR, ...includes);
   }
 
   public addDefinitions(...definitions: any): void {
@@ -108,12 +89,12 @@ export class InterfaceTarget {
     this[UNKNOWN_TARGET].IMPL.addCompileOptions("indirectly", false, ...options);
   }
 
-  public addLinkOptions(...options: Array<string|string[]>): void {
-    this[UNKNOWN_TARGET].IMPL.addLinkOptions("indirectly", false, ...options);
-  }
-
   public addPublicCompileOptions(...options: string[]): void {
     this[UNKNOWN_TARGET].IMPL.addCompileOptions("indirectly", true, ...options);
+  }
+
+  public addLinkOptions(...options: Array<string|string[]>): void {
+    this[UNKNOWN_TARGET].IMPL.addLinkOptions("indirectly", false, ...options);
   }
 
   public addPublicLinkOptions(...options: string[]): void {

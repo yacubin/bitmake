@@ -10,17 +10,14 @@
 import { TargetStruct } from "@/core/TargetStruct";
 
 const IMPL = Symbol("NAME");
-const INCLUDES = Symbol("INCLUDES");
 const SOURCES = Symbol("SOURCES");
 
 export class UnknownTarget {
   private [IMPL]: TargetStruct;
-  private [INCLUDES]: any[];
   private [SOURCES]: any[];
 
   private constructor(impl: TargetStruct) {
     this[IMPL] = impl;
-    this[INCLUDES] = [];
     this[SOURCES] = [];
   }
 
@@ -38,10 +35,6 @@ export class UnknownTarget {
     return this[IMPL].name;
   }
 
-  public get INCLUDES () {
-    return this[INCLUDES];
-  }
-
   public get SOURCES () {
     return this[SOURCES];
   }
@@ -53,7 +46,6 @@ export class UnknownTarget {
   public toJSON(): object {
     return {
       NAME: this.NAME,
-      INCLUDES: this.INCLUDES,
       SOURCES: this.SOURCES,
     };
   }

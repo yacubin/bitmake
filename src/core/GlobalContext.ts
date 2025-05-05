@@ -482,7 +482,6 @@ export class GlobalContext {
     for (const iter of Object.values(this[UNKNOWN_TARGETS])) {
       const target = this[TARGETS].get(iter.NAME);
       target.addSources(iter.SOURCES);
-      target.INCLUDES.push(...iter.INCLUDES);
     }
   
     for (const iter of Object.values(this[INTERFACE_SCRIPTS])) {

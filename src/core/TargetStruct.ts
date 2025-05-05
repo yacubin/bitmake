@@ -8,7 +8,23 @@
  */
 
 import { DirPath, FilePath, AbsolutePath } from "@/core/Path";
+import { InterfaceIncludes } from "@/core/InterfaceIncludes";
 import { normalizeDefinitions } from "@/core/DefinitionHelper";
+
+export function normalizeIncludes(baseDir: DirPath, ...includes: any[]): Array<DirPath|InterfaceIncludes> {
+  const result = [];
+  for (const iter of includes.flat()) {
+    if (iter instanceof InterfaceIncludes)
+      result.push(iter);
+    else if (typeof iter === "string")
+      result.push(DirPath.create(baseDir.resolve(iter)));
+    else if (iter instanceof AbsolutePath)
+      result.push(DirPath.create(iter));
+    else
+      throw new Error(`Not support instance ${iter}`);
+  }
+  return result;
+}
 
 export enum TargetType {
   Unknown = "Unknown",
@@ -202,6 +218,7 @@ const TARGET_FILE     = Symbol("TARGET_FILE");
 const PRE_BUILD       = Symbol("PRE_BUILD");
 const POST_BUILD      = Symbol("POST_BUILD");
 const DEFINES         = Symbol("DEFINES");
+const INCLUDES        = Symbol("INCLUDES");
 const COMPILE_OPTIONS = Symbol("COMPILE_OPTIONS");
 const LINK_OPTIONS    = Symbol("LINK_OPTIONS");
 
@@ -211,9 +228,10 @@ export class TargetStruct {
   private [TARGET_FILE]: TargetFile;
   private [PRE_BUILD] = new Array<TargetCommand>;
   private [POST_BUILD] = new Array<TargetCommand>;
-  private [DEFINES] = new TargetItems<string>();
-  private [COMPILE_OPTIONS] = new TargetItems<string|string[]>();
-  private [LINK_OPTIONS] = new TargetItems<string|string[]>();
+  private [DEFINES] = new TargetItems<string>;
+  private [INCLUDES] = new TargetItems<DirPath|InterfaceIncludes>;
+  private [COMPILE_OPTIONS] = new TargetItems<string|string[]>;
+  private [LINK_OPTIONS] = new TargetItems<string|string[]>;
 
   constructor(name: string) {
     this[NAME] = name;
@@ -308,6 +326,23 @@ export class TargetStruct {
     return this[DEFINES].getPublicItems();
   }
 
+  public addInclude(origin: TargetItemOrigin, publicOnly: boolean, value: DirPath|InterfaceIncludes) {
+    this[INCLUDES].addItem(origin, publicOnly, value);
+  }
+
+  public addIncludes(origin: TargetItemOrigin, publicOnly: boolean, baseDir: DirPath, ...includes: any[]) {
+    for (const iter of normalizeIncludes(baseDir, ...includes))
+      this.addInclude(origin, publicOnly, iter);
+  }
+
+  public getIncludes(): Array<DirPath|InterfaceIncludes> {
+    return this[INCLUDES].getItems();
+  }
+
+  public getPublicIncludes(): Array<DirPath|InterfaceIncludes> {
+    return this[INCLUDES].getPublicItems();
+  }
+
   public toJSON(): object {
     return {
       name: this.name,
@@ -315,6 +350,7 @@ export class TargetStruct {
       preBuildList: this.preBuildList,
       postBuildList: this.postBuildList,
       definitions: this[DEFINES],
+      includes: this[INCLUDES],
       compileOptions: this[COMPILE_OPTIONS],
       linkOptions: this[LINK_OPTIONS],
     }

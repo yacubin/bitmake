@@ -7,12 +7,12 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import path from "node:path";
 import fs from "node:fs";
 import { spawnSync } from "node:child_process";
 
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
 import { FilePath, DirPath, AbsolutePath } from "@/core/Path";
+import { Path } from "@/utils/Path";
 import { fileExists, fileExistsSync } from "@/utils/FileSystem";
 import { TargetCollection, TargetStructCollection } from "@/core//TargetCollection";
 import { ScriptCollection } from "@/core/ScriptCollection";
@@ -154,7 +154,7 @@ export class GoalWorkerImpl {
 
   async doWork(): Promise<void> {
     if (this._output)
-      await fs.promises.mkdir(path.posix.dirname(this._output), { recursive: true });
+      await fs.promises.mkdir(Path.dirname(this._output), { recursive: true });
 
     for (const func of this._callbacks) {
       const res = func();
@@ -199,8 +199,10 @@ export class GoalWorkerImpl {
   addScript(global: GlobalContext, scope: SystemScope, script: FilePath | Function, params: any): void {
     this.addCallback(async () => {
       let func: any = script;
-      if (script instanceof FilePath)
-        func = (await importModule(func.toString())).default;
+      if (script instanceof FilePath) {
+        const scriptUrl = Path.toFileURL(func.toString());
+        func = (await importModule(scriptUrl)).default;
+      }
       if (func instanceof Function) {
         const mk = ScriptContext.create(scope, global);
         const result = func(mk, scopeValueAsPrimitives(params));
@@ -445,7 +447,8 @@ export class GlobalContext {
       const cwdSave = process.cwd();
       process.chdir(scope.SOURCE_DIR.toString());
 
-      const module = await importModule(scope.SCRIPT_FILE.toString());
+      const scriptUrl = Path.toFileURL(scope.SCRIPT_FILE.toString());
+      const module = await importModule(scriptUrl);
       if (!module.default)
         throw new Error(`Subdirectory ${scope.SCRIPT_FILE.basename()} not contain default function`);
       const mk = MakeContext.create(scope, this);
@@ -662,7 +665,7 @@ export class GlobalContext {
       worker.addCallback(async () => {
         for (const {src, dest} of installPairs) {
           logger.info("Installing: " + dest);
-          await fs.promises.mkdir(path.dirname(dest), { recursive: true });
+          await fs.promises.mkdir(Path.dirname(dest), { recursive: true });
           await fs.promises.cp(src.toString(), dest.toString(), { force: true });
         }
       });

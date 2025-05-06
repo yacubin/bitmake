@@ -8,8 +8,8 @@
  */
 
 import fs from "node:fs";
-import path from "node:path";
 
+import { Path } from "@/utils/Path";
 import { PluginContext } from "@/core/PluginContext";
 import { GlobalContext } from "@/core/GlobalContext";
 import { ScopeHelper } from "@/core/Scope";
@@ -57,7 +57,8 @@ export async function bitmakeAction(config: any, environment: any, settings: Set
 
   const global = GlobalContext.create();
   if (scope.TOOLCHAIN_FILE) {
-    const toolchain = await importModule(scope.TOOLCHAIN_FILE);
+    const toolchainUrl = Path.toFileURL(scope.TOOLCHAIN_FILE.toString());
+    const toolchain = await importModule(toolchainUrl);
     if (!toolchain.default)
       throw new Error("Toolchain module has no default export");
     const mk = ToolchainContext.create(scope, global);
@@ -77,7 +78,8 @@ export async function bitmakeAction(config: any, environment: any, settings: Set
     scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
 
     process.chdir(scope.SCRIPT_DIR.toString());
-    const module = await importModule(scope.SCRIPT_FILE.toString());
+    const pluginUrl = Path.toFileURL(scope.SCRIPT_FILE.toString());
+    const module = await importModule(pluginUrl);
     
     if (!module.default)
       throw new Error(`Plugin ${scope.SCRIPT_FILE.basename()} not contain default export`);
@@ -111,7 +113,7 @@ export async function bitmakeAction(config: any, environment: any, settings: Set
   if (scope.GLOBAL_CONTEXT_JSON) {
     const filename = scope.GLOBAL_CONTEXT_JSON.toString();
     const content = JSON.stringify(global, null, 2);
-    await fs.promises.mkdir(path.dirname(filename), { recursive: true });
+    await fs.promises.mkdir(Path.dirname(filename), { recursive: true });
     await fs.promises.writeFile(filename, content, { encoding: "utf8" });
   }
 
@@ -121,7 +123,7 @@ export async function bitmakeAction(config: any, environment: any, settings: Set
   if (scope.TARGET_GOALS_JSON) {
     const filename = scope.TARGET_GOALS_JSON.toString();
     const content = JSON.stringify(goalList, null, 2);
-    await fs.promises.mkdir(path.dirname(filename), { recursive: true });
+    await fs.promises.mkdir(Path.dirname(filename), { recursive: true });
     await fs.promises.writeFile(filename, content, { encoding: "utf8" });
   }
 

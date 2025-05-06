@@ -7,8 +7,8 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import path from "node:path";
 import url from "node:url";
+import { Path } from "@/utils/Path";
 
 const PATH = Symbol("PATH");
 
@@ -18,30 +18,30 @@ export class AbsolutePath {
   private [PATH]: string;
 
   protected constructor(filepath: string) {
-    if (!path.isAbsolute(filepath))
+    if (!Path.isAbsolute(filepath))
       throw new Error(`Not supported relative path of "${filepath}"`);
     this[PATH] = filepath;
   }
 
   public join(...paths: Array<AbsolutePath | string>) {
-    const filepath = path.posix.join(this[PATH], ...paths.map(i => i.toString()));
+    const filepath = Path.join(this[PATH], ...paths.map(i => i.toString()));
     return AbsolutePath.create(filepath);
   }
 
   public dirname() {
-    return DirPath.create(path.posix.dirname(this[PATH]));
+    return DirPath.create(Path.dirname(this[PATH]));
   }
 
   public basename() {
-    return path.basename(this[PATH]);
+    return Path.basename(this[PATH]);
   }
 
   public relative(to: AbsolutePath | string) {
-    return path.posix.relative(this[PATH], (to instanceof AbsolutePath) ? to[PATH] : to);
+    return Path.relative(this[PATH], (to instanceof AbsolutePath) ? to[PATH] : to);
   }
 
   public resolve(...paths: Array<AbsolutePath | string>) {
-    return AbsolutePath.create(path.posix.resolve(this[PATH], ...paths.map(i => i.toString())));
+    return AbsolutePath.create(Path.resolve(this[PATH], ...paths.map(i => i.toString())));
   }
 
   public match(regexp: RegExp) {
@@ -71,7 +71,7 @@ export class AbsolutePath {
   public static isAbsolute(filepath: AbsolutePath | string) {
     if (filepath instanceof AbsolutePath)
       return true;
-    return path.isAbsolute(filepath);
+    return Path.isAbsolute(filepath);
   }
 
   public static ensureInstance(value: any): AbsolutePath {

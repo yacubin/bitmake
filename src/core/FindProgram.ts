@@ -8,8 +8,8 @@
  */
 
 import os from "node:os";
-import path from "node:path";
 
+import { Path } from "@/utils/Path";
 import { fileExists, fileExistsSync } from "@/utils/FileSystem";
 
 function possibleProgramList(name: string) {
@@ -17,9 +17,9 @@ function possibleProgramList(name: string) {
     name += ".exe";
 
   const result = [];
-  const paths = (process.env.PATH || "").split(path.posix.delimiter);
+  const paths = (process.env.PATH || "").split(Path.delimiter);
   for (const iter of paths) {
-    const filename = path.posix.resolve(iter, name);
+    const filename = Path.resolve(iter, name);
     result.push(filename);
   }
 

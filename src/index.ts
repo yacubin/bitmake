@@ -14,6 +14,7 @@ import cmake from "@/cmake";
 
 import { spawnAsync } from "@/utils/ChildProcess";
 import { requestGet, downloadFile } from "@/utils/HttpRequest";
+import { Path } from "@/utils/Path";
 import commands from "@/commands";
 
 export default {
@@ -27,4 +28,5 @@ export default {
     requestGet,
     downloadFile,
   },
+  path: Path,
 };

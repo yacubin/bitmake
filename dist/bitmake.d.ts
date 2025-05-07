@@ -1,3 +1,5 @@
+import { PathToFileUrlOptions } from 'node:url';
+
 declare const _default$1: {
 	cxx: typeof cxx;
 	cmake: {
@@ -21,6 +23,7 @@ declare const _default$1: {
 		requestGet: typeof requestGet;
 		downloadFile: typeof downloadFile;
 	};
+	path: typeof Path;
 };
 declare enum GeneratorType {
 	UnixMakefiles = "Unix Makefiles"
@@ -39,6 +42,19 @@ declare function lineToSinglComment(line: string): string;
 declare function requestGet(url: string, options?: FetchOptions): Promise<Buffer>;
 declare function scriptMode(scriptFile: string, variables: object, options?: ScriptModeOptions): Promise<void>;
 declare function spawnAsync(command: string, args: string[], options?: any): Promise<Result>;
+declare namespace Path {
+	const sep: "\\" | "/";
+	const delimiter: ";" | ":";
+	function nativePath(path: string): string;
+	function representPath(path: string): string;
+	function isAbsolute(path: string): boolean;
+	function join(...paths: string[]): string;
+	function resolve(...paths: string[]): string;
+	function dirname(path: string): string;
+	function basename(path: string, suffix?: string): string;
+	function relative(from: string, to: string): string;
+	function toFileURL(path: string, options?: PathToFileUrlOptions): import("url").URL;
+}
 export interface CommandOptions {
 	handler: string;
 	workDir: string;

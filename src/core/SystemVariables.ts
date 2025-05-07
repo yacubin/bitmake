@@ -216,7 +216,7 @@ export default {
   },
   EXECUTABLE_SUFFIX: {
     description: "Suffix used for executable files",
-    value: "",
+    value: (os.platform() === "win32") ? ".exe" : "",
   },
   EXE_LINKER_FLAGS: {
     description: "Flags passed to the linker when creating executables",

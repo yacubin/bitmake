@@ -7,14 +7,13 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import os from "node:os";
-
 import { Path } from "@/utils/Path";
+import { Host } from "@/utils/Host";
 import { fileExists, fileExistsSync } from "@/utils/FileSystem";
 
 function possibleProgramList(name: string) {
-  if (os.platform() === "win32" && !name.endsWith(".exe"))
-    name += ".exe";
+  if (Host.executableSuffix)
+    name += Host.executableSuffix;
 
   const result = [];
   const paths = (process.env.PATH || "").split(Path.delimiter);

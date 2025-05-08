@@ -14,6 +14,7 @@ import path from "node:path";
 import { spawnAsync } from "@/utils/ChildProcess";
 import { CMAKE_LISTS_TXT, DEFAULT_GENERATOR, ValueType } from "@/cmake/Constants";
 import { convertToValue } from "@/cmake/Helper";
+import { Host } from "@/utils/Host";
 
 function toVarType(key: string, val: any) {
   const map: any = {
@@ -44,113 +45,145 @@ function makeCmdVariables(variables: object, isCache: boolean): string[] {
   return result;
 }
 
-interface ScriptModeOptions {
+export interface ScriptModeOptions {
   environment?: object;
   workDir?: string;
 };
 
-export async function scriptMode(scriptFile: string, variables: object, options?: ScriptModeOptions) {
-  const spawnArgs = [
-    ...makeCmdVariables(variables, false),
-    "-P", scriptFile,
-  ];
-  const res: any = await spawnAsync("cmake", spawnArgs, {
-    cwd: options?.workDir,
-    env: options?.environment || process.env,
-  });
-  if (res.status !== 0) {
-    throw `cmake.scriptMode returned status ${res.status}`;
+export class CMakeProcess {
+  private _cmakePath: string;
+
+  public constructor(cmakePath: string) {
+    this._cmakePath = cmakePath;
+  }
+
+  public async scriptMode(scriptFile: string, variables: object, options?: ScriptModeOptions): Promise<void> {
+    const spawnArgs = [
+      ...makeCmdVariables(variables, false),
+      "-P", scriptFile,
+    ];
+    const res: any = await spawnAsync(this._cmakePath, spawnArgs, {
+      cwd: options?.workDir,
+      env: options?.environment || process.env,
+    });
+    if (res.status !== 0) {
+      throw `cmake.scriptMode returned status ${res.status}`;
+    }
+  }
+
+  public async configure(args: any): Promise<void> {
+    const spawnArgs = [
+      "-G", args.generator,
+      ...makeCmdVariables(args.cacheVariables, true),
+      "-S", args.sourceDir,
+      "-B", args.binaryDir,
+    ];
+  
+    const res: any = await spawnAsync(this._cmakePath, spawnArgs, {
+      cwd: args.binaryDir,
+      env: args.environment || process.env,
+      extra: {
+        output: `cmake.configure.log`,
+      },
+    });
+    if (res.status !== 0) {
+      throw `CMake.configure returned status ${res.status}`;
+    }
+  }
+
+  public async build(args: any): Promise<void> {
+    await this.configure(args);
+  
+    const spawnArgs: string[] = [
+      '--build', '.',
+      '--parallel', os.availableParallelism().toString(),
+    ];
+    const res: any = await spawnAsync(this._cmakePath, spawnArgs, {
+      cwd: args.binaryDir,
+      env: args.environment || process.env,
+      extra: {
+        output: `cmake.build.log`,
+      },
+    });
+    if (res.status !== 0) {
+      throw `CMake.build returned status ${res.status}`;
+    }
+  }
+
+  public async install(args: any): Promise<void> {
+    await this.configure(args);
+
+    const spawnArgs = [
+      '--install',
+      '.',
+    ];
+    if (args.installDir) {
+      spawnArgs.push('--prefix', args.installDir);
+    }
+    const res: any = await spawnAsync(this._cmakePath, spawnArgs, {
+      cwd: args.binaryDir,
+      env: args.environment || process.env,
+      extra: {
+        output: `cmake.install.log`,
+      },
+    });
+    if (res.status !== 0) {
+      throw `CMake.install returned status ${res.status}`;
+    }
+  }
+  
+  public async extract(args: any): Promise<void> {
+    const spawnArgs = [ "-E", "tar", "-xvf", args.filename ];
+    const res: any = await spawnAsync(this._cmakePath, spawnArgs, {
+      cwd: args.workDir || args.sourceDir || args.binaryDir,
+      env: args.environment || process.env,
+      extra: {
+        output: args.logFile || `cmake.extract.log`,
+      },
+    });
+    if (res.status !== 0) {
+      throw `Extract returned status ${res.status}`;
+    }
+  }
+};
+
+let _cmakeInstance: CMakeProcess;
+export namespace CMakeProcess {
+  export function getInstance(): CMakeProcess {
+    if (!_cmakeInstance)
+      _cmakeInstance = new CMakeProcess("cmake" + Host.executableSuffix);
+    return _cmakeInstance;
   }
 }
 
-export async function configure(args: any) {
-  const spawnArgs = [
-    "-G", args.generator,
-    ...makeCmdVariables(args.cacheVariables, true),
-    "-S", args.sourceDir,
-    "-B", args.binaryDir,
-  ];
+export class CTestProcess {
+  private _ctestPath: string;
 
-  const res: any = await spawnAsync("cmake", spawnArgs, {
-    cwd: args.binaryDir,
-    env: args.environment || process.env,
-    extra: {
-      output: `cmake.configure.log`,
-    },
-  });
-  if (res.status !== 0) {
-    throw `CMake.configure returned status ${res.status}`;
+  public constructor(ctestPath: string) {
+    this._ctestPath = ctestPath;
   }
-}
 
-export async function build(args: any) {
-  await configure(args);
-
-  const spawnArgs: string[] = [
-    '--build', '.',
-    '--parallel', os.availableParallelism().toString(),
-  ];
-  const res: any = await spawnAsync("cmake", spawnArgs, {
-    cwd: args.binaryDir,
-    env: args.environment || process.env,
-    extra: {
-      output: `cmake.build.log`,
-    },
-  });
-  if (res.status !== 0) {
-    throw `CMake.build returned status ${res.status}`;
+  public async ctest(args: any): Promise<void> {
+    const spawnArgs: string[] = [];
+    const res: any = await spawnAsync(this._ctestPath, spawnArgs, {
+      cwd: args.binaryDir,
+      env: args.environment || process.env,
+      extra: {
+        output: `cmake.ctest.log`,
+      },
+    });
+    if (res.status !== 0) {
+      throw `CTest returned status ${res.status}`;
+    }
   }
-}
+};
 
-export async function install(args: any) {
-  await configure(args);
-
-  const spawnArgs = [
-    '--install',
-    '.',
-  ];
-  if (args.installDir) {
-    spawnArgs.push('--prefix', args.installDir);
-  }
-  const res: any = await spawnAsync("cmake", spawnArgs, {
-    cwd: args.binaryDir,
-    env: args.environment || process.env,
-    extra: {
-      output: `cmake.install.log`,
-    },
-  });
-  if (res.status !== 0) {
-    throw `CMake.install returned status ${res.status}`;
-  }
-}
-
-export async function ctest(args: any) {
-  await build(args);
-
-  const spawnArgs: string[] = [];
-  const res: any = await spawnAsync("ctest", spawnArgs, {
-    cwd: args.binaryDir,
-    env: args.environment || process.env,
-    extra: {
-      output: `cmake.ctest.log`,
-    },
-  });
-  if (res.status !== 0) {
-    throw `CTest returned status ${res.status}`;
-  }
-}
-
-export async function extract(args: any) {
-  const spawnArgs = [ "-E", "tar", "-xvf", args.filename ];
-  const res: any = await spawnAsync("cmake", spawnArgs, {
-    cwd: args.workDir || args.sourceDir || args.binaryDir,
-    env: args.environment || process.env,
-    extra: {
-      output: args.logFile || `cmake.extract.log`,
-    },
-  });
-  if (res.status !== 0) {
-    throw `Extract returned status ${res.status}`;
+let _ctestInstance: CTestProcess;
+export namespace CTestProcess {
+  export function getInstance(): CTestProcess {
+    if (!_ctestInstance)
+      _ctestInstance = new CTestProcess("ctest" + Host.executableSuffix);
+    return _ctestInstance;
   }
 }
 
@@ -188,12 +221,4 @@ export function generatedScriptNameComment(filename: string) {
   return lineToSinglComment("Generated from " + path.basename(filename));
 }
 
-export default {
-  DEFAULT_GENERATOR,
-  scriptMode,
-  configure,
-  build,
-  install,
-  ctest,
-  extract,
-};
+export { DEFAULT_GENERATOR };

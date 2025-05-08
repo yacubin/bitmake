@@ -177,4 +177,7 @@ export interface SystemScope {
 
   // List of paths to plugins
   MAKE_PLUGIN_LIST: any[];
+
+  // Defines the file extension for executables on the host system
+  HOST_EXECUTABLE_SUFFIX: string;
 };

@@ -9,7 +9,7 @@
 
 import fs from "node:fs";
 
-import cmake from "@/cmake";
+import { CMakeProcess } from "@/cmake";
 import { Path } from "@/utils/Path";
 import { makePatch } from "@/utils/MakePatch";
 import { saveIfDifferent, directoryExists } from "@/utils/FileSystem";
@@ -46,6 +46,7 @@ function mergeEnvironment(...args: any) {
       let delimiter;
       let joinAfter = true;
       switch (key) {
+      case "Path":
       case "PATH":
         delimiter = Path.delimiter;
         joinAfter = false;
@@ -271,7 +272,7 @@ async function doExtractArchive(gconfig: IGeneralConfig, environment: any, confi
   else {
     extractDir = await fs.promises.mkdtemp(Path.resolve(config.tempDir, arcName + '.'));
   
-    await cmake.extract({
+    await CMakeProcess.getInstance().extract({
       environment,
       filename: arcFile,
       workDir: extractDir,

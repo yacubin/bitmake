@@ -9,6 +9,7 @@ declare const _default$1: {
 		install: (args: any) => Promise<void>;
 		extract: (args: any) => Promise<void>;
 		ctest: (args: any) => Promise<void>;
+		getProjectInfo: typeof getProjectInfo;
 	};
 	commands: {
 		default: (options: CommandOptions) => Promise<void>;
@@ -28,6 +29,7 @@ declare function _default(options: CommandOptions): Promise<void>;
 declare function downloadFile(url: string, file: string, options?: FetchOptions): Promise<undefined>;
 declare function filenameToPragmaOnceMacro(filepath: string, deep: number): string;
 declare function generatedScriptNameComment(filename: string): string;
+declare function getProjectInfo(source: string): Promise<any>;
 declare function lineToMultipleComment(line: string): string;
 declare function lineToSinglComment(line: string): string;
 declare function requestGet(url: string, options?: FetchOptions): Promise<Buffer>;

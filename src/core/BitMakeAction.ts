@@ -13,7 +13,6 @@ import { Path } from "@/utils/Path";
 import { PluginContext } from "@/core/PluginContext";
 import { GlobalContext } from "@/core/GlobalContext";
 import { ScopeHelper } from "@/core/Scope";
-import { GoalCollection } from "@/core/GoalCollection";
 import { ToolchainContext } from "@/core/ToolchainContext";
 import { getPathString }  from "@/utils/FileSystem";
 import { DirPath, FilePath } from "@/core/Path";
@@ -23,6 +22,9 @@ import SystemVariables from "@/core/SystemVariables";
 import { SystemScope } from "@/core/SystemScope";
 import { SettingsStorage } from "@/utils/SettingsStorage";
 import { INSTALL_TARGET, PACKAGE_JSON, MAKE_CACHE } from "@/Constants";
+import { createLogger } from "@/logger";
+
+const logger = createLogger(import.meta.url);
 
 export async function bitmakeAction(config: any, environment: any, settings: SettingsStorage) {
   process.env = environment;
@@ -41,7 +43,7 @@ export async function bitmakeAction(config: any, environment: any, settings: Set
   scope.SOURCE_DIR = scope.PROJECT_SOURCE_DIR;
   scope.BINARY_DIR = scope.PROJECT_BINARY_DIR;
 
-  const packageJson = await fs.promises.readFile(scope.PACKAGE_FILE.toString(), 'utf8');
+  const packageJson = await fs.promises.readFile(scope.PACKAGE_FILE.toString(), "utf8");
   const pkg = JSON.parse(packageJson);
 
   scope.BUILD_TYPE = config.buildType;
@@ -108,7 +110,7 @@ export async function bitmakeAction(config: any, environment: any, settings: Set
   global.addSubdirectory(scope);
 
   await global.doSubdirectory();
-  console.info("Configuring done");
+  logger.info("Configuring done");
 
   if (scope.GLOBAL_CONTEXT_JSON) {
     const filename = scope.GLOBAL_CONTEXT_JSON.toString();
@@ -127,5 +129,11 @@ export async function bitmakeAction(config: any, environment: any, settings: Set
     await fs.promises.writeFile(filename, content, { encoding: "utf8" });
   }
 
-  await GoalCollection.buildGoals(goalList);
+  let loaded = 0;
+  const total = goalList.length;
+  for (const goal of goalList) {
+    goal.updateProgress({ loaded, total });
+    await goal.doWork();
+    loaded++;
+  }
 }

@@ -10,7 +10,7 @@
 /// <reference path="global.d.ts" />
 
 import * as cxx from "@/cxx";
-import { CMakeProcess, CTestProcess, ScriptModeOptions } from "@/cmake";
+import { CMakeProcess, CTestProcess, ScriptModeOptions, getProjectInfo } from "@/cmake";
 
 import { spawnAsync } from "@/utils/ChildProcess";
 import { requestGet, downloadFile } from "@/utils/HttpRequest";
@@ -27,6 +27,7 @@ export default {
     install: (args: any) => CMakeProcess.getInstance().install(args),
     extract: (args: any) => CMakeProcess.getInstance().extract(args),
     ctest: (args: any) => CTestProcess.getInstance().ctest(args),
+    getProjectInfo,
   },
   commands,
   process: {

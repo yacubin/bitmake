@@ -77,14 +77,4 @@ export class GoalCollection {
   public toJSON() {
     return this[ENTRIES];
   }
-
-  public static async buildGoals(collection: Array<GoalWorker>) {
-    const total = collection.length;
-    let loaded = 0;
-    for (const goal of collection) {
-      goal.updateProgress({ loaded, total });
-      await goal.doWork();
-      loaded++;
-    }
-  }
 };

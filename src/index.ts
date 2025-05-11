@@ -17,7 +17,6 @@ import { requestGet, downloadFile } from "@/utils/HttpRequest";
 import { Path } from "@/utils/Path";
 import commands from "@/commands";
 
-
 export default {
   cxx,
   cmake: {

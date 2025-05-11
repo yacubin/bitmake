@@ -74,37 +74,6 @@ function ensureValueByType(type: any, value: any) {
   throw new Error(`The '${value}' is not a ${type}`);
 }
 
-function scopeValueAsPrimitives(o: any): any {
-  if (typeof o === "undefined")
-    return o;
-  if (typeof o === "boolean")
-    return o;
-  if (typeof o === "number")
-    return o;
-  if (typeof o === "string")
-    return o;
-  if (typeof o === "object") {
-    if (!o)
-      return o;
-    if (o instanceof AbsolutePath) {
-      return o.toString();
-    }
-    if (o instanceof Array) {
-      const result = [];
-      for (const i of o)
-        result.push(scopeValueAsPrimitives(i));
-      return result;
-    }
-    if (o instanceof Object) {
-      const result: any = {};
-      for (const [k,v] of Object.entries(o))
-        result[k] = scopeValueAsPrimitives(v);
-      return result;
-    }
-  }
-  throw new Error(`Unknown instance of ${o}`);
-}
-
 type GoalHandler = () => Promise<void> | void;
 
 export class GoalWorkerImpl {
@@ -196,7 +165,7 @@ export class GoalWorkerImpl {
     })
   }
 
-  addScript(global: GlobalContext, scope: SystemScope, script: FilePath | Function, params: any): void {
+  addScript(global: GlobalContext, scope: SystemScope, script: FilePath | Function): void {
     this.addCallback(async () => {
       let func: any = script;
       if (script instanceof FilePath) {
@@ -205,7 +174,7 @@ export class GoalWorkerImpl {
       }
       if (func instanceof Function) {
         const mk = ScriptContext.create(scope, global);
-        const result = func(mk, scopeValueAsPrimitives(params));
+        const result = func(mk);
         if (result instanceof Promise)
           await result;
       }
@@ -287,7 +256,6 @@ export class GlobalContext {
       output: outputFile,
       input: inputFile,
       workDir: scope.BINARY_DIR,
-      variables: params.variables || {},
     };
 
     const target = CustomScript.create(options);
@@ -477,12 +445,11 @@ export class GlobalContext {
       if (script.INPUT)
         depends.push(script.INPUT.toString());
       const msg = "\x1b[36m" + "Generating " + script.workDir.relative(script.OUTPUT) + "\x1b[0m";
-      const params = { ...script.VARIABLES };
       const worker = new GoalWorkerImpl(script.NAME);
       worker.message = msg;
       worker.output = script.OUTPUT.toString();
       worker.addDependency(...depends);
-      worker.addScript(this, script.SCOPE, script.SCRIPT, params);
+      worker.addScript(this, script.SCOPE, script.SCRIPT);
       goalList.add(worker);
     }
 

@@ -144,7 +144,7 @@ const methods = {
     }
     return script;
   },
-  
+
   install(this: IMakeContext, value: any, params: any): void {
     for (const it of [ value ].flat(1)) {
       const iter = (it instanceof BaseTarget) ? this.target(it.NAME) : it;

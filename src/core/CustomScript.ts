@@ -17,7 +17,6 @@ const SCRIPT       = Symbol("SCRIPT");
 const INPUT        = Symbol("INPUT");
 const OUTPUT       = Symbol("OUTPUT");
 const WORK_DIR     = Symbol("WORK_DIR");
-const VARIABLES    = Symbol("VARIABLES");
 
 export class CustomScript {
   private [SCOPE]: SystemScope;
@@ -26,7 +25,6 @@ export class CustomScript {
   private [INPUT]: FilePath | undefined;
   private [OUTPUT]: FilePath;
   private [WORK_DIR]: DirPath;
-  private [VARIABLES]: object;
 
   private constructor(options: CustomScript.Options) {
     this[SCOPE] = options.scope;
@@ -35,7 +33,6 @@ export class CustomScript {
     this[SCRIPT] = options.script;
     this[OUTPUT] = options.output;
     this[WORK_DIR] = options.workDir;
-    this[VARIABLES] = options.variables;
   }
 
   public static create(options: CustomScript.Options): CustomScript {
@@ -43,7 +40,6 @@ export class CustomScript {
   }
 
   public mergeVariables(variables: any) {
-    ScopeHelper.mergeVariables(this[VARIABLES], variables);
     ScopeHelper.mergeVariables(this[SCOPE], variables);
   }
 
@@ -67,10 +63,6 @@ export class CustomScript {
     return this[WORK_DIR];
   }
 
-  public get VARIABLES() {
-    return this[VARIABLES];
-  }
-
   public get SCOPE() {
     return this[SCOPE];
   }
@@ -82,7 +74,6 @@ export class CustomScript {
       SCRIPT: this.SCRIPT,
       INPUT: this.INPUT,
       OUTPUT: this.OUTPUT,
-      VARIABLES: this.VARIABLES,
     }
   }
 };
@@ -96,7 +87,6 @@ export interface Options {
   input?: FilePath,
   output: FilePath,
   workDir: DirPath,
-  variables: object;
 };
 
 } // namespace CustomScript

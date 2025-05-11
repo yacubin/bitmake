@@ -69,7 +69,7 @@ export class TargetCollection {
     return this[ENTRIES];
   }
 
-  public get(name: string): any {
+  public get(name: string): BaseTarget {
     return this[ENTRIES][name];
   }
 
@@ -113,7 +113,7 @@ export class TargetCollection {
       if (iter instanceof InterfaceIncludes || iter instanceof InterfaceTarget) {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
-          const target = this.get(iter.targetName) as BaseTarget;
+          const target = this.get(iter.targetName);
           for (const header of target.IMPL.getHeaders().map((i: any) => i.FILE.toString())) {
             if (!headers.includes(header.toString()))
               headers.push(header.toString());
@@ -159,7 +159,7 @@ export class TargetCollection {
       if (iter instanceof InterfaceTarget) {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
-          const target = this.get(iter.targetName) as BaseTarget;
+          const target = this.get(iter.targetName);
           this.__getAllDefinitions(definitions, targetSet, target.IMPL.getPublicDefinitions());
           this.__getAllDefinitions(definitions, targetSet, getPublicLibraries(target));
         }
@@ -188,7 +188,7 @@ export class TargetCollection {
       if (iter instanceof InterfaceTarget) {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
-          const target = this.get(iter.targetName) as BaseTarget;
+          const target = this.get(iter.targetName);
           this.__getAllCompileOptions(options, targetSet, target.IMPL.getPublicCompileOptions());
           this.__getAllCompileOptions(options, targetSet, getPublicLibraries(target));
         }
@@ -221,7 +221,7 @@ export class TargetCollection {
       if (iter instanceof InterfaceTarget) {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
-          const target = this.get(iter.targetName) as BaseTarget;
+          const target = this.get(iter.targetName);
           this.__getLinkOptions(options, targetSet, target.IMPL.getPublicLinkOptions());
           this.__getLinkOptions(options, targetSet, getPublicLibraries(target));
         }

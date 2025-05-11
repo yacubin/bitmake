@@ -6,9 +6,7 @@
   "homepage": "https://github.com/ykbin/bitmake#readme",
   "license": "MIT",
   "types": "./dist/bitmake.d.ts",
-  "exports": {
-    ".": "./dist/bitmake.js"
-  },
+  "exports": "./dist/bitmake.js",
   "bin": {
     "bitmake": "dist/bitmake-cli.js"
   },

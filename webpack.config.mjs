@@ -96,6 +96,7 @@ export default async (env, argv) => {
       path: outputPath,
       filename: "[name].js",
     },
+    module,
     plugins: [
       new webpack.DefinePlugin(globalVariables),
       new webpack.BannerPlugin({
@@ -103,7 +104,9 @@ export default async (env, argv) => {
         raw: true,
       }),
     ],
-    module,
+    externals: {
+      "bitmake": "commonjs2 ./bitmake.js",
+    },
   };
 
   return [ libConfig, cliConfig ];

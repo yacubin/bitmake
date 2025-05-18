@@ -10,15 +10,24 @@
 /// <reference path="global.d.ts" />
 
 import * as cxx from "@/cxx";
-import cmake from "@/cmake";
+import { CMakeProcess, CTestProcess, ScriptModeOptions, getProjectInfo } from "@/cmake";
 
 import { spawnAsync } from "@/utils/ChildProcess";
 import { requestGet, downloadFile } from "@/utils/HttpRequest";
+import { Path } from "@/utils/Path";
 import commands from "@/commands";
 
 export default {
   cxx,
-  cmake,
+  cmake: {
+    scriptMode: (scriptFile: string, variables: object, options?: ScriptModeOptions) => CMakeProcess.getInstance().scriptMode(scriptFile, variables, options),
+    configure: (args: any) => CMakeProcess.getInstance().configure(args),
+    build: (args: any) => CMakeProcess.getInstance().build(args),
+    install: (args: any) => CMakeProcess.getInstance().install(args),
+    extract: (args: any) => CMakeProcess.getInstance().extract(args),
+    ctest: (args: any) => CTestProcess.getInstance().ctest(args),
+    getProjectInfo,
+  },
   commands,
   process: {
     spawn: spawnAsync,
@@ -27,4 +36,5 @@ export default {
     requestGet,
     downloadFile,
   },
+  path: Path,
 };

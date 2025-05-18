@@ -9,7 +9,7 @@
 
 import os from "node:os";
 import { DEBUG_BUILD_TYPE, RELEASE_BUILD_TYPE } from "@/core/Types";
-import { getSizeofVoidp } from "@/core/GetSizeofVoidp";
+import { Host } from "@/utils/Host";
 
 export default {
   SYSTEM_NAME: {
@@ -216,7 +216,7 @@ export default {
   },
   EXECUTABLE_SUFFIX: {
     description: "Suffix used for executable files",
-    value: "",
+    value: Host.executableSuffix,
   },
   EXE_LINKER_FLAGS: {
     description: "Flags passed to the linker when creating executables",
@@ -233,10 +233,15 @@ export default {
   SIZEOF_VOID_P: {
     description: "Defines the size (in bytes) of a void pointer on the target architecture",
     type: [ 4, 8 ],
-    value: getSizeofVoidp(),
+    value: Host.sizeofVoidp,
   },
   MAKE_PLUGIN_LIST: {
     description: "List of paths to plugins",
     value: [],
+  },
+  HOST_EXECUTABLE_SUFFIX: {
+    description: "Defines the file extension for executables on the host system",
+    value: Host.executableSuffix,
+    // Readonly
   },
 };

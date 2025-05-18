@@ -15,7 +15,6 @@ import { InterfaceTarget } from "@/core/InterfaceTarget";
 import { InterfaceScript } from "@/core/InterfaceScript";
 import { InstallEntity } from "@/core/InstallEntity";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget } from "@/core/Target";
-import { IncludeDirectory } from "@/core/IncludeDirectory";
 import { CustomScript } from "@/core/CustomScript";
 import { GlobalContext } from "@/core/GlobalContext";
 import { ScopeHelper } from "@/core/Scope";
@@ -104,9 +103,8 @@ const methods = {
   
   addIncludeDirectories(this: IMakeContext, ...dirs: any[]) {
     const sourceDir = this[SCOPE].SOURCE_DIR;
-    for (const iter of dirs.flat(1)) {
-      this[SCOPE].INCLUDES.push(IncludeDirectory.create(iter, sourceDir));
-    }
+    for (const iter of dirs.flat())
+      this[SCOPE].INCLUDES.push(sourceDir.resolve(iter));
   },
   
   addSubdirectory(this: IMakeContext, sourceDir: any, binaryDir: any) {
@@ -114,10 +112,10 @@ const methods = {
   
     const SOURCE_DIR = path.isAbsolute(sourceDir) ? AbsolutePath.create(sourceDir) : this[SCOPE].SOURCE_DIR.join(sourceDir);
     const BINARY_DIR = path.isAbsolute(binaryDir) ? AbsolutePath.create(binaryDir) : this[SCOPE].BINARY_DIR.join(binaryDir);
-  
+
     const newScope = ScopeHelper.clone({}, this[SCOPE]);
     ScopeHelper.applyVariables(newScope, this);
-  
+
     const resolvePath = this[GLOBAL].resolveSubdirectory(SOURCE_DIR);
     if (!resolvePath) {
       logger.info(`Source dir "${SOURCE_DIR}" was disabled`);
@@ -133,12 +131,9 @@ const methods = {
   addCustomScript(this: IMakeContext, script: any, params: any): CustomScript {
     const newScope = ScopeHelper.clone({}, this[SCOPE]);
     ScopeHelper.applyVariables(newScope, this);
+    for (const [key, val] of Object.entries(params))
+      newScope[key] = val;
     return this[GLOBAL].addCustomScript(newScope, script, params);
-  },
-  
-  target(this: IMakeContext, name: string): InterfaceTarget {
-    const utarget = this[GLOBAL].getUknownTarget(name);
-    return InterfaceTarget.create(this[SCOPE], utarget);
   },
   
   script(this: IMakeContext, name: string): InterfaceScript {
@@ -149,7 +144,7 @@ const methods = {
     }
     return script;
   },
-  
+
   install(this: IMakeContext, value: any, params: any): void {
     for (const it of [ value ].flat(1)) {
       const iter = (it instanceof BaseTarget) ? this.target(it.NAME) : it;
@@ -157,37 +152,25 @@ const methods = {
       this[GLOBAL].addInstallEntry(entity);
     }
   },
-  
+
   addStaticLibrary(this: IMakeContext, name: any, ...sources: any[]): StaticLibrary {
-    const target = StaticLibrary.create(this[SCOPE], name);
-    target.addSources(...sources);
-  
-    this[GLOBAL].TARGETS.set(name, target);
-    return target;
+    return this[GLOBAL].addStaticLibrary(this[SCOPE], name, ...sources);
   },
 
   addObjectLibrary(this: IMakeContext, name: any, ...sources: any[]): ObjectLibrary {
-    const target = ObjectLibrary.create(this[SCOPE], name);
-    target.addSources(...sources);
-  
-    this[GLOBAL].TARGETS.set(name, target);
-    return target;
+    return this[GLOBAL].addObjectLibrary(this[SCOPE], name, ...sources);
   },
 
   addSharedLibrary(this: IMakeContext, name: any, ...sources: any[]): SharedLibrary {
-    const target = SharedLibrary.create(this[SCOPE], name);
-    target.addSources(...sources);
-
-    this[GLOBAL].TARGETS.set(name, target);
-    return target;
+    return this[GLOBAL].addSharedLibrary(this[SCOPE], name, ...sources);
   },
 
   addExecutable(this: IMakeContext, name: string, ...sources: any[]): Executable {
-    const target = Executable.create(this[SCOPE], name);
-    target.addSources(...sources);
-  
-    this[GLOBAL].TARGETS.set(name, target);
-    return target;
+    return this[GLOBAL].addExecutable(this[SCOPE], name, ...sources);
+  },
+
+  target(this: IMakeContext, name: string): InterfaceTarget {
+    return this[GLOBAL].getTarget(this[SCOPE], name);
   },
 
   executeScript(this: IMakeContext, script: any, options: any) {

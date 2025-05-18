@@ -10,121 +10,49 @@
 import { ensureString } from "@/utils/StrictType";
 import { SourceFile } from "@/core/SourceFile";
 import { SourceFileList } from "@/core/SourceFileList";
-import { IncludeDirectory } from "@/core/IncludeDirectory";
 import { InterfaceTarget } from "@/core/InterfaceTarget";
-import { InterfaceIncludes } from "@/core/InterfaceIncludes";
 import { InterfaceObjects } from "@/core/InterfaceObjects";
-import { AbsolutePath } from "@/core/Path";
-import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
+import { AbsolutePath, FilePath } from "@/core/Path";
 import { ScopeHelper } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
-import { normalizeDefinitions } from "@/core/DefinitionHelper";
+import { TargetStruct, TargetType, LiveString } from "@/core/TargetStruct";
 
-const NAME                = Symbol("NAME");
+const IMPL                = Symbol("IMPL");
 const TARGET_SCOPE        = Symbol("TARGET_SCOPE");
-const OUTPUT_NAME         = Symbol("OUTPUT_NAME");
-const COMPILE_OPTIONS     = Symbol("COMPILE_OPTIONS");
-const PREFIX              = Symbol("PREFIX");
-const SUFFIX              = Symbol("SUFFIX");
-const LINK_OPTIONS        = Symbol("LINK_OPTIONS");
-const INCLUDES            = Symbol("INCLUDES");
-const DEFINES             = Symbol("DEFINES");
-const SOURCES             = Symbol("SOURCES");
 const LIBRARIES           = Symbol("LIBRARIES");
 const POSITION_INDEPENDENT_CODE = Symbol("POSITION_INDEPENDENT_CODE");
 
-function ensureTargetName(name: string): string {
-  if (typeof name !== "string")
-    throw new Error(`Target "${name}" is not string type`);
-  if ([ ALL_TARGET, INSTALL_TARGET ].includes(name))
-    throw new Error(`Target "${name}" is reserved name`);
-  return name;
-}
-
-interface IncludeEntry {
-  VALUE: InterfaceIncludes | IncludeDirectory | string;
-  PUBLIC_ONLY?: boolean;
-};
-
 export class BaseTarget {
-  private [NAME]: string;
+  private [IMPL]: TargetStruct;
   private [TARGET_SCOPE]: SystemScope;
-  private [OUTPUT_NAME]: string;
-  private [PREFIX]: string;
-  private [SUFFIX]: string
-  private [COMPILE_OPTIONS]: any[];
-  private [LINK_OPTIONS]: any[];
-  private [SOURCES]: any[];
   private [LIBRARIES]: any[];
-  private [INCLUDES]: IncludeEntry[];
-  private [DEFINES]: any[];
   private [POSITION_INDEPENDENT_CODE]: boolean;
 
-  protected constructor(scope: SystemScope, name: string) {
-    this[NAME] = ensureTargetName(name);
+  protected constructor(impl: TargetStruct, scope: SystemScope, prefix: string, suffix: string) {
+    this[IMPL] = impl;
+
+    const targetFile = impl.targetFile;
+    targetFile.fileDir = scope.BINARY_DIR;
+    if (targetFile.prefix === undefined)
+      targetFile.prefix = prefix;
+    if (targetFile.outputName === undefined)
+      targetFile.outputName = impl.name;
+    if (targetFile.suffix === undefined)
+      targetFile.suffix = suffix;
+
+    this[IMPL].addIncludes("initialize", false, scope.SOURCE_DIR, ...scope.INCLUDES);
+
     this[TARGET_SCOPE] = ScopeHelper.clone({}, scope);
-    this[OUTPUT_NAME] = ensureString(name);
-    this[PREFIX] = "";
-    this[SUFFIX] = "";
-    this[COMPILE_OPTIONS] = [];
-    this[LINK_OPTIONS] = [];
-    this[SOURCES] = [];
     this[LIBRARIES] = [];
-    this[INCLUDES] = scope.INCLUDES.map((VALUE: any) => ({ VALUE }));
-    this[DEFINES] = [];
     this[POSITION_INDEPENDENT_CODE] = scope.POSITION_INDEPENDENT_CODE;
   }
 
   public get NAME() {
-    return this[NAME];
+    return this[IMPL].name;
   }
 
   public get TARGET_SCOPE() {
     return this[TARGET_SCOPE];
-  }
-
-  public get OUTPUT_NAME() {
-    return this[OUTPUT_NAME];
-  }
-
-  public set OUTPUT_NAME(value: string) {
-    this[OUTPUT_NAME] = ensureString(value);
-  }
-
-  public get COMPILE_OPTIONS(): string[] {
-    return this[COMPILE_OPTIONS];
-  }
-
-  public get PREFIX() {
-    return this[PREFIX];
-  }
-
-  public set PREFIX(value: string) {
-    this[PREFIX] = ensureString(value);
-  }
-
-  public get SUFFIX() {
-    return this[SUFFIX];
-  }
-
-  public set SUFFIX(value: string) {
-    this[SUFFIX] = ensureString(value);
-  }
-
-  public get LINK_OPTIONS(): string[] {
-    return this[LINK_OPTIONS];
-  }
-
-  public get INCLUDES() {
-    return this[INCLUDES];
-  }
-
-  public get DEFINES(): string[] {
-    return this[DEFINES];
-  }
-
-  public get SOURCES(): string[] {
-    return this[SOURCES];
   }
 
   public get LIBRARIES(): string[] {
@@ -132,52 +60,45 @@ export class BaseTarget {
   }
 
   public get FILE_DIR(): AbsolutePath {
-    return this[TARGET_SCOPE].BINARY_DIR;
+    if (!this[IMPL].targetFile.fileDir)
+      throw new Error(`Target "${this.NAME}" is not defined`);
+    return this[IMPL].targetFile.fileDir;
   }
 
   public get FILE_NAME(): string {
-    return this.PREFIX + this.OUTPUT_NAME + this.SUFFIX;
+    if (!this[IMPL].targetFile.fileName)
+      throw new Error(`Target "${this.NAME}" is not defined`);
+    return this[IMPL].targetFile.fileName;
   }
 
   public get FILE(): AbsolutePath {
-    return this.FILE_DIR.join(this.FILE_NAME);
+    if (!this[IMPL].targetFile.file)
+      throw new Error(`Target "${this.NAME}" is not defined`);
+    return this[IMPL].targetFile.file;
   }
 
   public get POSITION_INDEPENDENT_CODE(): boolean {
     return this[POSITION_INDEPENDENT_CODE];
   }
 
+  public get IMPL(): TargetStruct {
+    return this[IMPL];
+  }
+
   public addSources(...sources: Array<InterfaceObjects | SourceFile | AbsolutePath | string>) {
-    for (let it of sources.flat(1)) {
+    for (let it of sources.flat()) {
       if (it instanceof InterfaceObjects || it instanceof SourceFile)
         {}
       else if (typeof it === "string" || AbsolutePath.isAbsolute(it))
         it = SourceFile.create(this[TARGET_SCOPE], it);
       else
         throw new Error(`Not support instance ${it}`);
-  
-      if (it instanceof SourceFile && it.LANGUAGE) {
-        const rfile1 = this[TARGET_SCOPE].BINARY_DIR.relative(it.FILE);
-        const rfile2 = this[TARGET_SCOPE].SOURCE_DIR.relative(it.FILE);
-        const rfile = (rfile2.length < rfile1.length ? rfile2 : rfile1).replace("../", "__/");
-        it.OBJECT_FILE = this[TARGET_SCOPE].BINARY_DIR.join("MakeFiles", this[NAME] + ".dir",  rfile + ".obj");
-      }
-  
-      this[SOURCES].push(it);
+      this[IMPL].addSource("directly", false, it);
     }
   }
 
-  public addIncludes(...includes: Array<InterfaceIncludes | AbsolutePath | string>) {
-    for (const it of includes.flat(1)) {
-      let VALUE;
-      if (it instanceof InterfaceIncludes)
-        VALUE = it;
-      else if (typeof it === "string" || AbsolutePath.isAbsolute(it))
-        VALUE = IncludeDirectory.create(it, this[TARGET_SCOPE].SOURCE_DIR);
-      else
-        throw new Error(`Not support instance ${it}`);
-      this[INCLUDES].push({VALUE}); // IncludeDirectory[]
-    }
+  public addIncludes(...includes: any) {
+    this[IMPL].addIncludes("directly", false, this[TARGET_SCOPE].SOURCE_DIR, ...includes);
   }
 
   public addLibraries(...libraries: any) {
@@ -186,23 +107,20 @@ export class BaseTarget {
     }
   }
 
-  public addCompileOptions(...options: string[]) {
-    for (const it of options.flat(1)) {
-      this[COMPILE_OPTIONS].push({ VALUE: it });
-    }
+  public addCompileOptions(...options: Array<string|string[]>) {
+    this[IMPL].addCompileOptions("directly", false, ...options);
   }
 
-  public addLinkOptions(...options: string[]) {
-    for (const it of options.flat(1)) {
-      this[LINK_OPTIONS].push({ VALUE: it });
-    }
+  public addLinkOptions(...options: Array<string|string[]>) {
+    this[IMPL].addLinkOptions("directly", false, ...options);
   }
 
   public getSourceFiles(...sources: any[]): SourceFileList {
     const result = [];
-    for (const it of sources.flat(1)) {
+    const sourceFiles = this[IMPL].getSourceFiles();
+    for (const it of sources.flat()) {
       const filename = this[TARGET_SCOPE].SOURCE_DIR.resolve(it).toString();
-      const src = this[SOURCES].find(i => i instanceof SourceFile && i.FILE.toString() === filename);
+      const src = sourceFiles.find(i => i.FILE.toString() === filename);
       if (!src)
         throw new Error(`Cannot find "${it}"`);
       result.push(src);
@@ -211,71 +129,64 @@ export class BaseTarget {
     if (result.length)
       return SourceFileList.create(this[TARGET_SCOPE], result);
   
-    return SourceFileList.create(this[TARGET_SCOPE], this[SOURCES].filter(i => i instanceof SourceFile));
+    return SourceFileList.create(this[TARGET_SCOPE], sourceFiles);
   }
 
-  public setPrefix(prefix: string) {
-    this[PREFIX] = prefix;
+  public setPrefix(prefix: any) {
+    this[IMPL].targetFile.prefix = ensureString(prefix);
   }
-  
-  public setSuffix(suffix: string) {
-    this[SUFFIX] = suffix;
+
+  public setSuffix(suffix: any) {
+    this[IMPL].targetFile.suffix = ensureString(suffix);
   }
-  
-  public setOutputName(outputName: string) {
-    this[OUTPUT_NAME] = outputName;
+
+  public setOutputName(outputName: any) {
+    this[IMPL].targetFile.outputName = ensureString(outputName);
   }
-  
+
   public addDefinitions(...definitions: any[]) {
-    for (const VALUE of normalizeDefinitions(...definitions))
-      this[DEFINES].push({ VALUE });
+    this[IMPL].addDefinitions("directly", false, ...definitions);
+  }
+
+  public addPreBuild(command: any, args: any[]) {
+    this[IMPL].addPreBuild(command, args);
+  }
+
+  public addPostBuild(command: any, args: any[]) {
+    this[IMPL].addPostBuild(command, args);
+  }
+
+  public get targetFile(): LiveString {
+    const targetFile = this[IMPL].targetFile;
+    return LiveString.create(() => FilePath.create(targetFile.file).toString());
   }
 
   public toJSON(): object {
     return {
       NAME: this.NAME,
       TARGET_SCOPE: this.TARGET_SCOPE,
-      OUTPUT_NAME: this.OUTPUT_NAME,
-      COMPILE_OPTIONS: this.COMPILE_OPTIONS,
-      PREFIX: this.PREFIX,
-      SUFFIX: this.SUFFIX,
-      LINK_OPTIONS: this.LINK_OPTIONS,
-      INCLUDES: this.INCLUDES,
-      DEFINES: this.DEFINES,
-      SOURCES: this.SOURCES,
       LIBRARIES: this.LIBRARIES,
       FILE_DIR: this.FILE_DIR,
-      FILE_NAME: this.FILE_NAME,
       FILE: this.FILE,
     }
   }
 };
 
 export class BaseLibrary extends BaseTarget {
-  protected constructor(scope: SystemScope, name: string) {
-    super(scope, name);
+  protected constructor(impl: TargetStruct, scope: SystemScope, prefix: string, suffix: string) {
+    super(impl, scope, prefix, suffix);
   }
 
   public setPositionIndependentCode(value: boolean) {
     this[POSITION_INDEPENDENT_CODE] = value;
   }
 
-  public addPublicIncludes(...includes: Array<InterfaceIncludes | AbsolutePath | string>) {
-    for (const it of includes.flat(1)) {
-      let VALUE;
-      if (it instanceof InterfaceIncludes)
-        VALUE = it;
-      else if (typeof it === "string" || AbsolutePath.isAbsolute(it))
-        VALUE = IncludeDirectory.create(it, this[TARGET_SCOPE].SOURCE_DIR);
-      else
-        throw new Error(`Not support instance ${it}`);
-      this[INCLUDES].push({VALUE, PUBLIC_ONLY: true}); // IncludeDirectory[]
-    }
+  public addPublicIncludes(...includes: any[]) {
+    this[IMPL].addIncludes("directly", true, this[TARGET_SCOPE].SOURCE_DIR, ...includes);
   }
 
-  public addPublicDefinitions(...definitions: string[]) {
-    for (const VALUE of definitions.flat(1))
-      this[DEFINES].push({ VALUE, PUBLIC_ONLY: true });
+  public addPublicDefinitions(...definitions: any) {
+    this[IMPL].addDefinitions("directly", true, ...definitions);
   }
 
   public addPublicLibraries(...libraries: any[]) {
@@ -284,66 +195,59 @@ export class BaseLibrary extends BaseTarget {
     }
   }
 
-  public addPublicCompileOptions(...options: string[]) {
-    for (const it of options.flat(1)) {
-      this[COMPILE_OPTIONS].push({ VALUE: it, PUBLIC_ONLY: true });
-    }
+  public addPublicCompileOptions(...options: Array<string|string[]>) {
+    this[IMPL].addCompileOptions("directly", true, ...options);
   }
 
-  public addPublicLinkOptions(...options: any[]) {
-    for (const it of options.flat(1)) {
-      this[LINK_OPTIONS].push({ VALUE: it, PUBLIC_ONLY: true });
-    }
+  public addPublicLinkOptions(...options: Array<string|string[]>) {
+    this[IMPL].addLinkOptions("directly", true, ...options);
   }
 };
 
 export class ObjectLibrary extends BaseLibrary {
-  private constructor(scope: SystemScope, name: string) {
-    super(scope, name);
-    this.PREFIX = scope.OBJECT_LIBRARY_PREFIX;
-    this.SUFFIX = scope.OBJECT_LIBRARY_SUFFIX;
-    this.LINK_OPTIONS.push(...(scope as any).OBJECT_LINKER_FLAGS.map((VALUE: any) => ({ VALUE })));
+  private constructor(impl: TargetStruct, scope: SystemScope) {
+    super(impl, scope, scope.OBJECT_LIBRARY_PREFIX, scope.OBJECT_LIBRARY_SUFFIX);
+    this[IMPL].type = TargetType.ObjectLibrary;
+    this[IMPL].addLinkOptions("initialize", true, ...scope.OBJECT_LINKER_FLAGS);
   }
 
-  public static create(scope: SystemScope, name: string) {
-    return Object.seal(new ObjectLibrary(scope, name));
+  public static create(impl: TargetStruct, scope: SystemScope) {
+    return Object.seal(new ObjectLibrary(impl, scope));
   }
 };
 
 export class StaticLibrary extends BaseLibrary {
-  private constructor(scope: SystemScope, name: string) {
-    super(scope, name);
-    this.PREFIX = scope.STATIC_LIBRARY_PREFIX;
-    this.SUFFIX = scope.STATIC_LIBRARY_SUFFIX;
-    this.LINK_OPTIONS.push(...(scope as any).STATIC_LINKER_FLAGS.map((VALUE: any) => ({ VALUE })));
+  private constructor(impl: TargetStruct, scope: SystemScope) {
+    super(impl, scope, scope.STATIC_LIBRARY_PREFIX, scope.STATIC_LIBRARY_SUFFIX);
+    this[IMPL].type = TargetType.StaticLibrary;
+    this[IMPL].addLinkOptions("initialize", true, ...scope.STATIC_LINKER_FLAGS);
   }
 
-  public static create(scope: any, name: string) {
-    return Object.seal(new StaticLibrary(scope, name));
+  public static create(impl: TargetStruct, scope: SystemScope) {
+    return Object.seal(new StaticLibrary(impl, scope));
   }
 };
 
 export class SharedLibrary extends BaseLibrary {
-  private constructor(scope: SystemScope, name: string) {
-    super(scope, name);
-    this.PREFIX = scope.SHARED_LIBRARY_PREFIX;
-    this.SUFFIX = scope.SHARED_LIBRARY_SUFFIX;
-    this.LINK_OPTIONS.push(...(scope as any).SHARED_LINKER_FLAGS.map((VALUE: any) => ({ VALUE })));
+  private constructor(impl: TargetStruct, scope: SystemScope) {
+    super(impl, scope, scope.SHARED_LIBRARY_PREFIX, scope.SHARED_LIBRARY_SUFFIX);
+    this[IMPL].type = TargetType.SharedLibrary;
+    this[IMPL].addLinkOptions("initialize", true, ...scope.SHARED_LINKER_FLAGS);
   }
 
-  public static create(scope: any, name: string) {
-    return Object.seal(new SharedLibrary(scope, name));
+  public static create(impl: TargetStruct, scope: SystemScope) {
+    return Object.seal(new SharedLibrary(impl, scope));
   }
 }
 
 export class Executable extends BaseTarget {
-  private constructor(scope: SystemScope, name: string) {
-    super(scope, name);
-    this.SUFFIX = scope.EXECUTABLE_SUFFIX;
-    this.LINK_OPTIONS.push(...(scope as any).EXE_LINKER_FLAGS.map((VALUE: any) => ({ VALUE })));
+  private constructor(impl: TargetStruct, scope: SystemScope) {
+    super(impl, scope, "", scope.EXECUTABLE_SUFFIX);
+    this[IMPL].type = TargetType.Executable;
+    this[IMPL].addLinkOptions("initialize", true, ...scope.EXE_LINKER_FLAGS);
   }
 
-  public static create(scope: SystemScope, name: string) {
-    return Object.seal(new Executable(scope, name));
+  public static create(impl: TargetStruct, scope: SystemScope) {
+    return Object.seal(new Executable(impl, scope));
   }
 };

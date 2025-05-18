@@ -8,12 +8,11 @@
  */
 
 import fs from "node:fs";
-import path from "node:path";
 
+import { Path } from "@/utils/Path";
 import { PluginContext } from "@/core/PluginContext";
 import { GlobalContext } from "@/core/GlobalContext";
 import { ScopeHelper } from "@/core/Scope";
-import { GoalCollection } from "@/core/GoalCollection";
 import { ToolchainContext } from "@/core/ToolchainContext";
 import { getPathString }  from "@/utils/FileSystem";
 import { DirPath, FilePath } from "@/core/Path";
@@ -23,6 +22,9 @@ import SystemVariables from "@/core/SystemVariables";
 import { SystemScope } from "@/core/SystemScope";
 import { SettingsStorage } from "@/utils/SettingsStorage";
 import { INSTALL_TARGET, PACKAGE_JSON, MAKE_CACHE } from "@/Constants";
+import { createLogger } from "@/logger";
+
+const logger = createLogger(import.meta.url);
 
 export async function bitmakeAction(config: any, environment: any, settings: SettingsStorage) {
   process.env = environment;
@@ -41,7 +43,7 @@ export async function bitmakeAction(config: any, environment: any, settings: Set
   scope.SOURCE_DIR = scope.PROJECT_SOURCE_DIR;
   scope.BINARY_DIR = scope.PROJECT_BINARY_DIR;
 
-  const packageJson = await fs.promises.readFile(scope.PACKAGE_FILE.toString(), 'utf8');
+  const packageJson = await fs.promises.readFile(scope.PACKAGE_FILE.toString(), "utf8");
   const pkg = JSON.parse(packageJson);
 
   scope.BUILD_TYPE = config.buildType;
@@ -57,7 +59,8 @@ export async function bitmakeAction(config: any, environment: any, settings: Set
 
   const global = GlobalContext.create();
   if (scope.TOOLCHAIN_FILE) {
-    const toolchain = await importModule(scope.TOOLCHAIN_FILE);
+    const toolchainUrl = Path.toFileURL(scope.TOOLCHAIN_FILE.toString());
+    const toolchain = await importModule(toolchainUrl);
     if (!toolchain.default)
       throw new Error("Toolchain module has no default export");
     const mk = ToolchainContext.create(scope, global);
@@ -77,13 +80,28 @@ export async function bitmakeAction(config: any, environment: any, settings: Set
     scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
 
     process.chdir(scope.SCRIPT_DIR.toString());
-    const module = await importModule(scope.SCRIPT_FILE.toString());
+    const pluginUrl = Path.toFileURL(scope.SCRIPT_FILE.toString());
+    const module = await importModule(pluginUrl);
+    
     if (!module.default)
-      throw new Error(`Plugin ${scope.SCRIPT_FILE.basename()} not contain default function`);
+      throw new Error(`Plugin ${scope.SCRIPT_FILE.basename()} not contain default export`);
+
     const mk = PluginContext.create(scope, global);
-    const result = module.default(mk);
+    if (typeof module.default !== "function")
+      throw new Error(`Plugin ${scope.SCRIPT_FILE.basename()} export has no function or class`);
+    let result: any;
+    if (/^class\s/.test(Function.prototype.toString.call(module.default))) {
+      if (typeof module.default.prototype.apply !== "function")
+        throw new Error(`Plugin class of ${scope.SCRIPT_FILE.basename()} has no apply method`);
+      result = (new module.default).apply(mk);
+    }
+    else {
+      result = module.default(mk);
+    }
+
     if (result instanceof Promise)
       await result;
+
     ScopeHelper.applyVariables(scope, mk);
 
     process.chdir(cwdSave);
@@ -92,12 +110,12 @@ export async function bitmakeAction(config: any, environment: any, settings: Set
   global.addSubdirectory(scope);
 
   await global.doSubdirectory();
-  console.info("Configuring done");
+  logger.info("Configuring done");
 
   if (scope.GLOBAL_CONTEXT_JSON) {
     const filename = scope.GLOBAL_CONTEXT_JSON.toString();
     const content = JSON.stringify(global, null, 2);
-    await fs.promises.mkdir(path.dirname(filename), { recursive: true });
+    await fs.promises.mkdir(Path.dirname(filename), { recursive: true });
     await fs.promises.writeFile(filename, content, { encoding: "utf8" });
   }
 
@@ -107,9 +125,15 @@ export async function bitmakeAction(config: any, environment: any, settings: Set
   if (scope.TARGET_GOALS_JSON) {
     const filename = scope.TARGET_GOALS_JSON.toString();
     const content = JSON.stringify(goalList, null, 2);
-    await fs.promises.mkdir(path.dirname(filename), { recursive: true });
+    await fs.promises.mkdir(Path.dirname(filename), { recursive: true });
     await fs.promises.writeFile(filename, content, { encoding: "utf8" });
   }
 
-  await GoalCollection.buildGoals(goalList);
+  let loaded = 0;
+  const total = goalList.length;
+  for (const goal of goalList) {
+    goal.updateProgress({ loaded, total });
+    await goal.doWork();
+    loaded++;
+  }
 }

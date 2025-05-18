@@ -10,21 +10,21 @@
 import { AbsolutePath } from "@/core/Path";
 import { InterfaceIncludes } from "@/core/InterfaceIncludes";
 import { InterfaceObjects } from "@/core/InterfaceObjects";
-import { IncludeDirectory } from "@/core/IncludeDirectory";
 import { SourceFile } from "@/core/SourceFile";
 import { SystemScope } from "@/core/SystemScope";
+import { TargetStruct } from "@/core/TargetStruct";
 import { ScopeHelper } from "@/core/Scope";
 
-const UNKNOWN_TARGET = Symbol("UNKNOWN_TARGET");
+const IMPL = Symbol("IMPL");
 const SCOPE = Symbol("SCOPE");
 
 export class InterfaceTarget {
   private [SCOPE]: SystemScope;
-  private [UNKNOWN_TARGET]: any;
+  private [IMPL]: TargetStruct;
 
-  private constructor(scope: any, utarget: any) {
+  private constructor(scope: SystemScope, impl: TargetStruct) {
     this[SCOPE] = ScopeHelper.clone({}, scope);
-    this[UNKNOWN_TARGET] = utarget;
+    this[IMPL] = impl;
   }
 
   public static create(scope: any, utarget: any) {
@@ -38,7 +38,7 @@ export class InterfaceTarget {
   }
 
   public get targetName(): string {
-    return this[UNKNOWN_TARGET].NAME;
+    return this[IMPL].name;
   }
 
   public get includes(): InterfaceIncludes {
@@ -65,67 +65,39 @@ export class InterfaceTarget {
         it = SourceFile.create(this[SCOPE], it);
       else
         throw new Error(`Not support instance ${it}`);
-      this[UNKNOWN_TARGET].SOURCES.push(it);
+        this[IMPL].addSource("indirectly", false, it);
     }
   }
 
-  public addIncludes(...includes: Array<InterfaceIncludes|AbsolutePath|string>): void {
-    for (const it of includes.flat(1)) {
-      let VALUE;
-      if (it instanceof InterfaceIncludes)
-        VALUE = it;
-      else if (typeof it === "string" || AbsolutePath.isAbsolute(it))
-        VALUE = IncludeDirectory.create(it, this[SCOPE].SOURCE_DIR);
-      else
-        throw new Error(`Not support instance ${it}`);
-      this[UNKNOWN_TARGET].INCLUDES.push({ VALUE, PUBLIC_ONLY: false });
-    }
+  public addIncludes(...includes: any): void {
+    this[IMPL].addIncludes("indirectly", false, this[SCOPE].SOURCE_DIR, ...includes);
   }
 
   public addPublicIncludes(...includes: Array<InterfaceIncludes|AbsolutePath|string>): void {
-    for (const it of includes.flat(1)) {
-      let VALUE;
-      if (it instanceof InterfaceIncludes)
-        VALUE = it;
-      else if (typeof it === "string" || AbsolutePath.isAbsolute(it))
-        VALUE = IncludeDirectory.create(it, this[SCOPE].SOURCE_DIR);
-      else
-        throw new Error(`Not support instance ${it}`);
-      this[UNKNOWN_TARGET].INCLUDES.push({ VALUE, PUBLIC_ONLY: true });
-    }
+    this[IMPL].addIncludes("indirectly", true, this[SCOPE].SOURCE_DIR, ...includes);
   }
 
-  public addDefinitions(...definitions: string[]): void {
-    for (const VALUE of definitions.flat(1))
-      this[UNKNOWN_TARGET].DEFINES.push({ VALUE });
+  public addDefinitions(...definitions: any): void {
+    this[IMPL].addDefinitions("indirectly", false, ...definitions);
   }
 
-  public addPublicDefinitions(...definitions: string[]): void {
-    for (const VALUE of definitions.flat(1))
-      this[UNKNOWN_TARGET].DEFINES.push({ VALUE, PUBLIC_ONLY: true });
+  public addPublicDefinitions(...definitions: any): void {
+    this[IMPL].addDefinitions("indirectly", true, ...definitions);
   }
 
-  public addCompileOptions(...options: string[]): void {
-    for (const it of options.flat(1)) {
-      this[UNKNOWN_TARGET].COMPILE_OPTIONS.push({ VALUE: it });
-    }
-  }
-
-  public addLinkOptions(...options: string[]): void {
-    for (const it of options.flat(1)) {
-      this[UNKNOWN_TARGET].LINK_OPTIONS.push({ VALUE: it });
-    }
+  public addCompileOptions(...options: Array<string|string[]>): void {
+    this[IMPL].addCompileOptions("indirectly", false, ...options);
   }
 
   public addPublicCompileOptions(...options: string[]): void {
-    for (const it of options.flat(1)) {
-      this[UNKNOWN_TARGET].COMPILE_OPTIONS.push({ VALUE: it, PUBLIC_ONLY: true });
-    }
+    this[IMPL].addCompileOptions("indirectly", true, ...options);
+  }
+
+  public addLinkOptions(...options: Array<string|string[]>): void {
+    this[IMPL].addLinkOptions("indirectly", false, ...options);
   }
 
   public addPublicLinkOptions(...options: string[]): void {
-    for (const it of options.flat(1)) {
-      this[UNKNOWN_TARGET].LINK_OPTIONS.push({ VALUE: it, PUBLIC_ONLY: true });
-    }
+    this[IMPL].addLinkOptions("indirectly", true, ...options);
   }
 };

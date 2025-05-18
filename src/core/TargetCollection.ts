@@ -7,23 +7,40 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { IncludeDirectory } from "@/core/IncludeDirectory";
 import { InterfaceIncludes }from "@/core/InterfaceIncludes";
 import { InterfaceTarget } from "@/core/InterfaceTarget";
+import { TargetStruct } from "@/core/TargetStruct";
+import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
+import { BaseTarget } from "./Target";
+import { DirPath } from "./Path";
 
 const ENTRIES = Symbol("ENTRIES");
 
-function getHeaders(target: any) {
-  return target.SOURCES.filter((i: any) => i.HEADER_FILE_ONLY);
-}
+export class TargetStructCollection {
+  private [ENTRIES] = new Map<string, TargetStruct>;
 
-function getIncludes(target: any) {
-  return target.INCLUDES.map((i: any) => i.VALUE);
-}
+  constructor() {
+  }
 
-function getPublicIncludes(target: any) {
-  return target.INCLUDES.filter((i: any) => i.PUBLIC_ONLY).map((i: any) => i.VALUE);
-}
+  get(name: string): TargetStruct {
+    if (typeof name !== "string")
+      throw new Error(`Target "${name}" is not string type`);
+    if ([ ALL_TARGET, INSTALL_TARGET ].includes(name))
+      throw new Error(`Target "${name}" is reserved name`);
+    let result: TargetStruct | undefined = this[ENTRIES].get(name);
+    if (!result) {
+      result = new TargetStruct(name);
+      this[ENTRIES].set(name, result);
+    }
+    return result;
+  }
+
+  public toJSON(): object {
+    const result: any = {};
+    this[ENTRIES].forEach((v, k) => void (result[k] = v));
+    return result;
+  }
+};
 
 function getLibraries(target: any) {
   return target.LIBRARIES.map((i: any) => i.VALUE);
@@ -33,32 +50,8 @@ function getPublicLibraries(target: any) {
   return target.LIBRARIES.filter((i: any) => i.PUBLIC_ONLY).map((i: any) => i.VALUE);
 }
 
-function getDefinitions(target: any) {
-  return target.DEFINES.map((i: any) => i.VALUE);
-}
-
-function getPublicDefinitions(target: any) {
-  return target.DEFINES.filter((i: any) => i.PUBLIC_ONLY).map((i: any) => i.VALUE);
-}
-
-function getCompileOptions(target: any) {
-  return target.COMPILE_OPTIONS.map((i: any) => i.VALUE);
-}
-
-function getPublicCompileOptions(target: any) {
-  return target.COMPILE_OPTIONS.filter((i: any) => i.PUBLIC_ONLY).map((i: any) => i.VALUE);
-}
-
-function getLinkOptions(target: any) {
-  return target.LINK_OPTIONS.map((i: any) => i.VALUE);
-}
-
-function getPublicLinkOptions(target: any) {
-  return target.LINK_OPTIONS.filter((i: any) => i.PUBLIC_ONLY).map((i: any) => i.VALUE);
-}
-
 export class TargetCollection {
-  private [ENTRIES]: any;
+  private [ENTRIES]: { [name: string]: BaseTarget };
 
   private constructor() {
     this[ENTRIES] = {};
@@ -76,7 +69,7 @@ export class TargetCollection {
     return this[ENTRIES];
   }
 
-  public get(name: string): any {
+  public get(name: string): BaseTarget {
     return this[ENTRIES][name];
   }
 
@@ -92,11 +85,11 @@ export class TargetCollection {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
           const target = this.get(iter.targetName);
-          this.__getAllIncludes(includes, targetSet, getPublicIncludes(target));
+          this.__getAllIncludes(includes, targetSet, target.IMPL.getPublicIncludes());
           this.__getAllIncludes(includes, targetSet, getPublicLibraries(target));
         }
       }
-      else if (iter instanceof IncludeDirectory) {
+      else if (iter instanceof DirPath) {
         if (!includes.includes(iter.toString()))
           includes.push(iter.toString());
       }
@@ -107,10 +100,10 @@ export class TargetCollection {
   }
 
   public allIncludesOf(params: any): string[] {
-    const target = (typeof params === "string") ? this.get(params) : params;
+    const target = ((typeof params === "string") ? this.get(params) : params) as BaseTarget;
     const includes: string[] = [];
     const targetSet = new Set([ target.NAME ]);
-    this.__getAllIncludes(includes, targetSet, getIncludes(target));
+    this.__getAllIncludes(includes, targetSet, target.IMPL.getIncludes());
     this.__getAllIncludes(includes, targetSet, getLibraries(target));
     return includes;
   }
@@ -121,11 +114,11 @@ export class TargetCollection {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
           const target = this.get(iter.targetName);
-          for (const header of getHeaders(target).map((i: any) => i.FILE.toString())) {
+          for (const header of target.IMPL.getHeaders().map((i: any) => i.FILE.toString())) {
             if (!headers.includes(header.toString()))
               headers.push(header.toString());
           }
-          this.__getAllHeaders(headers, targetSet, getPublicIncludes(target));
+          this.__getAllHeaders(headers, targetSet, target.IMPL.getPublicIncludes());
           this.__getAllHeaders(headers, targetSet, getPublicLibraries(target));
         }
       }
@@ -133,10 +126,10 @@ export class TargetCollection {
   }
 
   public allHeadersOf(params: any) {
-    const target = (typeof params === "string") ? this.get(params) : params;
-    const headers = getHeaders(target).map((i: any) => i.FILE.toString());
+    const target = ((typeof params === "string") ? this.get(params) : params) as BaseTarget;
+    const headers = target.IMPL.getHeaders().map((i: any) => i.FILE.toString());
     const targetSet = new Set([ target.NAME ]);
-    this.__getAllHeaders(headers, targetSet, getIncludes(target));
+    this.__getAllHeaders(headers, targetSet, target.IMPL.getIncludes());
     this.__getAllHeaders(headers, targetSet, getLibraries(target));
     return headers;
   }
@@ -167,7 +160,7 @@ export class TargetCollection {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
           const target = this.get(iter.targetName);
-          this.__getAllDefinitions(definitions, targetSet, getPublicDefinitions(target));
+          this.__getAllDefinitions(definitions, targetSet, target.IMPL.getPublicDefinitions());
           this.__getAllDefinitions(definitions, targetSet, getPublicLibraries(target));
         }
       }
@@ -182,10 +175,10 @@ export class TargetCollection {
   }
 
   public allDefinitionsOf(params: any) {
-    const target = (typeof params === "string") ? this.get(params) : params;
+    const target = ((typeof params === "string") ? this.get(params) : params) as BaseTarget;
     const definitions: string[] = [];
     const targetSet = new Set([ target.NAME ]);
-    this.__getAllDefinitions(definitions, targetSet, getDefinitions(target));
+    this.__getAllDefinitions(definitions, targetSet, target.IMPL.getDefinitions());
     this.__getAllDefinitions(definitions, targetSet, getPublicLibraries(target));
     return definitions;
   }
@@ -196,7 +189,7 @@ export class TargetCollection {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
           const target = this.get(iter.targetName);
-          this.__getAllCompileOptions(options, targetSet, getPublicCompileOptions(target));
+          this.__getAllCompileOptions(options, targetSet, target.IMPL.getPublicCompileOptions());
           this.__getAllCompileOptions(options, targetSet, getPublicLibraries(target));
         }
       }
@@ -215,10 +208,10 @@ export class TargetCollection {
   }
 
   public allCompileOptionsOf(params: any) {
-    const target = (typeof params === "string") ? this.get(params) : params;
+    const target = ((typeof params === "string") ? this.get(params) : params) as BaseTarget;
     const options: string[] = [];
     const targetSet = new Set([ target.NAME ]);
-    this.__getAllCompileOptions(options, targetSet, getCompileOptions(target));
+    this.__getAllCompileOptions(options, targetSet, target.IMPL.getCompileOptions());
     this.__getAllCompileOptions(options, targetSet, getPublicLibraries(target));
     return options.flat();
   }
@@ -229,7 +222,7 @@ export class TargetCollection {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
           const target = this.get(iter.targetName);
-          this.__getLinkOptions(options, targetSet, getPublicLinkOptions(target));
+          this.__getLinkOptions(options, targetSet, target.IMPL.getPublicLinkOptions());
           this.__getLinkOptions(options, targetSet, getPublicLibraries(target));
         }
       }
@@ -248,10 +241,10 @@ export class TargetCollection {
   }
 
   public allLinkOptionsOf(params: any) {
-    const target = (typeof params === "string") ? this.get(params) : params;
+    const target = ((typeof params === "string") ? this.get(params) : params) as BaseTarget;
     const options: string[] = [];
     const targetSet = new Set([ target.NAME ]);
-    this.__getLinkOptions(options, targetSet, getLinkOptions(target));
+    this.__getLinkOptions(options, targetSet, target.IMPL.getLinkOptions());
     this.__getLinkOptions(options, targetSet, getPublicLibraries(target));
     return options.flat();
   }

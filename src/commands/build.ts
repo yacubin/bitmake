@@ -8,10 +8,9 @@
  */
 
 import fs from "node:fs";
-import path from "node:path";
-import url from "node:url";
 
-import cmake  from "@/cmake";
+import { CMakeProcess } from "@/cmake";
+import { Path } from "@/utils/Path";
 import { makePatch } from "@/utils/MakePatch";
 import { saveIfDifferent, directoryExists } from "@/utils/FileSystem";
 import { SettingsStorage } from "@/utils/SettingsStorage";
@@ -47,8 +46,9 @@ function mergeEnvironment(...args: any) {
       let delimiter;
       let joinAfter = true;
       switch (key) {
+      case "Path":
       case "PATH":
-        delimiter = path.delimiter;
+        delimiter = Path.delimiter;
         joinAfter = false;
         break;
       case "CFLAGS":
@@ -137,7 +137,7 @@ function resolveStringWithVariable(config: any, entryConfig: any, rootConfig: an
           try {
             const mainFile = requireResolve(name);
             if (mainFile) {
-              sel = { mainFile, mainDir: path.posix.dirname(mainFile), };
+              sel = { mainFile, mainDir: Path.dirname(mainFile), };
             }
           } catch(e) {}
         }
@@ -202,21 +202,21 @@ function makeBuildConfig(gconfig: IGeneralConfig, config: any) {
 
   rootConfig.buildType = rootConfig.buildType || gconfig.buildType;
   rootConfig.sourceRoot = rootConfig.sourceRoot || gconfig.workDir;
-  rootConfig.binaryRoot = rootConfig.binaryRoot || path.posix.resolve(gconfig.workDir, "build");
+  rootConfig.binaryRoot = rootConfig.binaryRoot || Path.join(gconfig.workDir, "build");
 
   for (const [key, entry] of Object.entries(rootConfig) as any) {
     if (entry && typeof entry === "object" && entry.action) {
       entry.buildType = entry.buildType || rootConfig.buildType;
-      const folder = key.replace(":", path.posix.sep);
-      const workDir = path.posix.join(rootConfig.binaryRoot, folder);
-      entry.tempDir = entry.tempDir || path.posix.join(workDir, "tmp");
+      const folder = key.replace(":", Path.sep);
+      const workDir = Path.join(rootConfig.binaryRoot, folder);
+      entry.tempDir = entry.tempDir || Path.join(workDir, "tmp");
       if (entry.sourceUrl) {
-        entry.archiveDir = entry.archiveDir || path.posix.join(workDir, "arc");
-        entry.extractDir = entry.extractDir || path.posix.join(workDir, "src");
+        entry.archiveDir = entry.archiveDir || Path.join(workDir, "arc");
+        entry.extractDir = entry.extractDir || Path.join(workDir, "src");
         if (!entry.sourceDir)
           entry.sourceDir = entry.extractDir;
-        else if (!path.isAbsolute(entry.sourceDir))
-          entry.sourceDir = path.posix.join(entry.extractDir, entry.sourceDir);
+        else if (!Path.isAbsolute(entry.sourceDir))
+          entry.sourceDir = Path.join(entry.extractDir, entry.sourceDir);
       }
       else if (!entry.sourceDir) {
         throw new Error(`Missing sourceDir for ${key} action"`);
@@ -224,7 +224,7 @@ function makeBuildConfig(gconfig: IGeneralConfig, config: any) {
       if (entry.binaryDir === null)
         entry.binaryDir = entry.sourceDir;
       else if (entry.binaryDir === undefined)
-        entry.binaryDir = path.posix.join(workDir, "bin");
+        entry.binaryDir = Path.join(workDir, "bin");
     }
   }
 
@@ -251,14 +251,14 @@ async function doExtractArchive(gconfig: IGeneralConfig, environment: any, confi
     await fs.promises.mkdir(config.tempDir, { recursive: true });
   }
 
-  const arcName = path.basename(config.sourceUrl);
+  const arcName = Path.basename(config.sourceUrl);
 
   let arcFile;
   let downloadUrls = await settings.get("downloadUrls") || {};
   if (downloadUrls[config.sourceUrl])
     arcFile = downloadUrls[config.sourceUrl];
   else {
-    arcFile = path.join(config.archiveDir, arcName);
+    arcFile = Path.join(config.archiveDir, arcName);
     await downloadFile(config.sourceUrl, arcFile, { attempts: REQUEST_ATTEMPTS });
     downloadUrls[config.sourceUrl] = arcFile;
     await settings.set("downloadUrls", downloadUrls);
@@ -270,18 +270,18 @@ async function doExtractArchive(gconfig: IGeneralConfig, environment: any, confi
     extractDir = extractFiles[arcFile];
   }
   else {
-    extractDir = await fs.promises.mkdtemp(path.resolve(config.tempDir, arcName + '.'));
+    extractDir = await fs.promises.mkdtemp(Path.resolve(config.tempDir, arcName + '.'));
   
-    await cmake.extract({
+    await CMakeProcess.getInstance().extract({
       environment,
       filename: arcFile,
       workDir: extractDir,
-      logFile:  path.join(config.tempDir, path.basename(extractDir) + ".log"),
+      logFile:  Path.join(config.tempDir, Path.basename(extractDir) + ".log"),
     });
   
     const extractList = await fs.promises.readdir(extractDir);
     if (extractList.length === 1) {
-      extractDir = path.resolve(extractDir, extractList[0]);
+      extractDir = Path.resolve(extractDir, extractList[0]);
       if (!await directoryExists(extractDir)) {
         console.log(`rm -fr ${extractDir}`);
         await fs.promises.rm(extractDir, { recursive: true });
@@ -295,7 +295,7 @@ async function doExtractArchive(gconfig: IGeneralConfig, environment: any, confi
       await fs.promises.rm(config.extractDir, { recursive: true });
     }
     else {
-      const parentDir = path.dirname(config.extractDir);
+      const parentDir = Path.dirname(config.extractDir);
       if (!await directoryExists(parentDir)) {
         console.log(`mkdir -p ${parentDir}`);
         await fs.promises.mkdir(parentDir, { recursive: true }); 
@@ -387,12 +387,12 @@ async function doTargetBuild(gconfig: IGeneralConfig, environment: any, config: 
 async function getUserConfig(options: CommandOptions) {
   let configPath;
   if (options.env.config) {
-    configPath = path.isAbsolute(options.env.config) ? options.env.config : path.resolve(options.workDir, options.env.config);
+    configPath = Path.isAbsolute(options.env.config) ? options.env.config : Path.resolve(options.workDir, options.env.config);
     if (!await fileExists(configPath))
       throw `Configuration '${options.env.config}' file does not exist`;
   }
   else {
-    const userConfigPath = path.resolve(options.workDir, USER_CONFIG);
+    const userConfigPath = Path.resolve(options.workDir, USER_CONFIG);
     if (await fileExists(userConfigPath))
       configPath = userConfigPath;
     else {
@@ -413,7 +413,7 @@ async function getUserConfig(options: CommandOptions) {
     };
   }
 
-  const configUrl = url.pathToFileURL(configPath);
+  const configUrl = Path.toFileURL(configPath);
   const configModule = await importModule(configUrl);
   switch (typeof configModule.default) {
   case "function":
@@ -444,7 +444,7 @@ export default async (options: CommandOptions) => {
     await saveIfDifferent(buildConfig.RECIPE_CONTENT_FILE, jsonConfig);
   }
 
-  const settingsFilename = path.resolve(buildConfig.binaryRoot, BUILD_SETTINGS_FILE);
+  const settingsFilename = Path.resolve(buildConfig.binaryRoot, BUILD_SETTINGS_FILE);
   const settings = new SettingsStorage(settingsFilename);
 
   for (const [key, entry] of Object.entries(buildConfig) as any) {

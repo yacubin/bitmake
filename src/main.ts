@@ -9,11 +9,12 @@
 
 /// <reference path="global.d.ts" />
 
+// @ts-ignore
+import bitmake from "bitmake";
+
 import { Args }  from "@/utils/Args";
-import { importModule }  from "@/utils/Module";
 
 async function runScript() {
-  const { commands } = (await importModule("./bitmake.js") as any).default;
   const options: any = {
     handler: "default",
     workDir: process.cwd(),
@@ -40,7 +41,7 @@ async function runScript() {
 
   options.env = Args.toObject(process.argv.slice(argsIndex));
 
-  const handler = commands[options.handler];
+  const handler = bitmake.commands[options.handler];
   if (!handler)
     throw Error(`The ${PROJECT_NAME} does not support the ${options.handler} command`);
 

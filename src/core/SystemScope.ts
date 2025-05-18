@@ -8,7 +8,6 @@
  */
 
 import { DirPath, AbsolutePath } from "@/core/Path";
-import { IncludeDirectory } from "@/core/IncludeDirectory";
 
 export interface SystemScope {
   // Defines the target OS for the build, used in cross-compilation and native builds
@@ -75,7 +74,7 @@ export interface SystemScope {
   HOST_SYSTEM_NAME: string;
 
   // Paths searched for header files
-  INCLUDES: Array<IncludeDirectory | AbsolutePath>;
+  INCLUDES: Array<DirPath>;
 
   // Path to the assembler compiler detected
   ASM_COMPILER: string;
@@ -178,4 +177,7 @@ export interface SystemScope {
 
   // List of paths to plugins
   MAKE_PLUGIN_LIST: any[];
+
+  // Defines the file extension for executables on the host system
+  HOST_EXECUTABLE_SUFFIX: string;
 };

@@ -9,7 +9,6 @@
 
 import os from "node:os";
 import nodepath from "node:path";
-import { PathToFileUrlOptions, pathToFileURL } from "node:url";
 
 let nativeSep =  nodepath.posix.sep;
 let otherSep = nodepath.win32.sep;
@@ -53,10 +52,6 @@ export function basename(path: string, suffix?: string): string {
 
 export function relative(from: string, to: string): string {
   return representPath(nodepath.relative(nativePath(from), nativePath(to)));
-}
-
-export function toFileURL(path: string, options?: PathToFileUrlOptions) {
-  return pathToFileURL(path, options);
 }
 
 } // namespace Path

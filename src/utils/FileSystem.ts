@@ -11,6 +11,8 @@ import fs from "node:fs";
 import path from "node:path";
 import url from "node:url";
 
+import { requireResolve } from "@/utils/Module";
+
 export async function pathExists(path: string) {
   try {
     return !!(await fs.promises.stat(path));
@@ -100,6 +102,30 @@ export async function saveIfDifferent(filename: string, content: string) {
   return true;
 }
 
+export const FILE_SCHEME = "file://";
+export const IMPORT_SCHEME = "import://";
+
 export function getPathString(str: string) {
-  return str.startsWith("file://") ? url.fileURLToPath(str) : str;
+  if (str.startsWith(IMPORT_SCHEME))
+    str = requireResolve(str.slice(IMPORT_SCHEME.length));
+  if (str.startsWith(FILE_SCHEME))
+    return url.fileURLToPath(str);
+  return str;
+}
+
+export function isURL(str: string) {
+  try {
+    new URL(str);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function getURLString(str: string) {
+  if (str.startsWith(IMPORT_SCHEME))
+    return requireResolve(str.slice(IMPORT_SCHEME.length));
+  if (isURL(str))
+    return url.fileURLToPath(str);
+  return str;
 }

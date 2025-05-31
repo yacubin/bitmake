@@ -14,7 +14,7 @@ import { PluginContext } from "@/core/PluginContext";
 import { GlobalContext } from "@/core/GlobalContext";
 import { ScopeHelper } from "@/core/Scope";
 import { ToolchainContext } from "@/core/ToolchainContext";
-import { getPathString }  from "@/utils/FileSystem";
+import { getPathString, getURLString }  from "@/utils/FileSystem";
 import { DirPath, FilePath } from "@/core/Path";
 import { importModule }  from "@/utils/Module";
 import { determineCompiler }  from "@/core/DetermineCompiler";
@@ -59,7 +59,7 @@ export async function bitmakeAction(config: any, environment: any, settings: Set
 
   const global = GlobalContext.create();
   if (scope.TOOLCHAIN_FILE) {
-    const toolchainUrl = Path.toFileURL(scope.TOOLCHAIN_FILE.toString());
+    const toolchainUrl = getURLString(scope.TOOLCHAIN_FILE.toString());
     const toolchain = await importModule(toolchainUrl);
     if (!toolchain.default)
       throw new Error("Toolchain module has no default export");
@@ -80,7 +80,7 @@ export async function bitmakeAction(config: any, environment: any, settings: Set
     scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
 
     process.chdir(scope.SCRIPT_DIR.toString());
-    const pluginUrl = Path.toFileURL(scope.SCRIPT_FILE.toString());
+    const pluginUrl = getURLString(scope.SCRIPT_FILE.toString());
     const module = await importModule(pluginUrl);
     
     if (!module.default)

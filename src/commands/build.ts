@@ -8,6 +8,7 @@
  */
 
 import fs from "node:fs";
+import url from "node:url";
 
 import { CMakeProcess } from "@/cmake";
 import { Path } from "@/utils/Path";
@@ -413,7 +414,7 @@ async function getUserConfig(options: CommandOptions) {
     };
   }
 
-  const configUrl = Path.toFileURL(configPath);
+  const configUrl = url.pathToFileURL(configPath);
   const configModule = await importModule(configUrl);
   switch (typeof configModule.default) {
   case "function":

@@ -44,7 +44,7 @@ export default (mk) => {
   ];
 
   const libraries = [
-    mk.target("wabase"),
+    mk.target("wasmux"),
   ];
 
   const waeditor = mk.addExecutable("waeditor", sources);

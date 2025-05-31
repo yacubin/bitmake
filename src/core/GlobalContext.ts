@@ -8,6 +8,7 @@
  */
 
 import fs from "node:fs";
+import url from "node:url";
 import { spawnSync } from "node:child_process";
 
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
@@ -169,7 +170,7 @@ export class GoalWorkerImpl {
     this.addCallback(async () => {
       let func: any = script;
       if (script instanceof FilePath) {
-        const scriptUrl = Path.toFileURL(func.toString());
+        const scriptUrl = url.pathToFileURL(func.toString());
         func = (await importModule(scriptUrl)).default;
       }
       if (func instanceof Function) {
@@ -415,7 +416,7 @@ export class GlobalContext {
       const cwdSave = process.cwd();
       process.chdir(scope.SOURCE_DIR.toString());
 
-      const scriptUrl = Path.toFileURL(scope.SCRIPT_FILE.toString());
+      const scriptUrl = url.pathToFileURL(scope.SCRIPT_FILE.toString());
       const module = await importModule(scriptUrl);
       if (!module.default)
         throw new Error(`Subdirectory ${scope.SCRIPT_FILE.basename()} not contain default function`);

@@ -18,19 +18,16 @@ import { getPathString, getURLString }  from "@/utils/FileSystem";
 import { DirPath, FilePath } from "@/core/Path";
 import { importModule }  from "@/utils/Module";
 import { determineCompiler }  from "@/core/DetermineCompiler";
-import SystemVariables from "@/core/SystemVariables";
-import { SystemScope } from "@/core/SystemScope";
 import { SettingsStorage } from "@/utils/SettingsStorage";
 import { INSTALL_TARGET, PACKAGE_JSON, MAKE_CACHE } from "@/Constants";
 import { createLogger } from "@/logger";
 
 const logger = createLogger(import.meta.url);
 
-export async function bitmakeAction(config: any, environment: any, settings: SettingsStorage) {
+export default async function(config: any, environment: any, settings: SettingsStorage) {
   process.env = environment;
 
-  let scope = {} as SystemScope;
-  ScopeHelper.defineVariables(scope, "system", SystemVariables);
+  const scope = ScopeHelper.create(config.variables);
 
   const sourceDir = getPathString(config.sourceDir);
   const binaryDir = getPathString(config.binaryDir);
@@ -54,8 +51,6 @@ export async function bitmakeAction(config: any, environment: any, settings: Set
 
   if (config.destDir)
     scope.DESTDIR = config.destDir;
-
-  ScopeHelper.applyVariables(scope, config.variables || {});
 
   const global = GlobalContext.create();
   if (scope.TOOLCHAIN_FILE) {

@@ -16,7 +16,7 @@ export function ensureBoolean(value: any) {
 export function ensureNumber(value: any) {
   if (typeof value === "number")
     return value;
-  throw new TypeError(`The '${value}' is not a string`);
+  throw new TypeError(`The '${value}' is not a number`);
 }
 
 export function ensureString(value: any) {

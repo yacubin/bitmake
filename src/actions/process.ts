@@ -17,7 +17,7 @@ import { createLogger } from "@/logger";
 
 const logger = createLogger(import.meta.url);
 
-export async function processAction(config: any, environment: any, settings: SettingsStorage) {
+export default async function(config: any, environment: any, settings: SettingsStorage) {
   if (!config.command)
     throw new Error("Required command field for process action");
   const sourceDir = getPathString(config.sourceDir);

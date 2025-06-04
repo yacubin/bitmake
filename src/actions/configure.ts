@@ -13,7 +13,7 @@ import { getPathString } from "@/utils/FileSystem";
 import { SettingsStorage } from "@/utils/SettingsStorage";
 import { spawnAsync } from "@/utils/ChildProcess";
 
-export async function configureAction(config: any, environment: any, settings: SettingsStorage) {
+export default async function(config: any, environment: any, settings: SettingsStorage) {
   const sourceDir = getPathString(config.sourceDir);
   const binaryDir = getPathString(config.binaryDir);
   let step = await settings.get("configure") || "config";

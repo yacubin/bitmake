@@ -20,9 +20,9 @@ import { ScriptCollection } from "@/core/ScriptCollection";
 import { InterfaceTarget } from "@/core/InterfaceTarget";
 import { GoalCollection } from "@/core/GoalCollection";
 import { InterfaceScript } from "@/core/InterfaceScript";
+import { createContext } from "@/core/BaseContext";
 import { MakeContext } from "@/core/MakeContext";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget } from "@/core/Target";
-import { ScopeHelper } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
 import { importModule } from "@/utils/Module";
 import { createLogger } from "@/logger";
@@ -420,11 +420,11 @@ export class GlobalContext {
       const module = await importModule(scriptUrl);
       if (!module.default)
         throw new Error(`Subdirectory ${scope.SCRIPT_FILE.basename()} not contain default function`);
-      const mk = MakeContext.create(scope, this);
+
+      const mk = createContext(MakeContext, scope, this);
       const result = module.default(mk);
       if (result instanceof Promise)
         await result;
-      ScopeHelper.applyVariables(scope, mk);
 
       process.chdir(cwdSave);
     }

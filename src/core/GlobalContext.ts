@@ -20,7 +20,6 @@ import { ScriptCollection } from "@/core/ScriptCollection";
 import { InterfaceTarget } from "@/core/InterfaceTarget";
 import { GoalCollection } from "@/core/GoalCollection";
 import { InterfaceScript } from "@/core/InterfaceScript";
-import { createContext } from "@/core/BaseContext";
 import { MakeContext } from "@/core/MakeContext";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget } from "@/core/Target";
 import { SystemScope } from "@/core/SystemScope";
@@ -31,6 +30,7 @@ import { CustomScript } from "@/core/CustomScript";
 import { ScriptContext } from "@/core/ScriptContext";
 
 import configure_file from "@/core/BuildinScripts/configure_file";
+import { ScopeHelper } from "./Scope";
 
 const logger = createLogger(import.meta.url);
 
@@ -421,7 +421,8 @@ export class GlobalContext {
       if (!module.default)
         throw new Error(`Subdirectory ${scope.SCRIPT_FILE.basename()} not contain default function`);
 
-      const mk = createContext(MakeContext, scope, this);
+      const ctx = new MakeContext(scope, this);
+      const mk = ScopeHelper.createProxy(ScopeHelper.getVariableMap(scope), ctx);
       const result = module.default(mk);
       if (result instanceof Promise)
         await result;

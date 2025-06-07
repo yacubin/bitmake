@@ -57,6 +57,8 @@ function scopeValueAsPrimitives(o: any): any {
   throw new Error(`Unknown instance of ${o}`);
 }
 
+const VARIABLE_GROUP = "custom";
+
 const GLOBAL = Symbol("GLOBAL");
 const SCOPE = Symbol("SCOPE");
 
@@ -71,7 +73,7 @@ export class MakeContext extends BaseContext {
   }
 
   public getCacheVariables() {
-    return ScopeHelper.getVariablesByGroup(this[SCOPE], "cache");
+    return ScopeHelper.getVariablesByGroup(this[SCOPE], VARIABLE_GROUP);
   }
 
   public addCacheVariables(params: any) {
@@ -83,7 +85,7 @@ export class MakeContext extends BaseContext {
       variables = requireImpl(filename);
     }
 
-    ScopeHelper.defineVariables(this[SCOPE], "cache", variables);
+    ScopeHelper.defineVariables(this[SCOPE], VARIABLE_GROUP, variables);
   }
 
   public addIncludeDirectories(...dirs: any[]) {
@@ -99,7 +101,6 @@ export class MakeContext extends BaseContext {
     const BINARY_DIR = path.isAbsolute(binaryDir) ? AbsolutePath.create(binaryDir) : this[SCOPE].BINARY_DIR.join(binaryDir);
 
     const newScope = ScopeHelper.clone({}, this[SCOPE]);
-    ScopeHelper.applyVariables(newScope, this);
 
     const resolvePath = this[GLOBAL].resolveSubdirectory(SOURCE_DIR);
     if (!resolvePath) {
@@ -115,7 +116,6 @@ export class MakeContext extends BaseContext {
   
   public addCustomScript(script: any, params: any): CustomScript {
     const newScope = ScopeHelper.clone({}, this[SCOPE]);
-    ScopeHelper.applyVariables(newScope, this);
     for (const [key, val] of Object.entries(params))
       newScope[key] = val;
     return this[GLOBAL].addCustomScript(newScope, script, params);

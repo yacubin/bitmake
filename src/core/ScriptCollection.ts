@@ -35,7 +35,7 @@ export class ScriptCollection {
 
   public set(name: string, target: CustomScript) {
     if (!name)
-      throw new Error("Not supported mpty name for CustomScript");
+      throw new Error("Not supported empty name for CustomScript");
     if (this[MAP][name])
       throw new Error(`Script "${name}" exists`);
     this[MAP][name] = target;

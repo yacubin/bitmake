@@ -10,7 +10,6 @@
 import fs from "node:fs";
 
 import { Path } from "@/utils/Path";
-import { createContext } from "@/core/BaseContext";
 import { PluginContext } from "@/core/PluginContext";
 import { GlobalContext } from "@/core/GlobalContext";
 import { ScopeHelper } from "@/core/Scope";
@@ -59,7 +58,8 @@ export default async function(config: any, environment: any, settings: SettingsS
     const toolchain = await importModule(toolchainUrl);
     if (!toolchain.default)
       throw new Error("Toolchain module has no default export");
-    const mk = createContext(ToolchainContext, scope, global);
+    const ctx = new ToolchainContext(scope, global);
+    const mk = ScopeHelper.createProxy(ScopeHelper.getVariableMap(scope), ctx);
     const result = toolchain.default(mk);
     if (result instanceof Promise)
       await result;
@@ -81,7 +81,8 @@ export default async function(config: any, environment: any, settings: SettingsS
     if (!module.default)
       throw new Error(`Plugin ${scope.SCRIPT_FILE.basename()} not contain default export`);
 
-    const mk = createContext(PluginContext, scope, global);
+    const ctx = new PluginContext(scope, global);
+    const mk = ScopeHelper.createProxy(ScopeHelper.getVariableMap(scope), ctx);
     if (typeof module.default !== "function")
       throw new Error(`Plugin ${scope.SCRIPT_FILE.basename()} export has no function or class`);
     let result: any;

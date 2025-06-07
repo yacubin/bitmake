@@ -20,13 +20,11 @@ import { TargetStruct, TargetType, LiveString } from "@/core/TargetStruct";
 const IMPL                = Symbol("IMPL");
 const TARGET_SCOPE        = Symbol("TARGET_SCOPE");
 const LIBRARIES           = Symbol("LIBRARIES");
-const POSITION_INDEPENDENT_CODE = Symbol("POSITION_INDEPENDENT_CODE");
 
 export class BaseTarget {
   private [IMPL]: TargetStruct;
   private [TARGET_SCOPE]: SystemScope;
   private [LIBRARIES]: any[];
-  private [POSITION_INDEPENDENT_CODE]: boolean;
 
   protected constructor(impl: TargetStruct, scope: SystemScope, prefix: string, suffix: string) {
     this[IMPL] = impl;
@@ -41,10 +39,10 @@ export class BaseTarget {
       targetFile.suffix = suffix;
 
     this[IMPL].addIncludes("initialize", false, scope.SOURCE_DIR, ...scope.INCLUDES);
+    this[IMPL].positionIndependentCode = scope.POSITION_INDEPENDENT_CODE;
 
     this[TARGET_SCOPE] = ScopeHelper.clone({}, scope);
     this[LIBRARIES] = [];
-    this[POSITION_INDEPENDENT_CODE] = scope.POSITION_INDEPENDENT_CODE;
   }
 
   public get NAME() {
@@ -75,10 +73,6 @@ export class BaseTarget {
     if (!this[IMPL].targetFile.file)
       throw new Error(`Target "${this.NAME}" is not defined`);
     return this[IMPL].targetFile.file;
-  }
-
-  public get POSITION_INDEPENDENT_CODE(): boolean {
-    return this[POSITION_INDEPENDENT_CODE];
   }
 
   public get IMPL(): TargetStruct {
@@ -178,7 +172,7 @@ export class BaseLibrary extends BaseTarget {
   }
 
   public setPositionIndependentCode(value: boolean) {
-    this[POSITION_INDEPENDENT_CODE] = value;
+    this[IMPL].positionIndependentCode = value;
   }
 
   public addPublicIncludes(...includes: any[]) {

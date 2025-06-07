@@ -228,6 +228,7 @@ const INCLUDES        = Symbol("INCLUDES");
 const COMPILE_OPTIONS = Symbol("COMPILE_OPTIONS");
 const LINK_OPTIONS    = Symbol("LINK_OPTIONS");
 const SOURCES         = Symbol("SOURCES");
+const POSITION_INDEPENDENT_CODE = Symbol("POSITION_INDEPENDENT_CODE");
 
 export class TargetStruct {
   private [NAME]: string;
@@ -236,10 +237,11 @@ export class TargetStruct {
   private [PRE_BUILD] = new Array<TargetCommand>;
   private [POST_BUILD] = new Array<TargetCommand>;
   private [DEFINES] = new TargetItems<string>;
-  private [INCLUDES] = new TargetItems<DirPath|InterfaceIncludes>;
-  private [COMPILE_OPTIONS] = new TargetItems<string|string[]>;
-  private [LINK_OPTIONS] = new TargetItems<string|string[]>;
-  private [SOURCES] = new TargetItems<InterfaceObjects|SourceFile>;
+  private [INCLUDES] = new TargetItems<DirPath | InterfaceIncludes>;
+  private [COMPILE_OPTIONS] = new TargetItems<string | string[]>;
+  private [LINK_OPTIONS] = new TargetItems<string | string[]>;
+  private [SOURCES] = new TargetItems<InterfaceObjects | SourceFile>;
+  private [POSITION_INDEPENDENT_CODE] = false;
 
   constructor(name: string) {
     this[NAME] = name;
@@ -247,15 +249,15 @@ export class TargetStruct {
     this[TARGET_FILE] = TargetFile.create();
   }
 
-  get name() {
+  public get name() {
     return this[NAME];
   }
 
-  get type() {
+  public get type() {
     return this[TYPE];
   }
 
-  set type(value: TargetType) {
+  public set type(value: TargetType) {
     if (this[TYPE] === value)
       return;
     if (this[TYPE] !== TargetType.Unknown)
@@ -263,8 +265,16 @@ export class TargetStruct {
     this[TYPE] = value;
   }
 
-  get targetFile() {
+  public get targetFile() {
     return this[TARGET_FILE];
+  }
+
+  public get positionIndependentCode() {
+    return this[POSITION_INDEPENDENT_CODE];
+  }
+
+  public set positionIndependentCode(value: boolean) {
+    this[POSITION_INDEPENDENT_CODE] = value;
   }
 
   public addPreBuild(command: any, args: any[]) {

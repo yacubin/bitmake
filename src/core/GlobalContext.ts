@@ -31,6 +31,7 @@ import { ScriptContext } from "@/core/ScriptContext";
 
 import configure_file from "@/core/BuildinScripts/configure_file";
 import { ScopeHelper } from "./Scope";
+import { TargetStruct } from "./TargetStruct";
 
 const logger = createLogger(import.meta.url);
 
@@ -467,6 +468,7 @@ export class GlobalContext {
     }
 
     for (const [name, target] of Object.entries(this[TARGETS].ENTRIES)) {
+      const targetImpl = target.IMPL;
       const depends = [];
       for (const s of target.IMPL.getInterfaceObjectsList()) {
         const t = this[TARGETS].get(s.targetName) as BaseTarget;
@@ -477,7 +479,7 @@ export class GlobalContext {
       }
   
       const headers = this[TARGETS].allHeadersOf(target);
-      for (const s of target.IMPL.getSourceFiles()) {  
+      for (const s of target.IMPL.getSourceFiles()) {
         if (s.HEADER_FILE_ONLY)
           continue;
         
@@ -502,7 +504,7 @@ export class GlobalContext {
         args.push(...definitions.map(i => "-D" + i));
         args.push(...this[TARGETS].allIncludesOf(target).map(i => "-I" + i));
         args.push(...this[TARGETS].allCompileOptionsOf(target));
-        if (target.POSITION_INDEPENDENT_CODE)
+        if (targetImpl.positionIndependentCode)
           args.push("-fPIC");
         args.push(...s.COMPILE_FLAGS.flat());
         args.push("-o", relativeObject);

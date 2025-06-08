@@ -10,7 +10,7 @@
 import { DirPath, FilePath, AbsolutePath } from "@/core/Path";
 import { InterfaceIncludes } from "@/core/InterfaceIncludes";
 import { InterfaceObjects } from "@/core/InterfaceObjects";
-import { InterfaceTarget } from "@/core/InterfaceTarget";
+import { InterfaceTarget } from "@/core/Target";
 import { SourceFile } from "@/core/SourceFile";
 import { normalizeDefinitions } from "@/core/DefinitionHelper";
 

@@ -17,11 +17,10 @@ import { Path } from "@/utils/Path";
 import { fileExists, fileExistsSync } from "@/utils/FileSystem";
 import { TargetCollection, TargetStructCollection } from "@/core//TargetCollection";
 import { ScriptCollection } from "@/core/ScriptCollection";
-import { InterfaceTarget } from "@/core/InterfaceTarget";
 import { GoalCollection } from "@/core/GoalCollection";
 import { InterfaceScript } from "@/core/InterfaceScript";
 import { MakeContext } from "@/core/MakeContext";
-import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget } from "@/core/Target";
+import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget, InterfaceTarget } from "@/core/Target";
 import { SystemScope } from "@/core/SystemScope";
 import { importModule } from "@/utils/Module";
 import { createLogger } from "@/logger";
@@ -31,7 +30,6 @@ import { ScriptContext } from "@/core/ScriptContext";
 
 import configure_file from "@/core/BuildinScripts/configure_file";
 import { ScopeHelper } from "./Scope";
-import { TargetStruct } from "./TargetStruct";
 
 const logger = createLogger(import.meta.url);
 

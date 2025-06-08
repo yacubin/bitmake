@@ -8,7 +8,7 @@
  */
 
 import { InterfaceIncludes }from "@/core/InterfaceIncludes";
-import { InterfaceTarget } from "@/core/InterfaceTarget";
+import { InterfaceTarget } from "@/core/Target";
 import { TargetStruct } from "@/core/TargetStruct";
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
 import { BaseTarget } from "./Target";

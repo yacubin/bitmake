@@ -11,10 +11,9 @@ import path from "node:path";
 
 import { fileExistsSync } from "@/utils/FileSystem";
 import { AbsolutePath } from "@/core/Path";
-import { InterfaceTarget } from "@/core/InterfaceTarget";
 import { InterfaceScript } from "@/core/InterfaceScript";
 import { InstallEntity } from "@/core/InstallEntity";
-import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget } from "@/core/Target";
+import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget, InterfaceTarget } from "@/core/Target";
 import { CustomScript } from "@/core/CustomScript";
 import { GlobalContext } from "@/core/GlobalContext";
 import { ScopeHelper } from "@/core/Scope";

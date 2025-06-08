@@ -19,12 +19,10 @@ import { TargetStruct, TargetType, LiveString } from "@/core/TargetStruct";
 
 const IMPL                = Symbol("IMPL");
 const TARGET_SCOPE        = Symbol("TARGET_SCOPE");
-const LIBRARIES           = Symbol("LIBRARIES");
 
 export class BaseTarget {
   private [IMPL]: TargetStruct;
   private [TARGET_SCOPE]: SystemScope;
-  private [LIBRARIES]: any[];
 
   protected constructor(impl: TargetStruct, scope: SystemScope, prefix: string, suffix: string) {
     this[IMPL] = impl;
@@ -42,7 +40,6 @@ export class BaseTarget {
     this[IMPL].positionIndependentCode = scope.POSITION_INDEPENDENT_CODE;
 
     this[TARGET_SCOPE] = ScopeHelper.clone({}, scope);
-    this[LIBRARIES] = [];
   }
 
   public get NAME() {
@@ -51,10 +48,6 @@ export class BaseTarget {
 
   public get TARGET_SCOPE() {
     return this[TARGET_SCOPE];
-  }
-
-  public get LIBRARIES(): string[] {
-    return this[LIBRARIES];
   }
 
   public get FILE_DIR(): AbsolutePath {
@@ -96,9 +89,7 @@ export class BaseTarget {
   }
 
   public addLibraries(...libraries: any) {
-    for (const it of libraries.flat(1)) {
-      this[LIBRARIES].push({ VALUE: InterfaceTarget.ensureInstance(it) });
-    }
+    this[IMPL].addLibraries("directly", false, ...libraries);
   }
 
   public addCompileOptions(...options: Array<string|string[]>) {
@@ -159,7 +150,6 @@ export class BaseTarget {
     return {
       NAME: this.NAME,
       TARGET_SCOPE: this.TARGET_SCOPE,
-      LIBRARIES: this.LIBRARIES,
       FILE_DIR: this.FILE_DIR,
       FILE: this.FILE,
     }
@@ -184,9 +174,7 @@ export class BaseLibrary extends BaseTarget {
   }
 
   public addPublicLibraries(...libraries: any[]) {
-    for (const it of libraries.flat(1)) {
-      this[LIBRARIES].push({VALUE: InterfaceTarget.ensureInstance(it), PUBLIC_ONLY: true});
-    }
+    this[IMPL].addLibraries("directly", true, ...libraries);
   }
 
   public addPublicCompileOptions(...options: Array<string|string[]>) {

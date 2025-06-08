@@ -115,8 +115,10 @@ export class MakeContext extends BaseContext {
   
   public addCustomScript(script: any, params: any): CustomScript {
     const newScope = ScopeHelper.clone({}, this[SCOPE]);
-    for (const [key, val] of Object.entries(params))
-      newScope[key] = val;
+    for (const [name, value] of Object.entries(params)) {
+      ScopeHelper.defineVariable(newScope, VARIABLE_GROUP, name, { value })
+      newScope[name] = value;
+    }
     return this[GLOBAL].addCustomScript(newScope, script, params);
   }
   

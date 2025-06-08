@@ -58,3 +58,4 @@ export default (mk) => {
 Examples of make recipes:
 * [nlohmann](https://github.com/ykbin/PkgExtras/blob/develop/MakeRecipes/nlohmann.mjs)
 * [libhv-static](https://github.com/ykbin/PkgExtras/blob/develop/MakeRecipes/libhv-static.mjs)
+* [Thunder-R2](https://github.com/ykbin/PkgExtras/blob/develop/MakeRecipes/Thunder-R2.mjs)

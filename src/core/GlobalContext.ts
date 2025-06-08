@@ -22,18 +22,16 @@ import { InterfaceScript } from "@/core/InterfaceScript";
 import { MakeContext } from "@/core/MakeContext";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget, InterfaceTarget } from "@/core/Target";
 import { SystemScope } from "@/core/SystemScope";
-import { importModule } from "@/utils/Module";
+import { importModule, requireResolve } from "@/utils/Module";
 import { createLogger } from "@/logger";
 import { InstallEntity } from "@/core/InstallEntity";
 import { CustomScript } from "@/core/CustomScript";
 import { ScriptContext } from "@/core/ScriptContext";
-
-import configure_file from "@/core/BuildinScripts/configure_file";
 import { ScopeHelper } from "./Scope";
 
-const logger = createLogger(import.meta.url);
+import BuildinScripts from "@/core/BuildinScripts";
 
-const requireImpl = eval("require");
+const logger = createLogger(import.meta.url);
 
 const TARGETS = Symbol("TARGETS");
 const CUSTOM_SCRIPTS = Symbol("CUSTOM_SCRIPTS");
@@ -173,7 +171,8 @@ export class GoalWorkerImpl {
         func = (await importModule(scriptUrl)).default;
       }
       if (func instanceof Function) {
-        const mk = ScriptContext.create(scope, global);
+        const ctx = new ScriptContext(scope, global);
+        const mk = ScopeHelper.createProxy(ScopeHelper.getVariableMap(scope), ctx);
         const result = func(mk);
         if (result instanceof Promise)
           await result;
@@ -206,9 +205,7 @@ export class GlobalContext {
     this[SCRIPT_VARIABLES_MAP] = {};
     this[SUBDIR_ALIAS] = {};
     this[SUBDIR_LIST] = [];
-    this[BUILTIN_SCRIPTS] = {
-      configure_file,
-    };
+    this[BUILTIN_SCRIPTS] = BuildinScripts;
   }
 
   public static create() {
@@ -302,7 +299,7 @@ export class GlobalContext {
 
   public loadCacheVariables(filename: AbsolutePath | string) {
     if (fileExistsSync(filename.toString())) {
-      const variables = requireImpl(filename.toString());
+      const variables = requireResolve(filename.toString());
       this.addCacheVariables(variables);
     }
   }

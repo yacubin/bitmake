@@ -8,7 +8,7 @@
  */
 
 import { ensureBoolean, ensureString, ensureNumber, ensureArray } from "@/utils/StrictType";
-import { DirPath, FilePath } from "@/core/Path";
+import { AbsolutePath, DirPath, FilePath } from "@/core/Path";
 import { SystemScope } from "@/core/SystemScope";
 import SystemVariables from "@/core/SystemVariables";
 
@@ -29,7 +29,7 @@ interface VariableEntry {
   ensureValue: (value: any) => any;
 };
 
-interface VariableMap {
+export interface VariableMap {
   [name: string]: VariableEntry;
 };
 
@@ -47,7 +47,7 @@ function defineVariableImpl2(map: VariableMap, group: string, name: string, desc
   if (!defineEntry) {
     defineEntry = {
       type: "", group, value: undefined,  initValue: undefined, description: "",
-      ensureValue: (value: any) => {},
+      ensureValue: (value: any) => value,
     };
     map[name] = defineEntry;
   }
@@ -60,7 +60,20 @@ function defineVariableImpl2(map: VariableMap, group: string, name: string, desc
   defineEntry.type = descriptor.type || defineEntry.type;
   defineEntry.description = descriptor.description || defineEntry.description;
 
-  const type = defineEntry.type || (Array.isArray(descriptor.value) ? "array" : typeof descriptor.value);
+  let type: string | string[];
+  if (defineEntry.type)
+    type = defineEntry.type;
+  else if (Array.isArray(descriptor.value))
+    type = "array";
+  else if (descriptor.value instanceof AbsolutePath)
+    type = "AbsolutePath";
+  else if (descriptor.value instanceof DirPath)
+    type = "DirPath";
+  else if (descriptor.value instanceof FilePath)
+    type = "FilePath";
+  else
+    type = typeof descriptor.value;
+
   if (Array.isArray(type)) {
     let itemType;
     for (const iter of type) {
@@ -86,11 +99,13 @@ function defineVariableImpl2(map: VariableMap, group: string, name: string, desc
     defineEntry.ensureValue = ensureString;
   else if (type === "array")
     defineEntry.ensureValue = ensureArray;
+  else if (type === "AbsolutePath")
+    defineEntry.ensureValue = AbsolutePath.create;
   else if (type === "DirPath")
     defineEntry.ensureValue = DirPath.create;
   else if (type === "FilePath")
     defineEntry.ensureValue = FilePath.create;
-  else
+  else if (type !== "object")
     throw new Error(`Variable "${name}" has wrong "${type}" type`);
 
   if (descriptor.value === undefined) {
@@ -191,14 +206,14 @@ export function defineVariables(scope: any, group: string, descriptors: any) {
 
 export function clone(target: any, scope: any) {
   if (scope[DEFINE_MAP]) {
-    for (const [ name, entry ] of Object.entries(scope[DEFINE_MAP]) as any) {
+    for (const [ name, entry ] of Object.entries(scope[DEFINE_MAP] as VariableMap)) {
       defineVariableImpl(target, entry.group, name, {
         type: entry.type,
         description: entry.description,
-        value: (entry.value === undefined) ? entry.initValue : entry.value,
+        value: entry.initValue,
       });
-      if (scope[name] !== undefined)
-        target[name] = scope[name];
+      if (entry.value !== undefined)
+        target[name] = entry.value;
     }
   }
   return target;
@@ -215,7 +230,6 @@ export function getVariablesByGroup(scope: any, group?: string) {
       value: (entry.value === undefined) ? entry.initValue : entry.value,
     };
   }
-  // { type, group, description, value }
   return result;
 }
 

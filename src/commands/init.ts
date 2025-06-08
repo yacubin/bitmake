@@ -29,6 +29,6 @@ export default async function(options: CommandOptions) {
   if (await fileExists(userConfigPath))
     await fs.promises.rm(userConfigPath);
 
-  await fs.promises.copyFile(presetData, userConfigPath);
+  await fs.promises.writeFile(userConfigPath, presetData, "utf8");
   logger.info(`Preset '${preset}' installed successfully`);
 }

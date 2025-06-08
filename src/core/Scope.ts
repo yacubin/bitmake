@@ -8,26 +8,48 @@
  */
 
 import { ensureBoolean, ensureString, ensureNumber, ensureArray } from "@/utils/StrictType";
-import { DirPath, FilePath } from "@/core/Path";
+import { AbsolutePath, DirPath, FilePath } from "@/core/Path";
+import { SystemScope } from "@/core/SystemScope";
+import SystemVariables from "@/core/SystemVariables";
 
 const DEFINE_MAP = Symbol("DEFINE_MAP");
 
+interface VariableDescriptor {
+  type?: string | string[];
+  value?: any;
+  description?: string;
+};
+
+interface VariableEntry {
+  type: string | string[];
+  initValue: any;
+  group: string;
+  value: any;
+  description: string;
+  ensureValue: (value: any) => any;
+};
+
+export interface VariableMap {
+  [name: string]: VariableEntry;
+};
+
 export namespace ScopeHelper {
 
-function defineVariableImpl(scope: any, group: string, name: string, descriptor: any) {
-  if (name === "DEFINE_MAP") {
-    throw new Error(`${name} is reserved and cannot be used as a variable`);
+function toDescriptor(value: any): VariableDescriptor {
+  if (!value || typeof value === "boolean" || typeof value === "number" || typeof value === "string" || Array.isArray(value)) {
+    return { value }; 
   }
+  return value;
+}
 
-  if (!scope[DEFINE_MAP])
-    scope[DEFINE_MAP] = {};
-
-  const type = descriptor.type || (Array.isArray(descriptor.value) ? "array" : typeof descriptor.value);
-
-  let defineEntry = scope[DEFINE_MAP][name];
+function defineVariableImpl2(map: VariableMap, group: string, name: string, descriptor: VariableDescriptor) {
+  let defineEntry = map[name];
   if (!defineEntry) {
-    defineEntry = { group, type, symbol: Symbol(name) };
-    scope[DEFINE_MAP][name] = defineEntry;
+    defineEntry = {
+      type: "", group, value: undefined,  initValue: undefined, description: "",
+      ensureValue: (value: any) => value,
+    };
+    map[name] = defineEntry;
   }
   else if (group !== defineEntry.group) {
     if (defineEntry.group)
@@ -35,9 +57,23 @@ function defineVariableImpl(scope: any, group: string, name: string, descriptor:
     defineEntry.group = group;
   }
 
-  defineEntry.description = descriptor.description || defineEntry.description || "";
+  defineEntry.type = descriptor.type || defineEntry.type;
+  defineEntry.description = descriptor.description || defineEntry.description;
 
-  let ensureValue: (value: any) => {};
+  let type: string | string[];
+  if (defineEntry.type)
+    type = defineEntry.type;
+  else if (Array.isArray(descriptor.value))
+    type = "array";
+  else if (descriptor.value instanceof AbsolutePath)
+    type = "AbsolutePath";
+  else if (descriptor.value instanceof DirPath)
+    type = "DirPath";
+  else if (descriptor.value instanceof FilePath)
+    type = "FilePath";
+  else
+    type = typeof descriptor.value;
+
   if (Array.isArray(type)) {
     let itemType;
     for (const iter of type) {
@@ -49,54 +85,60 @@ function defineVariableImpl(scope: any, group: string, name: string, descriptor:
     }
     if (itemType !== "boolean" && itemType !== "number" && itemType !== "string")
       throw new Error(`Enum ${name} not support ${itemType} type`);
-    ensureValue = (value: any) => {
+      defineEntry.ensureValue = (value: any) => {
       if (type.includes(value))
         return value;
       throw new Error(`The '${value}' is not a ${type}`);
     }
   }
   else if (type === "boolean")
-    ensureValue = ensureBoolean;
+    defineEntry.ensureValue = ensureBoolean;
   else if (type === "number")
-    ensureValue = ensureNumber;
+    defineEntry.ensureValue = ensureNumber;
   else if (type === "string")
-    ensureValue = ensureString;
+    defineEntry.ensureValue = ensureString;
   else if (type === "array")
-    ensureValue = ensureArray;
+    defineEntry.ensureValue = ensureArray;
+  else if (type === "AbsolutePath")
+    defineEntry.ensureValue = AbsolutePath.create;
   else if (type === "DirPath")
-    ensureValue = DirPath.create;
+    defineEntry.ensureValue = DirPath.create;
   else if (type === "FilePath")
-    ensureValue = FilePath.create;
-  else
-    throw new Error(`Variable "${name}" has wrong ${type} type`);
+    defineEntry.ensureValue = FilePath.create;
+  else if (type !== "object")
+    throw new Error(`Variable "${name}" has wrong "${type}" type`);
 
-  if (descriptor.value !== undefined) {
-    defineEntry.value = (type === "array") ? Array.from(descriptor.value) : ensureValue(descriptor.value);
+  if (descriptor.value === undefined) {
+    defineEntry.initValue = (type === "array") ? [] : undefined;
   }
   else {
-    defineEntry.value = (type === "array") ? [] : undefined;
+    defineEntry.initValue = (type === "array") ? Array.from(descriptor.value) : defineEntry.ensureValue(descriptor.value);
   }
 
-  const { symbol, value } = defineEntry;
+  if (defineEntry.value !== undefined) {
+    defineEntry.value = defineEntry.ensureValue(defineEntry.value);
+  }
+}
 
-  if (scope[symbol] === undefined && value !== undefined)
-    scope[symbol] = Array.isArray(value) ? Array.from(value) : value;
+function defineVariableImpl(scope: any, group: string, name: string, descriptor: VariableDescriptor) {
+  if (!scope[DEFINE_MAP])
+    scope[DEFINE_MAP] = {};
 
-  const desc: any = {
+  defineVariableImpl2(scope[DEFINE_MAP] as VariableMap, group, name, descriptor);
+  Object.defineProperty(scope, name, {
     configurable: true,
     enumerable: true,
-    get() {
-      const value = scope[symbol];
+    get(this: any) {
+      const entry = this[DEFINE_MAP][name];
       /*if (value === undefined)
         throw new Error(`Value of ${name} cannot be obtained because it has not been established`);*/
-      return value;
+      return (entry.value === undefined) ? entry.initValue : entry.value;
     },
-    set(value: any) {
-      scope[symbol] = ensureValue(value);
+    set(this: any, value: any) {
+      const entry = this[DEFINE_MAP][name];
+      entry.value = entry.ensureValue(value);
     },
-  };
-
-  Object.defineProperty(scope, name, desc);
+  });
 }
 
 export function defineVariable(scope: any, group: string, name: string, descriptor: any) {
@@ -106,42 +148,89 @@ export function defineVariable(scope: any, group: string, name: string, descript
   defineVariableImpl(scope, group, name, descriptor);
 }
 
+export function create(variables: object): SystemScope {
+  const scope = {} as any;
+
+  for (const [ name, value ] of Object.entries(variables)) {
+    defineVariableImpl(scope, "", name, toDescriptor(value));
+    scope[name] = value;
+  }
+
+  for (const [ name, value ] of Object.entries(SystemVariables))
+    defineVariableImpl(scope, "system", name, toDescriptor(value));
+
+  return scope as SystemScope;
+}
+
+export function getVariableMap(scope: any): VariableMap {
+  return scope[DEFINE_MAP] as VariableMap;
+}
+
+export function createProxy<T>(map: VariableMap, o?: any): T {
+  const handler: ProxyHandler<any> = {
+    get(target: VariableMap, key: string, receiver: any) {
+      const entry = target[key];
+      if (!entry)
+        return o && o[key];
+      return (entry.value === undefined) ? entry.initValue : entry.value;
+    },
+    set(target: VariableMap, key: string, value: any): boolean {
+      const entry = target[key];
+      if (entry)
+        entry.value = entry.ensureValue(value);
+      else
+        defineVariableImpl2(target, "", key, toDescriptor(value));
+      return true;
+    },
+    has(target: VariableMap, key: string) {
+      return target.hasOwnProperty(key) || (key in target);
+    },
+    ownKeys(target: VariableMap) {
+      return Object.keys(target);
+    },
+    deleteProperty(target: VariableMap, key: string) {
+      throw new Error(`Cannot delete ${key} value`);
+    },
+  };
+  return new Proxy(map, handler);
+}
+
 export function defineVariables(scope: any, group: string, descriptors: any) {
-  for (const [ name, descriptor ] of Object.entries(descriptors))
+  for (let [ name, descriptor ] of Object.entries(descriptors)) {
+    if (!descriptor || typeof descriptor === "boolean" || typeof descriptor === "number" || typeof descriptor === "string" || Array.isArray(descriptor)) {
+      descriptor = { value: descriptor }; 
+    }
     ScopeHelper.defineVariable(scope, group, name, descriptor);
+  }
 }
 
 export function clone(target: any, scope: any) {
   if (scope[DEFINE_MAP]) {
-    for (const [ name, { group, symbol, type, value, description } ] of Object.entries(scope[DEFINE_MAP]) as any) {
-      defineVariableImpl(target, group, name, { type, value, description });
-      if (scope[symbol] !== undefined)
-        target[name] = scope[symbol];
+    for (const [ name, entry ] of Object.entries(scope[DEFINE_MAP] as VariableMap)) {
+      defineVariableImpl(target, entry.group, name, {
+        type: entry.type,
+        description: entry.description,
+        value: entry.initValue,
+      });
+      if (entry.value !== undefined)
+        target[name] = entry.value;
     }
   }
   return target;
 }
 
-export function getVariablesByGroup(scope: any, grp?: string) {
+export function getVariablesByGroup(scope: any, group?: string) {
   const result: any = {};
-  for (const [ name, { type, group, symbol, description } ] of Object.entries(scope[DEFINE_MAP]) as any) {
-    if (group && group !== grp)
+  for (const [ name, entry ] of Object.entries(scope[DEFINE_MAP]) as any) {
+    if (group !== undefined && entry.group && entry.group !== group)
       continue;
-    result[name] = { type, description, value: scope[symbol] };
+    result[name] = {
+      type: entry.type,
+      description: entry.description,
+      value: (entry.value === undefined) ? entry.initValue : entry.value,
+    };
   }
   return result;
-}
-
-export function applyVariable(scope: any, name: string, value: any) {
-  if (Object.getOwnPropertyDescriptor(scope, name))
-    scope[name] = value;
-  else
-    defineVariableImpl(scope, "", name, { value });
-}
-
-export function applyVariables(scope: any, variables: object) {
-  for (const [ name, value ] of Object.entries(variables))
-    ScopeHelper.applyVariable(scope, name, value);
 }
 
 export function mergeVariables(target: any, source: any): object {

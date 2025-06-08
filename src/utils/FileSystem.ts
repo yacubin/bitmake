@@ -104,6 +104,8 @@ export async function saveIfDifferent(filename: string, content: string) {
 
 export const FILE_SCHEME = "file://";
 export const IMPORT_SCHEME = "import://";
+export const HTTP_SCHEME = "http://";
+export const HTTPS_SCHEME = "https://";
 
 export function getPathString(str: string) {
   if (str.startsWith(IMPORT_SCHEME))
@@ -128,4 +130,12 @@ export function getURLString(str: string) {
   if (isURL(str))
     return url.fileURLToPath(str);
   return str;
+}
+
+export async function fetchBuffer(str: string): Promise<Buffer> {
+  if (str.startsWith(HTTP_SCHEME) || str.startsWith(HTTPS_SCHEME)) {
+    const response = await fetch(str);
+    return Buffer.from(await response.arrayBuffer());
+  }
+  return await fs.promises.readFile(getURLString(str));
 }

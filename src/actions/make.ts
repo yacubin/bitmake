@@ -11,7 +11,7 @@ import { spawnAsync } from "@/utils/ChildProcess";
 import { getPathString }  from "@/utils/FileSystem";
 import { SettingsStorage } from "@/utils/SettingsStorage";
 
-export async function makeAction(config: any, environment: any, settings: SettingsStorage) {
+export default async function(config: any, environment: any, settings: SettingsStorage) {
   const binaryDir = getPathString(config.binaryDir);
   const args = config.args || [];
   if (config.destDir) {

@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { InterfaceTarget } from "@/core/InterfaceTarget";
+import { InterfaceTarget } from "@/core/Target";
 import { DirPath, FilePath, AbsolutePath } from "@/core/Path";
 import { SystemScope } from "@/core/SystemScope";
 

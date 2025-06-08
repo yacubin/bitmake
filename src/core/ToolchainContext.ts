@@ -9,31 +9,18 @@
 
 import { GlobalContext } from "@/core/GlobalContext";
 import { SystemScope } from "@/core/SystemScope";
-import { findProgramSync } from "@/core/FindProgram";
+import { BaseContext } from "@/core/BaseContext";
 
 const GLOBAL = Symbol("GLOBAL");
 const SCOPE = Symbol("SCOPE");
 
-export namespace ToolchainContext {
+export class ToolchainContext extends BaseContext {
+  [GLOBAL]: GlobalContext;
+  [SCOPE]: SystemScope;
 
-interface IToolchainContext extends SystemScope {
-  findProgram(name: string): string | undefined;
-};
-
-export function create(scope: SystemScope, global: GlobalContext): IToolchainContext {
-  const mk = Object.create(scope, {
-    findProgram: {
-      value: findProgramSync,
-      enumerable: false,
-      writable: false,
-      configurable: false,
-    },
-  });
-
-  mk[SCOPE] = scope;
-  mk[GLOBAL] = global;
-
-  return mk;
+  constructor(scope: SystemScope, global: GlobalContext) {
+    super();
+    this[SCOPE] = scope;
+    this[GLOBAL] = global;
+  }
 }
-
-} // namespace ToolchainContext

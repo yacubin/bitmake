@@ -18,19 +18,16 @@ import { getPathString, getURLString }  from "@/utils/FileSystem";
 import { DirPath, FilePath } from "@/core/Path";
 import { importModule }  from "@/utils/Module";
 import { determineCompiler }  from "@/core/DetermineCompiler";
-import SystemVariables from "@/core/SystemVariables";
-import { SystemScope } from "@/core/SystemScope";
 import { SettingsStorage } from "@/utils/SettingsStorage";
 import { INSTALL_TARGET, PACKAGE_JSON, MAKE_CACHE } from "@/Constants";
 import { createLogger } from "@/logger";
 
 const logger = createLogger(import.meta.url);
 
-export async function bitmakeAction(config: any, environment: any, settings: SettingsStorage) {
+export default async function(config: any, environment: any, settings: SettingsStorage) {
   process.env = environment;
 
-  let scope = {} as SystemScope;
-  ScopeHelper.defineVariables(scope, "system", SystemVariables);
+  const scope = ScopeHelper.create(config.variables);
 
   const sourceDir = getPathString(config.sourceDir);
   const binaryDir = getPathString(config.binaryDir);
@@ -55,19 +52,17 @@ export async function bitmakeAction(config: any, environment: any, settings: Set
   if (config.destDir)
     scope.DESTDIR = config.destDir;
 
-  ScopeHelper.applyVariables(scope, config.variables || {});
-
   const global = GlobalContext.create();
   if (scope.TOOLCHAIN_FILE) {
     const toolchainUrl = getURLString(scope.TOOLCHAIN_FILE.toString());
     const toolchain = await importModule(toolchainUrl);
     if (!toolchain.default)
       throw new Error("Toolchain module has no default export");
-    const mk = ToolchainContext.create(scope, global);
+    const ctx = new ToolchainContext(scope, global);
+    const mk = ScopeHelper.createProxy(ScopeHelper.getVariableMap(scope), ctx);
     const result = toolchain.default(mk);
     if (result instanceof Promise)
       await result;
-    ScopeHelper.applyVariables(scope, mk);
   }
   else {
     await determineCompiler(scope);
@@ -86,7 +81,8 @@ export async function bitmakeAction(config: any, environment: any, settings: Set
     if (!module.default)
       throw new Error(`Plugin ${scope.SCRIPT_FILE.basename()} not contain default export`);
 
-    const mk = PluginContext.create(scope, global);
+    const ctx = new PluginContext(scope, global);
+    const mk = ScopeHelper.createProxy(ScopeHelper.getVariableMap(scope), ctx);
     if (typeof module.default !== "function")
       throw new Error(`Plugin ${scope.SCRIPT_FILE.basename()} export has no function or class`);
     let result: any;
@@ -101,8 +97,6 @@ export async function bitmakeAction(config: any, environment: any, settings: Set
 
     if (result instanceof Promise)
       await result;
-
-    ScopeHelper.applyVariables(scope, mk);
 
     process.chdir(cwdSave);
   }

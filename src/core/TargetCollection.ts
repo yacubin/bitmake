@@ -8,7 +8,7 @@
  */
 
 import { InterfaceIncludes }from "@/core/InterfaceIncludes";
-import { InterfaceTarget } from "@/core/InterfaceTarget";
+import { InterfaceTarget } from "@/core/Target";
 import { TargetStruct } from "@/core/TargetStruct";
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
 import { BaseTarget } from "./Target";
@@ -41,14 +41,6 @@ export class TargetStructCollection {
     return result;
   }
 };
-
-function getLibraries(target: any) {
-  return target.LIBRARIES.map((i: any) => i.VALUE);
-}
-
-function getPublicLibraries(target: any) {
-  return target.LIBRARIES.filter((i: any) => i.PUBLIC_ONLY).map((i: any) => i.VALUE);
-}
 
 export class TargetCollection {
   private [ENTRIES]: { [name: string]: BaseTarget };
@@ -86,7 +78,7 @@ export class TargetCollection {
           targetSet.add(iter.targetName);
           const target = this.get(iter.targetName);
           this.__getAllIncludes(includes, targetSet, target.IMPL.getPublicIncludes());
-          this.__getAllIncludes(includes, targetSet, getPublicLibraries(target));
+          this.__getAllIncludes(includes, targetSet, target.IMPL.getPublicLibraries());
         }
       }
       else if (iter instanceof DirPath) {
@@ -104,7 +96,7 @@ export class TargetCollection {
     const includes: string[] = [];
     const targetSet = new Set([ target.NAME ]);
     this.__getAllIncludes(includes, targetSet, target.IMPL.getIncludes());
-    this.__getAllIncludes(includes, targetSet, getLibraries(target));
+    this.__getAllIncludes(includes, targetSet, target.IMPL.getLibraries());
     return includes;
   }
 
@@ -119,7 +111,7 @@ export class TargetCollection {
               headers.push(header.toString());
           }
           this.__getAllHeaders(headers, targetSet, target.IMPL.getPublicIncludes());
-          this.__getAllHeaders(headers, targetSet, getPublicLibraries(target));
+          this.__getAllHeaders(headers, targetSet, target.IMPL.getPublicLibraries());
         }
       }
     }
@@ -130,7 +122,7 @@ export class TargetCollection {
     const headers = target.IMPL.getHeaders().map((i: any) => i.FILE.toString());
     const targetSet = new Set([ target.NAME ]);
     this.__getAllHeaders(headers, targetSet, target.IMPL.getIncludes());
-    this.__getAllHeaders(headers, targetSet, getLibraries(target));
+    this.__getAllHeaders(headers, targetSet, target.IMPL.getLibraries());
     return headers;
   }
 
@@ -141,7 +133,7 @@ export class TargetCollection {
         targetSet.add(iter.targetName);
         const target = this.get(iter.targetName);
         libraries.push(target.FILE.toString());
-        this.__getAllLibraries(libraries, targetSet, getPublicLibraries(target));
+        this.__getAllLibraries(libraries, targetSet, target.IMPL.getPublicLibraries());
       }
     }
   }
@@ -150,7 +142,7 @@ export class TargetCollection {
     const target = (typeof params === "string") ? this.get(params) : params;
     const libraries: string[] = [];
     const targetSet = new Set([ target.NAME ]);
-    this.__getAllLibraries(libraries, targetSet, getLibraries(target));
+    this.__getAllLibraries(libraries, targetSet, target.IMPL.getLibraries());
     return libraries;
   }
 
@@ -161,7 +153,7 @@ export class TargetCollection {
           targetSet.add(iter.targetName);
           const target = this.get(iter.targetName);
           this.__getAllDefinitions(definitions, targetSet, target.IMPL.getPublicDefinitions());
-          this.__getAllDefinitions(definitions, targetSet, getPublicLibraries(target));
+          this.__getAllDefinitions(definitions, targetSet, target.IMPL.getPublicLibraries());
         }
       }
       else if (typeof iter === "string") {
@@ -179,7 +171,7 @@ export class TargetCollection {
     const definitions: string[] = [];
     const targetSet = new Set([ target.NAME ]);
     this.__getAllDefinitions(definitions, targetSet, target.IMPL.getDefinitions());
-    this.__getAllDefinitions(definitions, targetSet, getPublicLibraries(target));
+    this.__getAllDefinitions(definitions, targetSet, target.IMPL.getPublicLibraries());
     return definitions;
   }
 
@@ -190,7 +182,7 @@ export class TargetCollection {
           targetSet.add(iter.targetName);
           const target = this.get(iter.targetName);
           this.__getAllCompileOptions(options, targetSet, target.IMPL.getPublicCompileOptions());
-          this.__getAllCompileOptions(options, targetSet, getPublicLibraries(target));
+          this.__getAllCompileOptions(options, targetSet, target.IMPL.getPublicLibraries());
         }
       }
       else if (typeof iter === "string") {
@@ -212,7 +204,7 @@ export class TargetCollection {
     const options: string[] = [];
     const targetSet = new Set([ target.NAME ]);
     this.__getAllCompileOptions(options, targetSet, target.IMPL.getCompileOptions());
-    this.__getAllCompileOptions(options, targetSet, getPublicLibraries(target));
+    this.__getAllCompileOptions(options, targetSet, target.IMPL.getPublicLibraries());
     return options.flat();
   }
 
@@ -223,7 +215,7 @@ export class TargetCollection {
           targetSet.add(iter.targetName);
           const target = this.get(iter.targetName);
           this.__getLinkOptions(options, targetSet, target.IMPL.getPublicLinkOptions());
-          this.__getLinkOptions(options, targetSet, getPublicLibraries(target));
+          this.__getLinkOptions(options, targetSet, target.IMPL.getPublicLibraries());
         }
       }
       else if (typeof iter === "string") {
@@ -245,7 +237,7 @@ export class TargetCollection {
     const options: string[] = [];
     const targetSet = new Set([ target.NAME ]);
     this.__getLinkOptions(options, targetSet, target.IMPL.getLinkOptions());
-    this.__getLinkOptions(options, targetSet, getPublicLibraries(target));
+    this.__getLinkOptions(options, targetSet, target.IMPL.getPublicLibraries());
     return options.flat();
   }
 }

@@ -7,33 +7,20 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { findProgramSync } from "@/core/FindProgram";
 import { GlobalContext } from "@/core/GlobalContext";
 import { SystemScope } from "@/core/SystemScope";
+import { BaseContext } from "@/core/BaseContext";
 
 const GLOBAL = Symbol("GLOBAL");
 const SCOPE = Symbol("SCOPE");
 
-export namespace ScriptContext {
+export class ScriptContext extends BaseContext {  
+  [GLOBAL]: GlobalContext;
+  [SCOPE]: SystemScope;
 
-interface IScriptContext extends SystemScope {
-  findProgram(name: string): string | undefined;
+  constructor(scope: SystemScope, global: GlobalContext) {
+    super();
+    this[SCOPE] = scope;
+    this[GLOBAL] = global;
+  }
 };
-  
-export function create(scope: SystemScope, global: GlobalContext): IScriptContext {
-  const mk = Object.create(scope, {
-    findProgram: {
-      value: findProgramSync,
-      enumerable: false,
-      writable: false,
-      configurable: false,
-    },
-  });
-
-  mk[SCOPE] = scope;
-  mk[GLOBAL] = global;
-
-  return mk;
-}
-
-} // namespace ScriptContext

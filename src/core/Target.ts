@@ -10,23 +10,141 @@
 import { ensureString } from "@/utils/StrictType";
 import { SourceFile } from "@/core/SourceFile";
 import { SourceFileList } from "@/core/SourceFileList";
-import { InterfaceTarget } from "@/core/InterfaceTarget";
+import { InterfaceIncludes } from "@/core/InterfaceIncludes";
 import { InterfaceObjects } from "@/core/InterfaceObjects";
 import { AbsolutePath, FilePath } from "@/core/Path";
 import { ScopeHelper } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
 import { TargetStruct, TargetType, LiveString } from "@/core/TargetStruct";
 
+const _languageExtensions = {
+  ASM: [ ".asm", ".s" ],
+  C:   [ ".c" ],
+  CXX: [".cpp", ".cc", ".cxx" ],
+};
+
+function isSupportLanguage(language: string) {
+  return _languageExtensions.hasOwnProperty(language);
+}
+
+function getFileLanguage(filename: string) {
+  const filenameLowerCase = filename.toLowerCase();
+  for (const [language, extensions] of Object.entries(_languageExtensions)) {
+    for (const iter of extensions) {
+      if (filenameLowerCase.endsWith(iter))
+        return language;
+    }
+  }
+  return "";
+}
+
+function makeLanguage(value: string) {
+  if (isSupportLanguage(value))
+    return value;
+  throw new Error(`Language "${value}" is not supported`);
+}
+
+function createSources(scope: SystemScope, source: any): InterfaceObjects | SourceFile {
+  if (source instanceof InterfaceObjects || source instanceof SourceFile)
+    return source;
+
+  if (typeof source === "string" || AbsolutePath.isAbsolute(source)) {
+    const filename = scope.SOURCE_DIR.resolve(source);
+    const language = getFileLanguage(filename.toString());
+    const compileFlags = !language ? [] : [
+      ...(scope as any)[language + "_FLAGS"],
+      ...(scope as any)[language + "_FLAGS_" + scope.BUILD_TYPE.toUpperCase()],
+    ];
+    return SourceFile.create(filename, scope.SOURCE_DIR, language, compileFlags);
+  }
+  
+  throw new Error(`Not support instance ${source}`);
+}
+
 const IMPL                = Symbol("IMPL");
 const TARGET_SCOPE        = Symbol("TARGET_SCOPE");
-const LIBRARIES           = Symbol("LIBRARIES");
-const POSITION_INDEPENDENT_CODE = Symbol("POSITION_INDEPENDENT_CODE");
+
+export class InterfaceTarget {
+  private [TARGET_SCOPE]: SystemScope;
+  private [IMPL]: TargetStruct;
+
+  private constructor(scope: SystemScope, impl: TargetStruct) {
+    this[TARGET_SCOPE] = ScopeHelper.clone({}, scope);
+    this[IMPL] = impl;
+  }
+
+  public static create(scope: any, utarget: any) {
+    return Object.seal(new InterfaceTarget(scope, utarget));
+  }
+
+  public static ensureInstance(value: any) {
+    if (value instanceof InterfaceTarget)
+      return value;
+    throw new Error(`The '${value}' is not a InterfaceTarget`);
+  }
+
+  public get targetName(): string {
+    return this[IMPL].name;
+  }
+
+  public get includes(): InterfaceIncludes {
+    return InterfaceIncludes.create(this.targetName);
+  }
+
+  public get objects(): InterfaceObjects {
+    return InterfaceObjects.create(this.targetName);
+  }
+
+  public toJSON(): string {
+    return this.toString();
+  }
+
+  public toString(): string {
+    return "${" + this.targetName + "}";
+  }
+
+  public addSources(...sources: Array<InterfaceObjects | SourceFile | AbsolutePath | string>): void {
+    for (let it of sources.flat()) {
+      this[IMPL].addSource("indirectly", false, createSources(this[TARGET_SCOPE], it));
+    }
+  }
+
+  public addIncludes(...includes: any): void {
+    this[IMPL].addIncludes("indirectly", false, this[TARGET_SCOPE].SOURCE_DIR, ...includes);
+  }
+
+  public addPublicIncludes(...includes: Array<InterfaceIncludes|AbsolutePath|string>): void {
+    this[IMPL].addIncludes("indirectly", true, this[TARGET_SCOPE].SOURCE_DIR, ...includes);
+  }
+
+  public addDefinitions(...definitions: any): void {
+    this[IMPL].addDefinitions("indirectly", false, ...definitions);
+  }
+
+  public addPublicDefinitions(...definitions: any): void {
+    this[IMPL].addDefinitions("indirectly", true, ...definitions);
+  }
+
+  public addCompileOptions(...options: Array<string|string[]>): void {
+    this[IMPL].addCompileOptions("indirectly", false, ...options);
+  }
+
+  public addPublicCompileOptions(...options: string[]): void {
+    this[IMPL].addCompileOptions("indirectly", true, ...options);
+  }
+
+  public addLinkOptions(...options: Array<string|string[]>): void {
+    this[IMPL].addLinkOptions("indirectly", false, ...options);
+  }
+
+  public addPublicLinkOptions(...options: string[]): void {
+    this[IMPL].addLinkOptions("indirectly", true, ...options);
+  }
+};
 
 export class BaseTarget {
   private [IMPL]: TargetStruct;
   private [TARGET_SCOPE]: SystemScope;
-  private [LIBRARIES]: any[];
-  private [POSITION_INDEPENDENT_CODE]: boolean;
 
   protected constructor(impl: TargetStruct, scope: SystemScope, prefix: string, suffix: string) {
     this[IMPL] = impl;
@@ -41,10 +159,9 @@ export class BaseTarget {
       targetFile.suffix = suffix;
 
     this[IMPL].addIncludes("initialize", false, scope.SOURCE_DIR, ...scope.INCLUDES);
+    this[IMPL].positionIndependentCode = scope.POSITION_INDEPENDENT_CODE;
 
     this[TARGET_SCOPE] = ScopeHelper.clone({}, scope);
-    this[LIBRARIES] = [];
-    this[POSITION_INDEPENDENT_CODE] = scope.POSITION_INDEPENDENT_CODE;
   }
 
   public get NAME() {
@@ -53,10 +170,6 @@ export class BaseTarget {
 
   public get TARGET_SCOPE() {
     return this[TARGET_SCOPE];
-  }
-
-  public get LIBRARIES(): string[] {
-    return this[LIBRARIES];
   }
 
   public get FILE_DIR(): AbsolutePath {
@@ -77,23 +190,13 @@ export class BaseTarget {
     return this[IMPL].targetFile.file;
   }
 
-  public get POSITION_INDEPENDENT_CODE(): boolean {
-    return this[POSITION_INDEPENDENT_CODE];
-  }
-
   public get IMPL(): TargetStruct {
     return this[IMPL];
   }
 
   public addSources(...sources: Array<InterfaceObjects | SourceFile | AbsolutePath | string>) {
     for (let it of sources.flat()) {
-      if (it instanceof InterfaceObjects || it instanceof SourceFile)
-        {}
-      else if (typeof it === "string" || AbsolutePath.isAbsolute(it))
-        it = SourceFile.create(this[TARGET_SCOPE], it);
-      else
-        throw new Error(`Not support instance ${it}`);
-      this[IMPL].addSource("directly", false, it);
+      this[IMPL].addSource("directly", false, createSources(this[TARGET_SCOPE], it));
     }
   }
 
@@ -102,9 +205,7 @@ export class BaseTarget {
   }
 
   public addLibraries(...libraries: any) {
-    for (const it of libraries.flat(1)) {
-      this[LIBRARIES].push({ VALUE: InterfaceTarget.ensureInstance(it) });
-    }
+    this[IMPL].addLibraries("directly", false, ...libraries);
   }
 
   public addCompileOptions(...options: Array<string|string[]>) {
@@ -125,7 +226,7 @@ export class BaseTarget {
         throw new Error(`Cannot find "${it}"`);
       result.push(src);
     }
-  
+
     if (result.length)
       return SourceFileList.create(this[TARGET_SCOPE], result);
   
@@ -165,7 +266,6 @@ export class BaseTarget {
     return {
       NAME: this.NAME,
       TARGET_SCOPE: this.TARGET_SCOPE,
-      LIBRARIES: this.LIBRARIES,
       FILE_DIR: this.FILE_DIR,
       FILE: this.FILE,
     }
@@ -178,7 +278,7 @@ export class BaseLibrary extends BaseTarget {
   }
 
   public setPositionIndependentCode(value: boolean) {
-    this[POSITION_INDEPENDENT_CODE] = value;
+    this[IMPL].positionIndependentCode = value;
   }
 
   public addPublicIncludes(...includes: any[]) {
@@ -190,9 +290,7 @@ export class BaseLibrary extends BaseTarget {
   }
 
   public addPublicLibraries(...libraries: any[]) {
-    for (const it of libraries.flat(1)) {
-      this[LIBRARIES].push({VALUE: InterfaceTarget.ensureInstance(it), PUBLIC_ONLY: true});
-    }
+    this[IMPL].addLibraries("directly", true, ...libraries);
   }
 
   public addPublicCompileOptions(...options: Array<string|string[]>) {

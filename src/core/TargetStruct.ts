@@ -10,6 +10,7 @@
 import { DirPath, FilePath, AbsolutePath } from "@/core/Path";
 import { InterfaceIncludes } from "@/core/InterfaceIncludes";
 import { InterfaceObjects } from "@/core/InterfaceObjects";
+import { InterfaceTarget } from "@/core/Target";
 import { SourceFile } from "@/core/SourceFile";
 import { normalizeDefinitions } from "@/core/DefinitionHelper";
 
@@ -228,6 +229,8 @@ const INCLUDES        = Symbol("INCLUDES");
 const COMPILE_OPTIONS = Symbol("COMPILE_OPTIONS");
 const LINK_OPTIONS    = Symbol("LINK_OPTIONS");
 const SOURCES         = Symbol("SOURCES");
+const LIBRARIES       = Symbol("LIBRARIES");
+const POSITION_INDEPENDENT_CODE = Symbol("POSITION_INDEPENDENT_CODE");
 
 export class TargetStruct {
   private [NAME]: string;
@@ -236,10 +239,12 @@ export class TargetStruct {
   private [PRE_BUILD] = new Array<TargetCommand>;
   private [POST_BUILD] = new Array<TargetCommand>;
   private [DEFINES] = new TargetItems<string>;
-  private [INCLUDES] = new TargetItems<DirPath|InterfaceIncludes>;
-  private [COMPILE_OPTIONS] = new TargetItems<string|string[]>;
-  private [LINK_OPTIONS] = new TargetItems<string|string[]>;
-  private [SOURCES] = new TargetItems<InterfaceObjects|SourceFile>;
+  private [INCLUDES] = new TargetItems<DirPath | InterfaceIncludes>;
+  private [COMPILE_OPTIONS] = new TargetItems<string | string[]>;
+  private [LINK_OPTIONS] = new TargetItems<string | string[]>;
+  private [SOURCES] = new TargetItems<InterfaceObjects | SourceFile>;
+  private [LIBRARIES] = new TargetItems<InterfaceTarget>;
+  private [POSITION_INDEPENDENT_CODE] = false;
 
   constructor(name: string) {
     this[NAME] = name;
@@ -247,15 +252,15 @@ export class TargetStruct {
     this[TARGET_FILE] = TargetFile.create();
   }
 
-  get name() {
+  public get name() {
     return this[NAME];
   }
 
-  get type() {
+  public get type() {
     return this[TYPE];
   }
 
-  set type(value: TargetType) {
+  public set type(value: TargetType) {
     if (this[TYPE] === value)
       return;
     if (this[TYPE] !== TargetType.Unknown)
@@ -263,8 +268,16 @@ export class TargetStruct {
     this[TYPE] = value;
   }
 
-  get targetFile() {
+  public get targetFile() {
     return this[TARGET_FILE];
+  }
+
+  public get positionIndependentCode() {
+    return this[POSITION_INDEPENDENT_CODE];
+  }
+
+  public set positionIndependentCode(value: boolean) {
+    this[POSITION_INDEPENDENT_CODE] = value;
   }
 
   public addPreBuild(command: any, args: any[]) {
@@ -377,6 +390,23 @@ export class TargetStruct {
     return result;
   }
 
+  public addLibrary(origin: TargetItemOrigin, publicOnly: boolean, value: InterfaceTarget) {
+    this[LIBRARIES].addItem(origin, publicOnly, InterfaceTarget.ensureInstance(value));
+  }
+
+  public addLibraries(origin: TargetItemOrigin, publicOnly: boolean, ...libraries: InterfaceTarget[]) {
+    for (const iter of libraries.flat())
+      this.addLibrary(origin, publicOnly, iter);
+  }
+
+  public getLibraries(): Array<InterfaceTarget> {
+    return this[LIBRARIES].getItems();
+  }
+
+  public getPublicLibraries(): Array<InterfaceTarget> {
+    return this[LIBRARIES].getPublicItems();
+  }
+
   public toJSON(): object {
     return {
       name: this.name,
@@ -388,6 +418,8 @@ export class TargetStruct {
       compileOptions: this[COMPILE_OPTIONS],
       linkOptions: this[LINK_OPTIONS],
       sources: this[SOURCES],
+      libraries: this[LIBRARIES],
+      positionIndependentCode: this[POSITION_INDEPENDENT_CODE],
     }
   }
 };

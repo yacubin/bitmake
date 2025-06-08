@@ -13,7 +13,7 @@ tar -xvf ./v0.0.1.tar.gz
 cd dbc-0.0.1/
 npm init -y
 npm install wasmux --save-dev                                         # Standard libraries and tolchain
-npx bitmake init --preset wasmux/cmake                                # Predefined recipe for cmake and wasm32
+npx bitmake init --preset import://wasmux/preset/cmake                # Predefined recipe for cmake and wasm32
 npx bitmake build                                                     # Build
  ```
 
@@ -25,7 +25,7 @@ tar -xvf ./sed-4.9.tar.gz
 cd sed-4.9/
 npm init -y
 npm install wasmux --save-dev                                         # Standard libraries and tolchain
-npx bitmake init --preset wasmux/gnu-configure                        # Predefined recipe for configure and wasm32
+npx bitmake init --preset import://wasmux/preset/gnu-configure        # Predefined recipe for configure and wasm32
 npx bitmake build                                                     # Build
  ```
 
@@ -58,3 +58,4 @@ export default (mk) => {
 Examples of make recipes:
 * [nlohmann](https://github.com/ykbin/PkgExtras/blob/develop/MakeRecipes/nlohmann.mjs)
 * [libhv-static](https://github.com/ykbin/PkgExtras/blob/develop/MakeRecipes/libhv-static.mjs)
+* [Thunder-R2](https://github.com/ykbin/PkgExtras/blob/develop/MakeRecipes/Thunder-R2.mjs)

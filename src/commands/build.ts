@@ -25,11 +25,7 @@ import { createLogger } from "@/logger";
 import { fileExists } from "@/utils/FileSystem";
 import { importModule } from "@/utils/Module";
 
-import { bitmakeAction } from "@/core/BitMakeAction";
-import { cmakeAction } from "@/core/CMakeAction";
-import { makeAction } from "@/core/MakeAction";
-import { processAction } from "@/core/ProcessAction";
-import { configureAction } from "@/core/ConfigureAction";
+import actions from "@/actions";
 
 const logger = createLogger(import.meta.url);
 
@@ -320,17 +316,6 @@ async function doExtractArchive(gconfig: IGeneralConfig, environment: any, confi
   }
 }
 
-const actionHandlers: any = {
-  none: async (config: any, environment: any, settings: SettingsStorage) => {
-    /* do nothing */
-  },
-  cmake: cmakeAction,
-  configure: configureAction,
-  make: makeAction,
-  process: processAction,
-  bitmake: bitmakeAction,
-};
-
 async function doTargetBuild(gconfig: IGeneralConfig, environment: any, config: any, settings: SettingsStorage) {
   if (config.preAction) {
     await settings.push("preAction");
@@ -365,9 +350,9 @@ async function doTargetBuild(gconfig: IGeneralConfig, environment: any, config: 
     if (!await directoryExists(config.binaryDir)) {
       await fs.promises.mkdir(config.binaryDir, { recursive: true });
     }
-    if (actionHandlers[config.action]) {
+    if (actions[config.action]) {
       config.description && console.log(config.description);
-      await actionHandlers[config.action](config, environment, settings);
+      await actions[config.action](config, environment, settings);
     }
   }
 

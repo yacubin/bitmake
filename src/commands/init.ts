@@ -10,10 +10,9 @@
 import path from "node:path";
 import fs from "node:fs";
 
-import { fileExists } from "@/utils/FileSystem";
+import { fileExists, fetchBuffer } from "@/utils/FileSystem";
 import { USER_CONFIG } from "@/Constants";
 import { CommandOptions } from "@/core/CommandOptions";
-import { requireResolve } from "@/utils/Module";
 import { createLogger } from "@/logger";
 
 const logger = createLogger(import.meta.url);
@@ -21,25 +20,15 @@ const logger = createLogger(import.meta.url);
 export default async function(options: CommandOptions) {
   const preset = options.env.preset;
 
-  let presetPath;
-  if (preset) {
-    if (await fileExists(preset))
-      presetPath = preset;
-    else {
-      const components = preset.split("/");
-      if (components.length === 2) {
-          try { presetPath = requireResolve(`${components[0]}/bitmake/presets/${components[1]}`) } catch(e) {}
-      }
-    }
-  }
-
-  if (!presetPath)
+  if (!preset)
     throw new Error(`Preset '${preset}' is not available`);
+
+  const presetData = await fetchBuffer(preset);
 
   const userConfigPath = path.resolve(options.workDir, USER_CONFIG);
   if (await fileExists(userConfigPath))
     await fs.promises.rm(userConfigPath);
 
-  await fs.promises.copyFile(presetPath, userConfigPath);
+  await fs.promises.writeFile(userConfigPath, presetData, "utf8");
   logger.info(`Preset '${preset}' installed successfully`);
 }

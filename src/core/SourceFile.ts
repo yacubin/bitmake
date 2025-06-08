@@ -9,74 +9,36 @@
 
 import { ensureBoolean } from "@/utils/StrictType";
 import { AbsolutePath } from "@/core/Path";
-import { SystemScope } from "@/core/SystemScope";
 
-const NAME                = Symbol("NAME");
 const LANGUAGE            = Symbol("LANGUAGE");
 const HEADER_FILE_ONLY    = Symbol("HEADER_FILE_ONLY");
 const DEFINES             = Symbol("DEFINES");
 const COMPILE_FLAGS       = Symbol("COMPILE_FLAGS");
 const FILE                = Symbol("FILE");
+const BASE_DIR            = Symbol("BASE_DIR");
 const OBJECT_FILE         = Symbol("OBJECT_FILE");
 
-const _languageExtensions = {
-  ASM: [ ".asm", ".s" ],
-  C:   [ ".c" ],
-  CXX: [".cpp", ".cc", ".cxx" ],
-};
-
-function isSupportLanguage(language: string) {
-  return _languageExtensions.hasOwnProperty(language);
-}
-
-function getFileLanguage(filename: any) {
-  const filenameLowerCase = filename.toString().toLowerCase();
-  for (const [language, extensions] of Object.entries(_languageExtensions)) {
-    for (const iter of extensions) {
-      if (filenameLowerCase.endsWith(iter))
-        return language;
-    }
-  }
-  return "";
-}
-
-function makeLanguage(value: string) {
-  if (isSupportLanguage(value))
-    return value;
-  throw new Error(`Language "${value}" is not supported`);
-}
-
 export class SourceFile {
-  private [NAME]: string;
   private [LANGUAGE]: string;
   private [HEADER_FILE_ONLY]: boolean;
   private [FILE]: AbsolutePath;
+  private [BASE_DIR]: AbsolutePath;
   private [OBJECT_FILE]: AbsolutePath | null;
   private [DEFINES]: string[];
-  private [COMPILE_FLAGS]: string[];
+  private [COMPILE_FLAGS]: Array<string|string[]>;
 
-  private constructor(scope: SystemScope, filename: AbsolutePath|string) {
-    this[NAME] = filename.toString();
-    const fname = scope.SOURCE_DIR.resolve(filename);
-  
-    const language = getFileLanguage(fname);
+  private constructor(filename: AbsolutePath, baseDir: AbsolutePath, language: string, compileFlags: Array<string|string[]>) {
+    this[FILE] = filename;
+    this[BASE_DIR] = baseDir;
     this[LANGUAGE] = language;
     this[HEADER_FILE_ONLY] = !language;
-    this[FILE] = fname;
     this[OBJECT_FILE] = null;
     this[DEFINES] = [];
-    this[COMPILE_FLAGS] = !language ? [] : [
-      ...(scope as any)[language + "_FLAGS"],
-      ...(scope as any)[language + "_FLAGS_" + scope.BUILD_TYPE.toUpperCase()],
-    ];
+    this[COMPILE_FLAGS] = [ ...compileFlags ];
   }
 
-  public static create(scope: any, filename: AbsolutePath|string) {
-    return Object.seal(new SourceFile(scope, filename));
-  }
-
-  public get NAME(): string {
-    return this[NAME];
+  public static create(filename: AbsolutePath, baseDir: AbsolutePath, language: string, compileFlags: Array<string|string[]>) {
+    return Object.seal(new SourceFile(filename, baseDir, language, compileFlags));
   }
 
   public get LANGUAGE(): string {
@@ -129,15 +91,15 @@ export class SourceFile {
 
   public toJSON(): object {
     return {
-      NAME: this.NAME,
-      LANGUAGE: this.LANGUAGE,
-      HEADER_FILE_ONLY: this.HEADER_FILE_ONLY,
-      DEFINES: this.DEFINES,
-      COMPILE_FLAGS: this.COMPILE_FLAGS,
-      FILE: this.FILE,
+      LANGUAGE: this[LANGUAGE],
+      HEADER_FILE_ONLY: this[HEADER_FILE_ONLY],
+      DEFINES: this[DEFINES],
+      COMPILE_FLAGS: this[COMPILE_FLAGS],
+      FILE: this[FILE],
       FILE_DIR: this.FILE_DIR,
       FILE_NAME: this.FILE_NAME,
-      OBJECT_FILE: this.OBJECT_FILE,
+      BASE_DIR: this[BASE_DIR],
+      OBJECT_FILE: this[OBJECT_FILE],
       OBJECT_FILE_DIR: this.OBJECT_FILE_DIR,
       OBJECT_FILE_NAME: this.OBJECT_FILE_NAME,
     };

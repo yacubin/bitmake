@@ -133,7 +133,7 @@ export class MakeContext extends BaseContext {
 
   public install(value: any, params: any): void {
     for (const it of [ value ].flat(1)) {
-      const iter = (it instanceof BaseTarget) ? this.target(it.NAME) : it;
+      const iter = (it instanceof BaseTarget) ? this.target(it.targetName) : it;
       const entity = InstallEntity.create(this, iter, params);
       this[GLOBAL].addInstallEntry(entity);
     }

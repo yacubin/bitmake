@@ -94,7 +94,7 @@ export class TargetCollection {
   public allIncludesOf(params: any): string[] {
     const target = ((typeof params === "string") ? this.get(params) : params) as BaseTarget;
     const includes: string[] = [];
-    const targetSet = new Set([ target.NAME ]);
+    const targetSet = new Set([ target.targetName ]);
     this.__getAllIncludes(includes, targetSet, target.IMPL.getIncludes());
     this.__getAllIncludes(includes, targetSet, target.IMPL.getLibraries());
     return includes;
@@ -120,7 +120,7 @@ export class TargetCollection {
   public allHeadersOf(params: any) {
     const target = ((typeof params === "string") ? this.get(params) : params) as BaseTarget;
     const headers = target.IMPL.getHeaders().map((i: any) => i.FILE.toString());
-    const targetSet = new Set([ target.NAME ]);
+    const targetSet = new Set([ target.targetName ]);
     this.__getAllHeaders(headers, targetSet, target.IMPL.getIncludes());
     this.__getAllHeaders(headers, targetSet, target.IMPL.getLibraries());
     return headers;
@@ -141,7 +141,7 @@ export class TargetCollection {
   public allLibrariesOf(params: any) {
     const target = (typeof params === "string") ? this.get(params) : params;
     const libraries: string[] = [];
-    const targetSet = new Set([ target.NAME ]);
+    const targetSet = new Set([ target.targetName ]);
     this.__getAllLibraries(libraries, targetSet, target.IMPL.getLibraries());
     return libraries;
   }
@@ -169,7 +169,7 @@ export class TargetCollection {
   public allDefinitionsOf(params: any) {
     const target = ((typeof params === "string") ? this.get(params) : params) as BaseTarget;
     const definitions: string[] = [];
-    const targetSet = new Set([ target.NAME ]);
+    const targetSet = new Set([ target.targetName ]);
     this.__getAllDefinitions(definitions, targetSet, target.IMPL.getDefinitions());
     this.__getAllDefinitions(definitions, targetSet, target.IMPL.getPublicLibraries());
     return definitions;
@@ -202,7 +202,7 @@ export class TargetCollection {
   public allCompileOptionsOf(params: any) {
     const target = ((typeof params === "string") ? this.get(params) : params) as BaseTarget;
     const options: string[] = [];
-    const targetSet = new Set([ target.NAME ]);
+    const targetSet = new Set([ target.targetName ]);
     this.__getAllCompileOptions(options, targetSet, target.IMPL.getCompileOptions());
     this.__getAllCompileOptions(options, targetSet, target.IMPL.getPublicLibraries());
     return options.flat();
@@ -235,7 +235,7 @@ export class TargetCollection {
   public allLinkOptionsOf(params: any) {
     const target = ((typeof params === "string") ? this.get(params) : params) as BaseTarget;
     const options: string[] = [];
-    const targetSet = new Set([ target.NAME ]);
+    const targetSet = new Set([ target.targetName ]);
     this.__getLinkOptions(options, targetSet, target.IMPL.getLinkOptions());
     this.__getLinkOptions(options, targetSet, target.IMPL.getPublicLibraries());
     return options.flat();

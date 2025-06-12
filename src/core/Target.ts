@@ -164,8 +164,16 @@ export class BaseTarget {
     this[TARGET_SCOPE] = ScopeHelper.clone({}, scope);
   }
 
-  public get NAME() {
+  public get targetName() {
     return this[IMPL].name;
+  }
+
+  public get includes(): InterfaceIncludes {
+    return InterfaceIncludes.create(this.targetName);
+  }
+
+  public get objects(): InterfaceObjects {
+    return InterfaceObjects.create(this.targetName);
   }
 
   public get TARGET_SCOPE() {
@@ -174,19 +182,19 @@ export class BaseTarget {
 
   public get FILE_DIR(): AbsolutePath {
     if (!this[IMPL].targetFile.fileDir)
-      throw new Error(`Target "${this.NAME}" is not defined`);
+      throw new Error(`Target "${this.targetName}" is not defined`);
     return this[IMPL].targetFile.fileDir;
   }
 
   public get FILE_NAME(): string {
     if (!this[IMPL].targetFile.fileName)
-      throw new Error(`Target "${this.NAME}" is not defined`);
+      throw new Error(`Target "${this.targetName}" is not defined`);
     return this[IMPL].targetFile.fileName;
   }
 
   public get FILE(): AbsolutePath {
     if (!this[IMPL].targetFile.file)
-      throw new Error(`Target "${this.NAME}" is not defined`);
+      throw new Error(`Target "${this.targetName}" is not defined`);
     return this[IMPL].targetFile.file;
   }
 
@@ -264,7 +272,7 @@ export class BaseTarget {
 
   public toJSON(): object {
     return {
-      NAME: this.NAME,
+      NAME: this.targetName,
       TARGET_SCOPE: this.TARGET_SCOPE,
       FILE_DIR: this.FILE_DIR,
       FILE: this.FILE,

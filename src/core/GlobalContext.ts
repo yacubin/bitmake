@@ -458,7 +458,7 @@ export class GlobalContext {
         const rfile1 = target.TARGET_SCOPE.BINARY_DIR.relative(it.FILE);
         const rfile2 =  target.TARGET_SCOPE.SOURCE_DIR.relative(it.FILE);
         const rfile = (rfile2.length < rfile1.length ? rfile2 : rfile1).replace("../", "__/");
-        it.OBJECT_FILE =  target.TARGET_SCOPE.BINARY_DIR.join("MakeFiles", target.NAME + ".dir",  rfile + ".obj");
+        it.OBJECT_FILE =  target.TARGET_SCOPE.BINARY_DIR.join("MakeFiles", target.targetName + ".dir",  rfile + ".obj");
       }
     }
 
@@ -539,7 +539,7 @@ export class GlobalContext {
           generalGoal.addExec(scope.LINKER, args, target.FILE_DIR.toString());
         }
         else {
-          logger.info(`No objects for "${target.NAME}"`);
+          logger.info(`No objects for "${target.targetName}"`);
         }
       }
   
@@ -553,7 +553,7 @@ export class GlobalContext {
           generalGoal.addExec(scope.AR, args, target.FILE_DIR.toString());
         }
         else {
-          logger.info(`No objects for "${target.NAME}"`);
+          logger.info(`No objects for "${target.targetName}"`);
         }
       }
   
@@ -580,7 +580,7 @@ export class GlobalContext {
           generalGoal.addExec(scope.CXX_COMPILER, args, target.FILE_DIR.toString());
         }
         else {
-          logger.info(`No objects for "${target.NAME}"`);
+          logger.info(`No objects for "${target.targetName}"`);
         }
       }
 

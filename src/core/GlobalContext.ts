@@ -391,23 +391,25 @@ export class GlobalContext {
       if (!scope)
         continue;
 
-      let scriptFile: AbsolutePath | undefined;
-      const fileList = [ ".js", ".mjs" ].map(i => "MakeScript" + i);
-      for (const filename of fileList) {
-        const iter = scope.SOURCE_DIR.join(filename);
-        if (await fileExists(iter.toString())) {
-          scriptFile = iter;
-          break;
+      if (!scope.SCRIPT_FILE) {
+        let scriptFile: AbsolutePath | undefined;
+        const fileList = [ ".js", ".mjs" ].map(i => "MakeScript" + i);
+        for (const filename of fileList) {
+          const iter = scope.SOURCE_DIR.join(filename);
+          if (await fileExists(iter.toString())) {
+            scriptFile = iter;
+            break;
+          }
         }
+
+        if (!scriptFile)
+          throw new Error(`There are no files ${fileList.join(", ")} in "${scope.SOURCE_DIR}"`);
+
+        scope.SCRIPT_FILE = scriptFile;
+        scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
       }
 
-      if (!scriptFile)
-        throw new Error(`There are no files ${fileList.join(", ")} in "${scope.SOURCE_DIR}"`);
-
-      this.registerSystemScope(scriptFile.toString(), scope);
-
-      scope.SCRIPT_FILE = scriptFile;
-      scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
+      this.registerSystemScope(scope.SCRIPT_FILE.toString(), scope);
 
       const cwdSave = process.cwd();
       process.chdir(scope.SOURCE_DIR.toString());

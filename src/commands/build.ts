@@ -18,6 +18,7 @@ import { SettingsStorage } from "@/utils/SettingsStorage";
 import { arrayWrapper, assignObject } from "@/utils/Primitives";
 import { USER_CONFIG, BUILD_SETTINGS_FILE, REQUEST_ATTEMPTS } from "@/Constants";
 import { DEBUG_BUILD_TYPE, RELEASE_BUILD_TYPE } from "@/core/Types";
+import { IMPORT_SCHEME } from "@/utils/UrlScheme";
 import { requireResolve } from "@/utils/Module";
 import { downloadFile } from "@/utils/HttpRequest";
 import { CommandOptions } from "@/core/CommandOptions";
@@ -205,12 +206,18 @@ function makeBuildConfig(gconfig: IGeneralConfig, config: any) {
       const workDir = Path.join(rootConfig.binaryRoot, folder);
       entry.tempDir = entry.tempDir || Path.join(workDir, "tmp");
       if (entry.sourceUrl) {
-        entry.archiveDir = entry.archiveDir || Path.join(workDir, "arc");
-        entry.extractDir = entry.extractDir || Path.join(workDir, "src");
-        if (!entry.sourceDir)
-          entry.sourceDir = entry.extractDir;
-        else if (!Path.isAbsolute(entry.sourceDir))
-          entry.sourceDir = Path.join(entry.extractDir, entry.sourceDir);
+        if (entry.sourceUrl.startsWith(IMPORT_SCHEME)) {
+          const filename = requireResolve(entry.sourceUrl.slice(IMPORT_SCHEME.length));
+          entry.sourceDir = Path.dirname(filename);
+        }
+        else {
+          entry.archiveDir = entry.archiveDir || Path.join(workDir, "arc");
+          entry.extractDir = entry.extractDir || Path.join(workDir, "src");
+          if (!entry.sourceDir)
+            entry.sourceDir = entry.extractDir;
+          else if (!Path.isAbsolute(entry.sourceDir))
+            entry.sourceDir = Path.join(entry.extractDir, entry.sourceDir);
+        }
       }
       else if (!entry.sourceDir) {
         throw new Error(`Missing sourceDir for ${key} action"`);
@@ -437,7 +444,7 @@ export default async (options: CommandOptions) => {
       if (entry.rebuild || !completed) {
         logger.info(`Started action: ${key}`);
         const environment = mergeEnvironment(entry.environment, process.env);
-        if (entry.sourceUrl) {
+        if (entry.sourceUrl && !entry.sourceUrl.startsWith(IMPORT_SCHEME)) {
           await doExtractArchive(gconfig, environment, entry, settings);
         }
         await doTargetBuild(gconfig, environment, entry, settings);

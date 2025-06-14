@@ -15,11 +15,13 @@ import { GlobalContext } from "@/core/GlobalContext";
 import { ScopeHelper } from "@/core/Scope";
 import { ToolchainContext } from "@/core/ToolchainContext";
 import { getPathString, getURLString }  from "@/utils/FileSystem";
-import { DirPath, FilePath } from "@/core/Path";
+import { AbsolutePath, DirPath, FilePath } from "@/core/Path";
 import { importModule }  from "@/utils/Module";
 import { determineCompiler }  from "@/core/DetermineCompiler";
 import { SettingsStorage } from "@/utils/SettingsStorage";
+import { IMPORT_SCHEME } from "@/utils/UrlScheme";
 import { INSTALL_TARGET, PACKAGE_JSON, MAKE_CACHE } from "@/Constants";
+import { requireResolve } from "@/utils/Module";
 import { createLogger } from "@/logger";
 
 const logger = createLogger(import.meta.url);
@@ -99,6 +101,12 @@ export default async function(config: any, environment: any, settings: SettingsS
       await result;
 
     process.chdir(cwdSave);
+  }
+
+  if (config.sourceUrl && config.sourceUrl.startsWith(IMPORT_SCHEME)) {
+    const scriptFile = requireResolve(config.sourceUrl.slice(IMPORT_SCHEME.length));
+    scope.SCRIPT_FILE = AbsolutePath.create(scriptFile);
+    scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
   }
 
   global.addSubdirectory(scope);

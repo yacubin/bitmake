@@ -109,6 +109,8 @@ export class MakeContext extends BaseContext {
 
     newScope.SOURCE_DIR = AbsolutePath.create(resolvePath.toString());
     newScope.BINARY_DIR = BINARY_DIR;
+    newScope.SCRIPT_FILE = undefined;
+    newScope.SCRIPT_DIR = undefined;
 
     this[GLOBAL].addSubdirectory(newScope);
   }

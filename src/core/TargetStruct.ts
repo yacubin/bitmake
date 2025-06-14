@@ -62,6 +62,7 @@ const FILE_DIR    = Symbol("FILE_DIR");
 
 export class TargetFile {
   private [FILE_DIR]?: DirPath
+
   private [PREFIX]?: string;
   private [OUTPUT_NAME]?: string;
   private [SUFFIX]?: string

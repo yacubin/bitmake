@@ -95,6 +95,18 @@ export class InterfaceTarget {
     return InterfaceObjects.create(this.targetName);
   }
 
+  public setPrefix(prefix: any) {
+    this[IMPL].targetFile.prefix = ensureString(prefix);
+  }
+
+  public setSuffix(suffix: any) {
+    this[IMPL].targetFile.suffix = ensureString(suffix);
+  }
+
+  public setOutputName(outputName: any) {
+    this[IMPL].targetFile.outputName = ensureString(outputName);
+  }
+
   public toJSON(): string {
     return this.toString();
   }

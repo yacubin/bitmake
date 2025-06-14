@@ -121,22 +121,19 @@ function resolveStringWithVariable(config: any, entryConfig: any, rootConfig: an
     let sel;
     for (const name of value.split(".")) {
       if (sel === undefined) {
-        if (config.hasOwnProperty(name)) {
+        if (config.hasOwnProperty(name))
           sel = config[name];
-        }
-        else if (config !== entryConfig && entryConfig.hasOwnProperty(name)) {
+        else if (config !== entryConfig && entryConfig.hasOwnProperty(name))
           sel = entryConfig[name];
-        }
-        else if (config !== rootConfig && rootConfig.hasOwnProperty(name)) {
+        else if (config !== rootConfig && rootConfig.hasOwnProperty(name))
           sel = rootConfig[name];
-        }
         else {
           try {
             const mainFile = requireResolve(name);
             if (mainFile) {
               sel = { mainFile, mainDir: Path.dirname(mainFile), };
             }
-          } catch(e) {}
+         } catch(e) {}
         }
         if (sel === undefined)
           break;

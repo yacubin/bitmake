@@ -120,11 +120,7 @@ function defineVariableImpl2(map: VariableMap, group: string, name: string, desc
   }
 }
 
-function defineVariableImpl(scope: any, group: string, name: string, descriptor: VariableDescriptor) {
-  if (!scope[DEFINE_MAP])
-    scope[DEFINE_MAP] = {};
-
-  defineVariableImpl2(scope[DEFINE_MAP] as VariableMap, group, name, descriptor);
+function definePropertyByName(scope: any, name: string) {
   Object.defineProperty(scope, name, {
     configurable: true,
     enumerable: true,
@@ -139,6 +135,14 @@ function defineVariableImpl(scope: any, group: string, name: string, descriptor:
       entry.value = entry.ensureValue(value);
     },
   });
+}
+
+function defineVariableImpl(scope: any, group: string, name: string, descriptor: VariableDescriptor) {
+  if (!scope[DEFINE_MAP])
+    scope[DEFINE_MAP] = {};
+
+  defineVariableImpl2(scope[DEFINE_MAP] as VariableMap, group, name, descriptor);
+  definePropertyByName(scope, name);
 }
 
 export function defineVariable(scope: any, group: string, name: string, descriptor: any) {
@@ -167,11 +171,14 @@ export function getVariableMap(scope: any): VariableMap {
 }
 
 export function createProxy<T>(map: VariableMap, o?: any): T {
+  o = o || {};
   const handler: ProxyHandler<any> = {
     get(target: VariableMap, key: string, receiver: any) {
+      if ((key as any) === DEFINE_MAP)
+        return target;
       const entry = target[key];
       if (!entry)
-        return o && o[key];
+        return o[key];
       return (entry.value === undefined) ? entry.initValue : entry.value;
     },
     set(target: VariableMap, key: string, value: any): boolean {
@@ -217,6 +224,30 @@ export function clone(target: any, scope: any) {
     }
   }
   return target;
+}
+
+export function createScope(map: VariableMap) {
+  const scope: any = {};
+  scope[DEFINE_MAP] = map;
+
+  for (const name of Object.keys(map))
+    definePropertyByName(scope, name);
+
+  return scope;
+}
+
+export function cloneVariableMap(map: VariableMap) {
+  const result: VariableMap = {};
+  for (const [ name, entry ] of Object.entries(map)) {
+    defineVariableImpl2(result, entry.group, name, {
+      type: entry.type,
+      description: entry.description,
+      value: entry.initValue,
+    });
+    if (entry.value !== undefined)
+      result[name].value = entry.value;
+  }
+  return result;
 }
 
 export function getVariablesByGroup(scope: any, group?: string) {

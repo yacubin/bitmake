@@ -99,7 +99,13 @@ export class MakeContext extends BaseContext {
     const SOURCE_DIR = path.isAbsolute(sourceDir) ? AbsolutePath.create(sourceDir) : this[SCOPE].SOURCE_DIR.join(sourceDir);
     const BINARY_DIR = path.isAbsolute(binaryDir) ? AbsolutePath.create(binaryDir) : this[SCOPE].BINARY_DIR.join(binaryDir);
 
-    const newScope = ScopeHelper.clone({}, this[SCOPE]);
+    const variableMap = ScopeHelper.getVariableMap(this[SCOPE]);
+    const newVariableMap = ScopeHelper.cloneVariableMap(variableMap);
+
+    newVariableMap.SCRIPT_FILE.value = undefined;
+    newVariableMap.SCRIPT_DIR.value = undefined;
+
+    const newScope = ScopeHelper.createProxy(newVariableMap) as SystemScope;
 
     const resolvePath = this[GLOBAL].resolveSubdirectory(SOURCE_DIR);
     if (!resolvePath) {
@@ -109,10 +115,8 @@ export class MakeContext extends BaseContext {
 
     newScope.SOURCE_DIR = AbsolutePath.create(resolvePath.toString());
     newScope.BINARY_DIR = BINARY_DIR;
-    newScope.SCRIPT_FILE = undefined;
-    newScope.SCRIPT_DIR = undefined;
 
-    this[GLOBAL].addSubdirectory(newScope);
+    this[GLOBAL].addSubdirectory(newVariableMap);
   }
   
   public addCustomScript(script: any, params: any): CustomScript {

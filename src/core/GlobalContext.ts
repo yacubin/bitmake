@@ -15,7 +15,7 @@ import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
 import { FilePath, DirPath, AbsolutePath } from "@/core/Path";
 import { Path } from "@/utils/Path";
 import { fileExists, fileExistsSync } from "@/utils/FileSystem";
-import { TargetCollection, TargetStructCollection } from "@/core//TargetCollection";
+import { TargetCollection, TargetStructCollection } from "@/core/TargetCollection";
 import { ScriptCollection } from "@/core/ScriptCollection";
 import { GoalCollection } from "@/core/GoalCollection";
 import { InterfaceScript } from "@/core/InterfaceScript";
@@ -27,7 +27,7 @@ import { createLogger } from "@/logger";
 import { InstallEntity } from "@/core/InstallEntity";
 import { CustomScript } from "@/core/CustomScript";
 import { ScriptContext } from "@/core/ScriptContext";
-import { ScopeHelper } from "./Scope";
+import { ScopeHelper, VariableMap } from "./Scope";
 
 import BuildinScripts from "@/core/BuildinScripts";
 
@@ -193,7 +193,7 @@ export class GlobalContext {
   private [INSTALL_LIST]: InstallEntity[];
   private [SCRIPT_VARIABLES_MAP]: any;
   private [SUBDIR_ALIAS]: SubdirectoryAlias;
-  private [SUBDIR_LIST]: SystemScope[];
+  private [SUBDIR_LIST]: VariableMap[];
   private [BUILTIN_SCRIPTS]: BuildinScripts;
 
   private constructor() {
@@ -377,8 +377,8 @@ export class GlobalContext {
     fs.writeFileSync(filename, json, "utf-8");
   }
 
-  public addSubdirectory(scope: any) {
-    this[SUBDIR_LIST].push(scope);
+  public addSubdirectory(variables: VariableMap) {
+    this[SUBDIR_LIST].push(variables);
   }
 
   public findScriptFunction(name: string): Function | undefined {
@@ -387,10 +387,11 @@ export class GlobalContext {
   
   public async doSubdirectory() {
     while (this[SUBDIR_LIST].length) {
-      const scope = this[SUBDIR_LIST].shift();
-      if (!scope)
+      const variables = this[SUBDIR_LIST].shift();
+      if (!variables)
         continue;
 
+      const scope = ScopeHelper.createScope(variables) as SystemScope;
       if (!scope.SCRIPT_FILE) {
         let scriptFile: AbsolutePath | undefined;
         const fileList = [ ".js", ".mjs" ].map(i => "MakeScript" + i);
@@ -420,7 +421,7 @@ export class GlobalContext {
         throw new Error(`Subdirectory ${scope.SCRIPT_FILE.basename()} not contain default function`);
 
       const ctx = new MakeContext(scope, this);
-      const mk = ScopeHelper.createProxy(ScopeHelper.getVariableMap(scope), ctx);
+      const mk = ScopeHelper.createProxy(variables, ctx);
       const result = module.default(mk);
       if (result instanceof Promise)
         await result;

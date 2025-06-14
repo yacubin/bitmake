@@ -109,7 +109,7 @@ export default async function(config: any, environment: any, settings: SettingsS
     scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
   }
 
-  global.addSubdirectory(scope);
+  global.addSubdirectory(ScopeHelper.getVariableMap(scope));
 
   await global.doSubdirectory();
   logger.info("Configuring done");

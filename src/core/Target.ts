@@ -96,15 +96,15 @@ export class InterfaceTarget {
   }
 
   public setPrefix(prefix: any) {
-    this[IMPL].targetFile.prefix = ensureString(prefix);
+    this[IMPL].targetFile.setForcePrefix(ensureString(prefix));
   }
 
   public setSuffix(suffix: any) {
-    this[IMPL].targetFile.suffix = ensureString(suffix);
+    this[IMPL].targetFile.setForceSuffix(ensureString(suffix));
   }
 
   public setOutputName(outputName: any) {
-    this[IMPL].targetFile.outputName = ensureString(outputName);
+    this[IMPL].targetFile.setForceOutputName(ensureString(outputName));
   }
 
   public toJSON(): string {
@@ -158,17 +158,12 @@ export class BaseTarget {
   private [IMPL]: TargetStruct;
   private [TARGET_SCOPE]: SystemScope;
 
-  protected constructor(impl: TargetStruct, scope: SystemScope, prefix: string, suffix: string) {
+  protected constructor(impl: TargetStruct, scope: SystemScope) {
     this[IMPL] = impl;
 
     const targetFile = impl.targetFile;
     targetFile.fileDir = scope.BINARY_DIR;
-    if (targetFile.prefix === undefined)
-      targetFile.prefix = prefix;
-    if (targetFile.outputName === undefined)
-      targetFile.outputName = impl.name;
-    if (targetFile.suffix === undefined)
-      targetFile.suffix = suffix;
+    targetFile.setInitOutputName(impl.name);
 
     this[IMPL].addIncludes("initialize", false, scope.SOURCE_DIR, ...scope.INCLUDES);
     this[IMPL].positionIndependentCode = scope.POSITION_INDEPENDENT_CODE;
@@ -186,6 +181,18 @@ export class BaseTarget {
 
   public get objects(): InterfaceObjects {
     return InterfaceObjects.create(this.targetName);
+  }
+
+  public setPrefix(prefix: any) {
+    this[IMPL].targetFile.setTargetPrefix(ensureString(prefix));
+  }
+
+  public setSuffix(suffix: any) {
+    this[IMPL].targetFile.setTargetSuffix(ensureString(suffix));
+  }
+
+  public setOutputName(outputName: any) {
+    this[IMPL].targetFile.setTargetOutputName(ensureString(outputName));
   }
 
   public get TARGET_SCOPE() {
@@ -253,18 +260,6 @@ export class BaseTarget {
     return SourceFileList.create(this[TARGET_SCOPE], sourceFiles);
   }
 
-  public setPrefix(prefix: any) {
-    this[IMPL].targetFile.prefix = ensureString(prefix);
-  }
-
-  public setSuffix(suffix: any) {
-    this[IMPL].targetFile.suffix = ensureString(suffix);
-  }
-
-  public setOutputName(outputName: any) {
-    this[IMPL].targetFile.outputName = ensureString(outputName);
-  }
-
   public addDefinitions(...definitions: any[]) {
     this[IMPL].addDefinitions("directly", false, ...definitions);
   }
@@ -293,8 +288,8 @@ export class BaseTarget {
 };
 
 export class BaseLibrary extends BaseTarget {
-  protected constructor(impl: TargetStruct, scope: SystemScope, prefix: string, suffix: string) {
-    super(impl, scope, prefix, suffix);
+  protected constructor(impl: TargetStruct, scope: SystemScope) {
+    super(impl, scope);
   }
 
   public setPositionIndependentCode(value: boolean) {
@@ -324,8 +319,10 @@ export class BaseLibrary extends BaseTarget {
 
 export class ObjectLibrary extends BaseLibrary {
   private constructor(impl: TargetStruct, scope: SystemScope) {
-    super(impl, scope, scope.OBJECT_LIBRARY_PREFIX, scope.OBJECT_LIBRARY_SUFFIX);
+    super(impl, scope);
     this[IMPL].type = TargetType.ObjectLibrary;
+    this[IMPL].targetFile.setInitPrefix(scope.OBJECT_LIBRARY_PREFIX);
+    this[IMPL].targetFile.setInitSuffix(scope.OBJECT_LIBRARY_SUFFIX);
     this[IMPL].addLinkOptions("initialize", true, ...scope.OBJECT_LINKER_FLAGS);
   }
 
@@ -336,8 +333,10 @@ export class ObjectLibrary extends BaseLibrary {
 
 export class StaticLibrary extends BaseLibrary {
   private constructor(impl: TargetStruct, scope: SystemScope) {
-    super(impl, scope, scope.STATIC_LIBRARY_PREFIX, scope.STATIC_LIBRARY_SUFFIX);
+    super(impl, scope);
     this[IMPL].type = TargetType.StaticLibrary;
+    this[IMPL].targetFile.setInitPrefix(scope.STATIC_LIBRARY_PREFIX);
+    this[IMPL].targetFile.setInitSuffix(scope.STATIC_LIBRARY_SUFFIX);
     this[IMPL].addLinkOptions("initialize", true, ...scope.STATIC_LINKER_FLAGS);
   }
 
@@ -348,8 +347,10 @@ export class StaticLibrary extends BaseLibrary {
 
 export class SharedLibrary extends BaseLibrary {
   private constructor(impl: TargetStruct, scope: SystemScope) {
-    super(impl, scope, scope.SHARED_LIBRARY_PREFIX, scope.SHARED_LIBRARY_SUFFIX);
+    super(impl, scope);
     this[IMPL].type = TargetType.SharedLibrary;
+    this[IMPL].targetFile.setInitPrefix(scope.SHARED_LIBRARY_PREFIX);
+    this[IMPL].targetFile.setInitSuffix(scope.SHARED_LIBRARY_SUFFIX);
     this[IMPL].addLinkOptions("initialize", true, ...scope.SHARED_LINKER_FLAGS);
   }
 
@@ -360,8 +361,10 @@ export class SharedLibrary extends BaseLibrary {
 
 export class Executable extends BaseTarget {
   private constructor(impl: TargetStruct, scope: SystemScope) {
-    super(impl, scope, "", scope.EXECUTABLE_SUFFIX);
+    super(impl, scope);
     this[IMPL].type = TargetType.Executable;
+    this[IMPL].targetFile.setInitPrefix("");
+    this[IMPL].targetFile.setInitSuffix(scope.EXECUTABLE_SUFFIX);
     this[IMPL].addLinkOptions("initialize", true, ...scope.EXE_LINKER_FLAGS);
   }
 

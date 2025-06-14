@@ -55,17 +55,18 @@ export class LiveString {
   }
 };
 
-const PREFIX      = Symbol("PREFIX");
-const SUFFIX      = Symbol("SUFFIX");
-const OUTPUT_NAME = Symbol("OUTPUT_NAME");
-const FILE_DIR    = Symbol("FILE_DIR");
-
 export class TargetFile {
-  private [FILE_DIR]?: DirPath
+  private _fileDir?: DirPath
 
-  private [PREFIX]?: string;
-  private [OUTPUT_NAME]?: string;
-  private [SUFFIX]?: string
+  private _initPrefix?: string;
+  private _targetPrefix?: string;
+  private _forcePrefix?: string;
+  private _initOutputName?: string;
+  private _targetOutputName?: string;
+  private _forceOutputName?: string;
+  private _initSuffix?: string;
+  private _targetSuffix?: string;
+  private _forceSuffix?: string;
 
   private constructor() {
   }
@@ -74,42 +75,114 @@ export class TargetFile {
     return Object.seal(new TargetFile);
   }
 
-  public get outputName(): string | undefined {
-    return this[OUTPUT_NAME];
+  public getInitOutputName() {
+    return this._initOutputName;
   }
 
-  public set outputName(value: string) {
-    this[OUTPUT_NAME] = value;
+  public setInitOutputName(value: string) {
+    this._initOutputName = value;
+  }
+
+  public getTargetOutputName() {
+    return this._targetOutputName;
+  }
+
+  public setTargetOutputName(value: string) {
+    this._targetOutputName = value;
+  }
+
+  public getForceOutputName() {
+    return this._forceOutputName;
+  }
+
+  public setForceOutputName(value: string) {
+    this._forceOutputName = value;
+  }
+
+  public get outputName(): string | undefined {
+    if (this._forceOutputName !== undefined)
+      return this._forceOutputName;
+    if (this._targetOutputName !== undefined)
+      return this._targetOutputName;
+    return this._initOutputName;
+  }
+
+  public getInitPrefix() {
+    return this._initPrefix;
+  }
+
+  public setInitPrefix(value: string) {
+    this._initPrefix = value;
+  }
+
+  public getTargetPrefix() {
+    return this._targetPrefix;
+  }
+
+  public setTargetPrefix(value: string) {
+    this._targetPrefix = value;
+  }
+
+  public getForcePrefix() {
+    return this._forcePrefix;
+  }
+
+  public setForcePrefix(value: string) {
+    this._forcePrefix = value;
   }
 
   public get prefix(): string | undefined {
-    return this[PREFIX];
+    if (this._forcePrefix !== undefined)
+      return this._forcePrefix;
+    if (this._targetPrefix !== undefined)
+      return this._targetPrefix;
+    return this._initPrefix;
   }
 
-  public set prefix(value: string) {
-    this[PREFIX] = value;
+  public getInitSuffix() {
+    return this._initSuffix;
+  }
+
+  public setInitSuffix(value: string) {
+    this._initSuffix = value;
+  }
+
+  public getTargetSuffix() {
+    return this._targetSuffix;
+  }
+
+  public setTargetSuffix(value: string) {
+    this._targetSuffix = value;
+  }
+
+  public getForceSuffix() {
+    return this._forceSuffix;
+  }
+
+  public setForceSuffix(value: string) {
+    this._forceSuffix = value;
   }
 
   public get suffix(): string | undefined {
-    return this[SUFFIX];
-  }
-
-  public set suffix(value: string) {
-    this[SUFFIX] = value;
+    if (this._forceSuffix !== undefined)
+      return this._forceSuffix;
+    if (this._targetSuffix != undefined)
+      return this._targetSuffix;
+    return this._initSuffix;
   }
 
   public get fileName(): string | undefined {
-    if (this[PREFIX] === undefined || this[OUTPUT_NAME] === undefined || this[SUFFIX] === undefined)
+    if (this.prefix === undefined || this.outputName === undefined || this.suffix === undefined)
       return undefined;
-    return this[PREFIX] + this[OUTPUT_NAME] + this[SUFFIX];
+    return this.prefix + this.outputName + this.suffix;
   }
 
   public get fileDir(): DirPath | undefined {
-    return this[FILE_DIR];
+    return this._fileDir;
   }
 
   public set fileDir(value: DirPath) {
-    this[FILE_DIR] = value;
+    this._fileDir = value;
   }
 
   public get file(): AbsolutePath | undefined {
@@ -131,7 +204,7 @@ export class TargetFile {
     return {
       outputName: this.outputName,
       prefix: this.prefix,
-      SUFFIX: this[SUFFIX],
+      suffix: this.suffix,
       fileDir: this.fileDir,
       fileName: this.fileName,
       file: this.file,

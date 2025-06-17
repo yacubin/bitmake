@@ -61,6 +61,23 @@ function createSources(scope: SystemScope, source: any): InterfaceObjects | Sour
   throw new Error(`Not support instance ${source}`);
 }
 
+function getSourceFiles(impl: TargetStruct, scope: SystemScope, ...sources: any[]): SourceFileList {
+  const result = [];
+  const sourceFiles = impl.getSourceFiles();
+  for (const it of sources.flat()) {
+    const filename = scope.SOURCE_DIR.resolve(it).toString();
+    const src = sourceFiles.find(i => i.FILE.toString() === filename);
+    if (!src)
+      throw new Error(`Cannot find "${it}"`);
+    result.push(src);
+  }
+
+  if (result.length)
+    return SourceFileList.create(scope, result);
+
+  return SourceFileList.create(scope, sourceFiles);
+}
+
 const IMPL                = Symbol("IMPL");
 const TARGET_SCOPE        = Symbol("TARGET_SCOPE");
 
@@ -151,6 +168,10 @@ export class InterfaceTarget {
 
   public addPublicLinkOptions(...options: string[]): void {
     this[IMPL].addLinkOptions("indirectly", true, ...options);
+  }
+
+  public getSourceFiles(...sources: any[]): SourceFileList {
+    return getSourceFiles(this[IMPL], this[TARGET_SCOPE], ...sources);
   }
 };
 
@@ -244,20 +265,7 @@ export class BaseTarget {
   }
 
   public getSourceFiles(...sources: any[]): SourceFileList {
-    const result = [];
-    const sourceFiles = this[IMPL].getSourceFiles();
-    for (const it of sources.flat()) {
-      const filename = this[TARGET_SCOPE].SOURCE_DIR.resolve(it).toString();
-      const src = sourceFiles.find(i => i.FILE.toString() === filename);
-      if (!src)
-        throw new Error(`Cannot find "${it}"`);
-      result.push(src);
-    }
-
-    if (result.length)
-      return SourceFileList.create(this[TARGET_SCOPE], result);
-  
-    return SourceFileList.create(this[TARGET_SCOPE], sourceFiles);
+    return getSourceFiles(this[IMPL], this[TARGET_SCOPE], ...sources);
   }
 
   public addDefinitions(...definitions: any[]) {

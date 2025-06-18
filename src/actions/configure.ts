@@ -9,6 +9,7 @@
 
 import path from "node:path";
 
+import { ensureBoolean } from "@/utils/StrictType";
 import { getPathString } from "@/utils/FileSystem";
 import { SettingsStorage } from "@/utils/SettingsStorage";
 import { spawnAsync } from "@/utils/ChildProcess";
@@ -44,29 +45,53 @@ export default async function(config: any, environment: any, settings: SettingsS
       cwd: binaryDir,
       env: environment,
       extra: {
-        output: `ac.config.log`,
+        output: `ac-configure-${step}.log`,
       },
     });
     if (res1.status !== 0) {
       throw new Error(`configure returned status ${res1.status}`);
     }
+    step = "make";
+    await settings.set("configure", step);
+  }
+  if (step === "make") {
+    let runMake = false;
+    if (Object.hasOwn(config, "runMake"))
+      runMake = ensureBoolean(config.runMake);
+    if (runMake) {
+      const res2 = await spawnAsync("make", [], {
+        cwd: binaryDir,
+        env: environment,
+        extra: {
+          output: `ac-configure-${step}.log`,
+        },
+      });
+      if (res2.status !== 0) {
+        throw new Error(`make returned status ${res2.status}`);
+      }
+    }
     step = "install";
     await settings.set("configure", step);
   }
   if (step === "install") {
-    const args = [ 'install' ];
-    if (config.destDir) {
-      args.push(`DESTDIR=${config.destDir}`);
-    }
-    const res2 = await spawnAsync("make", args, {
-      cwd: binaryDir,
-      env: environment,
-      extra: {
-        output: `ac.build.log`,
-      },
-    });
-    if (res2.status !== 0) {
-      throw new Error(`make returned status ${res2.status}`);
+    let runMakeInstall = true;
+    if (Object.hasOwn(config, "runMakeInstall"))
+      runMakeInstall = ensureBoolean(config.runMakeInstall);
+    if (runMakeInstall) {
+      const args = [ "install" ];
+      if (config.destDir) {
+        args.push(`DESTDIR=${config.destDir}`);
+      }
+      const res2 = await spawnAsync("make", args, {
+        cwd: binaryDir,
+        env: environment,
+        extra: {
+          output: `ac-configure-${step}.log`,
+        },
+      });
+      if (res2.status !== 0) {
+        throw new Error(`make returned status ${res2.status}`);
+      }
     }
     step = "done";
     await settings.set("configure", step);

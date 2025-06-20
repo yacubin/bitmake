@@ -253,19 +253,17 @@ interface TargetItem<T> {
   publicOnly: boolean;
 };
 
-const ITEMS = Symbol("ITEMS");
-
 class TargetItems<T> {
-  private [ITEMS] = new Array<TargetItem<T>>();
+  private _items = new Array<TargetItem<T>>();
 
   public addItem(origin: TargetItemOrigin, publicOnly: boolean, value: T) {
-    this[ITEMS].push({ origin, publicOnly, value });
+    this._items.push({ origin, publicOnly, value });
   }
 
   public getItems(): Array<T> {
     const firstList = new Array<T>();
     const lastList = new Array<T>();
-    for (const iter of this[ITEMS]) {
+    for (const iter of this._items) {
       if (iter.origin !== "indirectly")
         firstList.push(iter.value);
       else
@@ -277,7 +275,7 @@ class TargetItems<T> {
   public getPublicItems(): Array<T> {
     const firstList = new Array<T>();
     const lastList = new Array<T>();
-    for (const iter of this[ITEMS]) {
+    for (const iter of this._items) {
       if (!iter.publicOnly)
         continue;
       if (iter.origin !== "indirectly")
@@ -288,90 +286,81 @@ class TargetItems<T> {
     return firstList.concat(lastList);
   }
 
-  get ITEMS() {
-    return this[ITEMS];
+  get items() {
+    return this._items;
+  }
+
+  public toJSON(): object {
+    return this._items;
   }
 };
 
-const NAME            = Symbol("NAME");
-const TYPE            = Symbol("TYPE");
-const TARGET_FILE     = Symbol("TARGET_FILE");
-const PRE_BUILD       = Symbol("PRE_BUILD");
-const POST_BUILD      = Symbol("POST_BUILD");
-const DEFINES         = Symbol("DEFINES");
-const INCLUDES        = Symbol("INCLUDES");
-const COMPILE_OPTIONS = Symbol("COMPILE_OPTIONS");
-const LINK_OPTIONS    = Symbol("LINK_OPTIONS");
-const SOURCES         = Symbol("SOURCES");
-const LIBRARIES       = Symbol("LIBRARIES");
-const POSITION_INDEPENDENT_CODE = Symbol("POSITION_INDEPENDENT_CODE");
-
 export class TargetStruct {
-  private [NAME]: string;
-  private [TYPE]: TargetType;
-  private [TARGET_FILE]: TargetFile;
-  private [PRE_BUILD] = new Array<TargetCommand>;
-  private [POST_BUILD] = new Array<TargetCommand>;
-  private [DEFINES] = new TargetItems<string>;
-  private [INCLUDES] = new TargetItems<DirPath | InterfaceIncludes>;
-  private [COMPILE_OPTIONS] = new TargetItems<string | string[]>;
-  private [LINK_OPTIONS] = new TargetItems<string | string[]>;
-  private [SOURCES] = new TargetItems<InterfaceObjects | SourceFile>;
-  private [LIBRARIES] = new TargetItems<InterfaceTarget>;
-  private [POSITION_INDEPENDENT_CODE] = false;
+  private _name: string;
+  private _type: TargetType;
+  private _targetFile: TargetFile;
+  private _preBuildList = new Array<TargetCommand>;
+  private _postBuildList = new Array<TargetCommand>;
+  private _defines = new TargetItems<string>;
+  private _includes = new TargetItems<DirPath | InterfaceIncludes>;
+  private _compileOptions = new TargetItems<string | string[]>;
+  private _linkOptions = new TargetItems<string | string[]>;
+  private _sources = new TargetItems<InterfaceObjects | SourceFile>;
+  private _libraries = new TargetItems<InterfaceTarget>;
+  private _positionIndependentCode = false;
 
   constructor(name: string) {
-    this[NAME] = name;
-    this[TYPE] = TargetType.Unknown;
-    this[TARGET_FILE] = TargetFile.create();
+    this._name = name;
+    this._type = TargetType.Unknown;
+    this._targetFile = TargetFile.create();
   }
 
   public get name() {
-    return this[NAME];
+    return this._name;
   }
 
   public get type() {
-    return this[TYPE];
+    return this._type;
   }
 
   public set type(value: TargetType) {
-    if (this[TYPE] === value)
+    if (this._type === value)
       return;
-    if (this[TYPE] !== TargetType.Unknown)
-      throw new Error(`${this[TYPE]} "${this[NAME]}" target cannot be change to ${value}`);
-    this[TYPE] = value;
+    if (this._type !== TargetType.Unknown)
+      throw new Error(`${this._type} "${this._name}" target cannot be change to ${value}`);
+    this._type = value;
   }
 
   public get targetFile() {
-    return this[TARGET_FILE];
+    return this._targetFile;
   }
 
   public get positionIndependentCode() {
-    return this[POSITION_INDEPENDENT_CODE];
+    return this._positionIndependentCode;
   }
 
   public set positionIndependentCode(value: boolean) {
-    this[POSITION_INDEPENDENT_CODE] = value;
+    this._positionIndependentCode = value;
   }
 
   public addPreBuild(command: any, args: any[]) {
-    this[PRE_BUILD].push(makeTargetCommand(command, args));
+    this._preBuildList.push(makeTargetCommand(command, args));
   }
 
   public addPostBuild(command: any, args: any[]) {
-    this[POST_BUILD].push(makeTargetCommand(command, args));
+    this._postBuildList.push(makeTargetCommand(command, args));
   }
 
   public get preBuildList() {
-    return this[PRE_BUILD];
+    return this._preBuildList;
   }
 
   public get postBuildList() {
-    return this[POST_BUILD];
+    return this._postBuildList;
   }
 
   public addCompileOption(origin: TargetItemOrigin, publicOnly: boolean, value: string | string[]) {
-    this[COMPILE_OPTIONS].addItem(origin, publicOnly, value);
+    this._compileOptions.addItem(origin, publicOnly, value);
   }
 
   public addCompileOptions(origin: TargetItemOrigin, publicOnly: boolean, ...options: Array<string|string[]>) {
@@ -380,15 +369,15 @@ export class TargetStruct {
   }
 
   public getCompileOptions(): Array<string|string[]> {
-    return this[COMPILE_OPTIONS].getItems();
+    return this._compileOptions.getItems();
   }
   
   public getPublicCompileOptions(): Array<string|string[]> {
-    return this[COMPILE_OPTIONS].getPublicItems();
+    return this._compileOptions.getPublicItems();
   }
 
   public addLinkOption(origin: TargetItemOrigin, publicOnly: boolean, value: string | string[]) {
-    return this[LINK_OPTIONS].addItem(origin, publicOnly, value);
+    return this._linkOptions.addItem(origin, publicOnly, value);
   }
 
   public addLinkOptions(origin: TargetItemOrigin, publicOnly: boolean, ...options: Array<string|string[]>) {
@@ -397,15 +386,15 @@ export class TargetStruct {
   }
 
   public getLinkOptions(): Array<string|string[]> {
-    return this[LINK_OPTIONS].getItems();
+    return this._linkOptions.getItems();
   }
 
   public getPublicLinkOptions(): Array<string|string[]> {
-    return this[LINK_OPTIONS].getPublicItems();
+    return this._linkOptions.getPublicItems();
   }
 
   public addDefinition(origin: TargetItemOrigin, publicOnly: boolean, value: string) {
-    this[DEFINES].addItem(origin, publicOnly, value);
+    this._defines.addItem(origin, publicOnly, value);
   }
 
   public addDefinitions(origin: TargetItemOrigin, publicOnly: boolean, ...definitions: any) {
@@ -414,15 +403,15 @@ export class TargetStruct {
   }
 
   public getDefinitions(): Array<string> {
-    return this[DEFINES].getItems();
+    return this._defines.getItems();
   }
 
   public getPublicDefinitions(): Array<string> {
-    return this[DEFINES].getPublicItems();
+    return this._defines.getPublicItems();
   }
 
   public addInclude(origin: TargetItemOrigin, publicOnly: boolean, value: DirPath|InterfaceIncludes) {
-    this[INCLUDES].addItem(origin, publicOnly, value);
+    this._includes.addItem(origin, publicOnly, value);
   }
 
   public addIncludes(origin: TargetItemOrigin, publicOnly: boolean, baseDir: DirPath, ...includes: any[]) {
@@ -431,15 +420,15 @@ export class TargetStruct {
   }
 
   public getIncludes(): Array<DirPath|InterfaceIncludes> {
-    return this[INCLUDES].getItems();
+    return this._includes.getItems();
   }
 
   public getPublicIncludes(): Array<DirPath|InterfaceIncludes> {
-    return this[INCLUDES].getPublicItems();
+    return this._includes.getPublicItems();
   }
 
   public addSource(origin: TargetItemOrigin, publicOnly: boolean, value: InterfaceObjects|SourceFile) {
-    this[SOURCES].addItem(origin, publicOnly, value);
+    this._sources.addItem(origin, publicOnly, value);
   }
 
   public addSources(origin: TargetItemOrigin, ...sources: any[]) {
@@ -448,16 +437,16 @@ export class TargetStruct {
   }
 
   public getSourceFiles(): SourceFile[] {
-    return this[SOURCES].ITEMS.map(i => i.value).filter(i => i instanceof SourceFile);
+    return this._sources.items.map(i => i.value).filter(i => i instanceof SourceFile);
   }
 
   public getInterfaceObjectsList(): InterfaceObjects[] {
-    return this[SOURCES].ITEMS.map(i => i.value).filter(i => i instanceof InterfaceObjects);
+    return this._sources.items.map(i => i.value).filter(i => i instanceof InterfaceObjects);
   }
 
   public getHeaders(): SourceFile[] {
     const result = new Array<SourceFile>;
-    for (const iter of this[SOURCES].ITEMS) {
+    for (const iter of this._sources.items) {
       if (iter.value instanceof SourceFile && iter.value.HEADER_FILE_ONLY)
         result.push(iter.value);
     }
@@ -465,7 +454,7 @@ export class TargetStruct {
   }
 
   public addLibrary(origin: TargetItemOrigin, publicOnly: boolean, value: InterfaceTarget) {
-    this[LIBRARIES].addItem(origin, publicOnly, InterfaceTarget.ensureInstance(value));
+    this._libraries.addItem(origin, publicOnly, InterfaceTarget.ensureInstance(value));
   }
 
   public addLibraries(origin: TargetItemOrigin, publicOnly: boolean, ...libraries: InterfaceTarget[]) {
@@ -474,26 +463,27 @@ export class TargetStruct {
   }
 
   public getLibraries(): Array<InterfaceTarget> {
-    return this[LIBRARIES].getItems();
+    return this._libraries.getItems();
   }
 
   public getPublicLibraries(): Array<InterfaceTarget> {
-    return this[LIBRARIES].getPublicItems();
+    return this._libraries.getPublicItems();
   }
 
   public toJSON(): object {
     return {
-      name: this.name,
-      targetFile: this.targetFile,
-      preBuildList: this.preBuildList,
-      postBuildList: this.postBuildList,
-      definitions: this[DEFINES],
-      includes: this[INCLUDES],
-      compileOptions: this[COMPILE_OPTIONS],
-      linkOptions: this[LINK_OPTIONS],
-      sources: this[SOURCES],
-      libraries: this[LIBRARIES],
-      positionIndependentCode: this[POSITION_INDEPENDENT_CODE],
+      name: this._name,
+      type: this._type,
+      targetFile: this._targetFile,
+      preBuildList: this._preBuildList,
+      postBuildList: this._postBuildList,
+      definitions: this._defines,
+      includes: this._includes,
+      compileOptions: this._compileOptions,
+      linkOptions: this._linkOptions,
+      sources: this._sources,
+      libraries: this._libraries,
+      positionIndependentCode: this._positionIndependentCode,
     }
   }
 };

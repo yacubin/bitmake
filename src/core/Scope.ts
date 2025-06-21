@@ -250,9 +250,9 @@ export function cloneVariableMap(map: VariableMap) {
   return result;
 }
 
-export function getVariablesByGroup(scope: any, group?: string) {
+export function getVariablesByGroup(descMap: VariableMap, group?: string) {
   const result: any = {};
-  for (const [ name, entry ] of Object.entries(scope[DEFINE_MAP]) as any) {
+  for (const [ name, entry ] of Object.entries(descMap)) {
     if (group !== undefined && entry.group && entry.group !== group)
       continue;
     result[name] = {

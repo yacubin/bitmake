@@ -72,7 +72,8 @@ export class MakeContext extends BaseContext {
   }
 
   public getCacheVariables() {
-    return ScopeHelper.getVariablesByGroup(this[SCOPE], VARIABLE_GROUP);
+    const variableMap = ScopeHelper.getVariableMap(this[SCOPE]);
+    return ScopeHelper.getVariablesByGroup(variableMap, VARIABLE_GROUP);
   }
 
   public addCacheVariables(params: any) {
@@ -96,8 +97,8 @@ export class MakeContext extends BaseContext {
   public addSubdirectory(sourceDir: any, binaryDir: any) {
     binaryDir = binaryDir || path.isAbsolute(sourceDir) ? undefined : sourceDir;
 
-    const SOURCE_DIR = path.isAbsolute(sourceDir) ? AbsolutePath.create(sourceDir) : this[SCOPE].SOURCE_DIR.join(sourceDir);
-    const BINARY_DIR = path.isAbsolute(binaryDir) ? AbsolutePath.create(binaryDir) : this[SCOPE].BINARY_DIR.join(binaryDir);
+    const SOURCE_DIR = this[SCOPE].SOURCE_DIR.resolve(sourceDir);
+    const BINARY_DIR = this[SCOPE].BINARY_DIR.resolve(binaryDir);
 
     const variableMap = ScopeHelper.getVariableMap(this[SCOPE]);
     const newVariableMap = ScopeHelper.cloneVariableMap(variableMap);

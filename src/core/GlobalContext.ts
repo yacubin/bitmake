@@ -36,7 +36,6 @@ const logger = createLogger(import.meta.url);
 const TARGETS = Symbol("TARGETS");
 const CUSTOM_SCRIPTS = Symbol("CUSTOM_SCRIPTS");
 const CACHE = Symbol("CACHE");
-const INTERFACE_SCRIPTS = Symbol("INTERFACE_SCRIPTS");
 const INSTALL_LIST = Symbol("INSTALL_LIST");
 const SCRIPT_VARIABLES_MAP = Symbol("SCRIPT_VARIABLES_MAP");
 const BUILTIN_SCRIPTS = Symbol("BUILTIN_SCRIPTS");
@@ -451,7 +450,7 @@ export class GlobalContext {
     if (!module.default)
       throw new Error(`Subdirectory ${scope.SCRIPT_FILE.basename()} not contain default function`);
 
-    const ctx = new MakeContext(scope, this);
+    const ctx = new MakeContext(this, scope);
     const mk = ScopeHelper.createProxy(variableMap, ctx);
     const result = module.default(mk);
     if (result instanceof Promise)

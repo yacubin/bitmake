@@ -59,13 +59,13 @@ const GLOBAL = Symbol("GLOBAL");
 const SCOPE = Symbol("SCOPE");
 
 export class MakeContext extends BaseContext {
-  [SCOPE]: SystemScope;
   [GLOBAL]: GlobalContext;
+  [SCOPE]: SystemScope;
 
-  public constructor(scope: SystemScope, global: GlobalContext) {
+  public constructor(global: GlobalContext, scope: SystemScope) {
     super();
-    this[SCOPE] = scope;
     this[GLOBAL] = global;
+    this[SCOPE] = scope;
   }
 
   public getCacheVariables() {
@@ -86,9 +86,10 @@ export class MakeContext extends BaseContext {
   }
 
   public addIncludeDirectories(...dirs: any[]) {
-    const sourceDir = this[SCOPE].SOURCE_DIR;
+    const variableMap = ScopeHelper.getVariableMap(this[SCOPE]);
+    const sourceDir = variableMap.SOURCE_DIR.getValue();
     for (const iter of dirs.flat())
-      this[SCOPE].INCLUDES.push(sourceDir.resolve(iter));
+      variableMap.INCLUDES.getValue().push(sourceDir.resolve(iter));
   }
 
   public addSubdirectory(sourceDir: any, binaryDir: any) {
@@ -111,7 +112,7 @@ export class MakeContext extends BaseContext {
   }
 
   public install(value: any, params: any): void {
-    for (const it of [ value ].flat(1)) {
+    for (const it of [ value ].flat()) {
       const iter = (it instanceof BaseTarget) ? this.target(it.targetName) : it;
       const entity = InstallEntity.create(this, iter, params);
       this[GLOBAL].addInstallEntry(entity);

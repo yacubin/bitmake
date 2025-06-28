@@ -104,14 +104,10 @@ export class MakeContext extends BaseContext {
     }
     return this[GLOBAL].addCustomScript(newScope, script, params);
   }
-  
+
   public script(name: string): InterfaceScript {
-    let script = this[GLOBAL].INTERFACE_SCRIPTS[name];
-    if (!script) {
-      script = InterfaceScript.create(name);
-      this[GLOBAL].INTERFACE_SCRIPTS[name] = script;
-    }
-    return script;
+    const variableMap = ScopeHelper.getVariableMap(this[SCOPE]);
+    return this[GLOBAL].getInterfaceScript(variableMap, name);
   }
 
   public install(value: any, params: any): void {

@@ -187,7 +187,7 @@ export class GlobalContext {
   private [TARGETS]: TargetCollection;
   private [CUSTOM_SCRIPTS]: ScriptCollection;
   private [CACHE]: CacheVariableDescriptors;
-  private [INTERFACE_SCRIPTS]: InterfaceScripts;
+  private _interfaceScripts: InterfaceScripts;
   private [INSTALL_LIST]: InstallEntity[];
   private [SCRIPT_VARIABLES_MAP]: any;
   private [BUILTIN_SCRIPTS]: BuildinScripts;
@@ -199,7 +199,7 @@ export class GlobalContext {
     this[TARGETS] = TargetCollection.create();
     this[CUSTOM_SCRIPTS] = ScriptCollection.create();
     this[CACHE] = {};
-    this[INTERFACE_SCRIPTS] = {};
+    this._interfaceScripts = {};
     this[INSTALL_LIST] = [];
     this[SCRIPT_VARIABLES_MAP] = {};
     this._subdirAlias = {};
@@ -220,12 +220,17 @@ export class GlobalContext {
     return this[CACHE];
   }
 
-  public get INTERFACE_SCRIPTS() {
-    return this[INTERFACE_SCRIPTS];
-  }
-
   public get SCRIPT_VARIABLES_MAP() {
     return this[SCRIPT_VARIABLES_MAP];
+  }
+
+  public getInterfaceScript(variableMap: VariableMap, name: string): InterfaceScript {
+    let script = this._interfaceScripts[name];
+    if (!script) {
+      script = InterfaceScript.create(name);
+      this._interfaceScripts[name] = script;
+    }
+    return script;
   }
 
   public addCustomScript(scope: SystemScope, script: any, params: any): CustomScript {
@@ -467,7 +472,7 @@ export class GlobalContext {
   }
 
   public createGoals(scope: SystemScope): GoalCollection {
-    for (const iter of Object.values(this[INTERFACE_SCRIPTS])) {
+    for (const iter of Object.values(this._interfaceScripts)) {
       const script = this[CUSTOM_SCRIPTS].get(iter.NAME);
       if (!script)
         throw new Error(`There is no CustomScript named ${iter.NAME}`);
@@ -690,7 +695,7 @@ export class GlobalContext {
       TARGETS: this.TARGETS,
       CUSTOM_SCRIPTS: this[CUSTOM_SCRIPTS],
       CACHE: this.CACHE,
-      INTERFACE_SCRIPTS: this.INTERFACE_SCRIPTS,
+      interfaceScripts: this._interfaceScripts,
       INSTALL_LIST: this[INSTALL_LIST],
       SCRIPT_VARIABLES_MAP: this.SCRIPT_VARIABLES_MAP,
       subdirAlias: this._subdirAlias,

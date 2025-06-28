@@ -7,9 +7,8 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { DirPath } from "@/core/Path";
 import { GlobalContext } from "@/core/GlobalContext";
-import { SystemScope } from "@/core/SystemScope";
+import { VariableMap } from "@/core/Scope";
 import { BaseContext } from "@/core/BaseContext";
 
 const GLOBAL = Symbol("GLOBAL");
@@ -17,17 +16,19 @@ const SCOPE = Symbol("SCOPE");
 
 export class PluginContext extends BaseContext {
   [GLOBAL]: GlobalContext;
-  [SCOPE]: SystemScope;
+  [SCOPE]: VariableMap;
 
-  constructor(scope: SystemScope, global: GlobalContext) {
+  public constructor(global: GlobalContext, scope: VariableMap) {
     super();
-    this[SCOPE] = scope;
     this[GLOBAL] = global;
+    this[SCOPE] = scope;
   }
 
-  addSubdirectoryAlias(src: any, dest: any) {
-    const srcPath = DirPath.create(this[SCOPE].SCRIPT_DIR.resolve(src));
-    const destPath = (dest === null) ? null : DirPath.create(this[SCOPE].SCRIPT_DIR.resolve(dest));
-    this[GLOBAL].addSubdirectoryAlias(srcPath, destPath);
+  public addSubdirectory(sourceDir: any, binaryDir: any) {
+    this[GLOBAL].addSubdirectory(this[SCOPE], "post", sourceDir, binaryDir);
+  }
+
+  public addSubdirectoryAlias(src: any, dest: any) {
+    this[GLOBAL].addSubdirectoryAlias(this[SCOPE], src, dest);
   }
 };

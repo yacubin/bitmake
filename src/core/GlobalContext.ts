@@ -39,13 +39,11 @@ const CACHE = Symbol("CACHE");
 const INTERFACE_SCRIPTS = Symbol("INTERFACE_SCRIPTS");
 const INSTALL_LIST = Symbol("INSTALL_LIST");
 const SCRIPT_VARIABLES_MAP = Symbol("SCRIPT_VARIABLES_MAP");
-const SUBDIR_ALIAS = Symbol("SUBDIR_ALIAS");
-const SUBDIR_LIST = Symbol("SUBDIR_LIST");
 const BUILTIN_SCRIPTS = Symbol("BUILTIN_SCRIPTS");
 const TARGET_COLLECTION = Symbol("TARGET_COLLECTION");
 
 type SubdirectoryAlias = {
-  [name: string]: DirPath | null;
+  [name: string]: AbsolutePath | null;
 };
 
 type InterfaceScripts = {
@@ -163,7 +161,7 @@ export class GoalWorkerImpl {
     })
   }
 
-  addScript(global: GlobalContext, scope: SystemScope, script: FilePath | Function): void {
+  addScript(global: GlobalContext, variableMap: VariableMap, script: FilePath | Function): void {
     this.addCallback(async () => {
       let func: any = script;
       if (script instanceof FilePath) {
@@ -171,8 +169,8 @@ export class GoalWorkerImpl {
         func = (await importModule(scriptUrl)).default;
       }
       if (func instanceof Function) {
-        const ctx = new ScriptContext(scope, global);
-        const mk = ScopeHelper.createProxy(ScopeHelper.getVariableMap(scope), ctx);
+        const ctx = new ScriptContext(global, variableMap);
+        const mk = ScopeHelper.createProxy(variableMap, ctx);
         const result = func(mk);
         if (result instanceof Promise)
           await result;
@@ -192,9 +190,10 @@ export class GlobalContext {
   private [INTERFACE_SCRIPTS]: InterfaceScripts;
   private [INSTALL_LIST]: InstallEntity[];
   private [SCRIPT_VARIABLES_MAP]: any;
-  private [SUBDIR_ALIAS]: SubdirectoryAlias;
-  private [SUBDIR_LIST]: VariableMap[];
   private [BUILTIN_SCRIPTS]: BuildinScripts;
+  private _subdirAlias: SubdirectoryAlias;
+  private _workSubdirList: VariableMap[];
+  private _postSubdirList: VariableMap[];
 
   private constructor() {
     this[TARGETS] = TargetCollection.create();
@@ -203,9 +202,10 @@ export class GlobalContext {
     this[INTERFACE_SCRIPTS] = {};
     this[INSTALL_LIST] = [];
     this[SCRIPT_VARIABLES_MAP] = {};
-    this[SUBDIR_ALIAS] = {};
-    this[SUBDIR_LIST] = [];
+    this._subdirAlias = {};
     this[BUILTIN_SCRIPTS] = BuildinScripts;
+    this._workSubdirList = [];
+    this._postSubdirList = [];
   }
 
   public static create() {
@@ -270,8 +270,8 @@ export class GlobalContext {
     this[SCRIPT_VARIABLES_MAP][name] = scope;
   }
 
-  public resolveSubdirectory(path: AbsolutePath | string) {
-    const resolvedPath = this[SUBDIR_ALIAS][path.toString()];
+  public resolveSubdirectory(path: AbsolutePath | string): AbsolutePath | string | undefined {
+    const resolvedPath = this._subdirAlias[path.toString()];
     if (resolvedPath === undefined)
       return path;
     if (resolvedPath === null)
@@ -279,11 +279,13 @@ export class GlobalContext {
     return resolvedPath;
   }
 
-  public addSubdirectoryAlias(src: DirPath, dest: DirPath | null) {
-    const srcStr = src.toString();
-    if (this[SUBDIR_ALIAS].hasOwnProperty(srcStr))
+  public addSubdirectoryAlias(variableMap: VariableMap, src: any, dest: any) {
+    const srcPath = AbsolutePath.create(variableMap.SOURCE_DIR.getValue().resolve(src));
+    const destPath = (dest === null) ? null : AbsolutePath.create(variableMap.SOURCE_DIR.getValue().resolve(dest));
+    const srcStr = srcPath.toString();
+    if (this._subdirAlias.hasOwnProperty(srcStr))
       logger.warn(`Owerride "${srcStr}" subdirectory alias`);
-    this[SUBDIR_ALIAS][srcStr] = dest;
+    this._subdirAlias[srcStr] = destPath;
   }
 
   public addInstallEntry(entry: InstallEntity) {
@@ -377,56 +379,90 @@ export class GlobalContext {
     fs.writeFileSync(filename, json, "utf-8");
   }
 
-  public addSubdirectory(variables: VariableMap) {
-    this[SUBDIR_LIST].push(variables);
+  public addSubdirectory(variableMap: VariableMap, type: "work" | "post", sourceDir: any, binaryDir?: any) {
+    if (binaryDir === undefined) {
+      if (!AbsolutePath.isAbsolute(sourceDir))
+        binaryDir = sourceDir;
+      else {
+        const binaryDir1 = variableMap.PROJECT_BINARY_DIR.getValue().relative(sourceDir);
+        const binaryDir2 = variableMap.PROJECT_SOURCE_DIR.getValue().relative(sourceDir);
+        binaryDir = (binaryDir1.length > binaryDir2.length) ? binaryDir2 : binaryDir1;
+      }
+    }
+
+    const SOURCE_DIR = variableMap.SOURCE_DIR.getValue().resolve(sourceDir);
+    const BINARY_DIR = variableMap.BINARY_DIR.getValue().resolve(binaryDir);
+
+    const resolvePath = this.resolveSubdirectory(SOURCE_DIR);
+    if (!resolvePath) {
+      logger.info(`Source dir "${SOURCE_DIR}" was disabled`);
+      return;
+    }
+
+    const newVariableMap = ScopeHelper.cloneVariableMap(variableMap);
+
+    newVariableMap.SOURCE_DIR.setValue(resolvePath.toString());
+    newVariableMap.BINARY_DIR.setValue(BINARY_DIR);
+    newVariableMap.SCRIPT_FILE.value = undefined;
+    newVariableMap.SCRIPT_DIR.value = undefined;
+
+    if (type === "post")
+      this._postSubdirList.push(newVariableMap);
+    else
+      this._workSubdirList.push(newVariableMap);
   }
 
   public findScriptFunction(name: string): Function | undefined {
     return this[BUILTIN_SCRIPTS][name];
   }
-  
-  public async doSubdirectory() {
-    while (this[SUBDIR_LIST].length) {
-      const variables = this[SUBDIR_LIST].shift();
-      if (!variables)
-        continue;
 
-      const scope = ScopeHelper.createScope(variables) as SystemScope;
-      if (!scope.SCRIPT_FILE) {
-        let scriptFile: AbsolutePath | undefined;
-        const fileList = [ ".js", ".mjs" ].map(i => "MakeScript" + i);
-        for (const filename of fileList) {
-          const iter = scope.SOURCE_DIR.join(filename);
-          if (await fileExists(iter.toString())) {
-            scriptFile = iter;
-            break;
-          }
+  private async doSubdirectoryImpl(variableMap: VariableMap) {
+    const scope = ScopeHelper.createScope(variableMap) as SystemScope;
+    if (!scope.SCRIPT_FILE) {
+      let scriptFile: AbsolutePath | undefined;
+      const fileList = [ ".js", ".mjs" ].map(i => "MakeScript" + i);
+      for (const filename of fileList) {
+        const iter = scope.SOURCE_DIR.join(filename);
+        if (await fileExists(iter.toString())) {
+          scriptFile = iter;
+          break;
         }
-
-        if (!scriptFile)
-          throw new Error(`There are no files ${fileList.join(", ")} in "${scope.SOURCE_DIR}"`);
-
-        scope.SCRIPT_FILE = scriptFile;
-        scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
       }
 
-      this.registerSystemScope(scope.SCRIPT_FILE.toString(), scope);
+      if (!scriptFile)
+        throw new Error(`There are no files ${fileList.join(", ")} in "${scope.SOURCE_DIR}"`);
 
-      const cwdSave = process.cwd();
-      process.chdir(scope.SOURCE_DIR.toString());
+      scope.SCRIPT_FILE = scriptFile;
+      scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
+    }
 
-      const scriptUrl = url.pathToFileURL(scope.SCRIPT_FILE.toString());
-      const module = await importModule(scriptUrl);
-      if (!module.default)
-        throw new Error(`Subdirectory ${scope.SCRIPT_FILE.basename()} not contain default function`);
+    this.registerSystemScope(scope.SCRIPT_FILE.toString(), scope);
 
-      const ctx = new MakeContext(scope, this);
-      const mk = ScopeHelper.createProxy(variables, ctx);
-      const result = module.default(mk);
-      if (result instanceof Promise)
-        await result;
+    const cwdSave = process.cwd();
+    process.chdir(scope.SOURCE_DIR.toString());
 
-      process.chdir(cwdSave);
+    const scriptUrl = url.pathToFileURL(scope.SCRIPT_FILE.toString());
+    const module = await importModule(scriptUrl);
+    if (!module.default)
+      throw new Error(`Subdirectory ${scope.SCRIPT_FILE.basename()} not contain default function`);
+
+    const ctx = new MakeContext(scope, this);
+    const mk = ScopeHelper.createProxy(variableMap, ctx);
+    const result = module.default(mk);
+    if (result instanceof Promise)
+      await result;
+
+    process.chdir(cwdSave);
+  }
+
+  public async doSubdirectory() {
+    for (const subdirList of [this._workSubdirList, this._postSubdirList]) {
+      for (;;) {
+        const variableMap = subdirList.shift();
+        if (!variableMap)
+          break;
+        await this.doSubdirectoryImpl(variableMap);
+      }
     }
   }
 
@@ -450,7 +486,8 @@ export class GlobalContext {
       worker.message = msg;
       worker.output = script.OUTPUT.toString();
       worker.addDependency(...depends);
-      worker.addScript(this, script.SCOPE, script.SCRIPT);
+      const variableMap = ScopeHelper.getVariableMap(script.SCOPE);
+      worker.addScript(this, variableMap, script.SCRIPT);
       goalList.add(worker);
     }
 
@@ -656,7 +693,7 @@ export class GlobalContext {
       INTERFACE_SCRIPTS: this.INTERFACE_SCRIPTS,
       INSTALL_LIST: this[INSTALL_LIST],
       SCRIPT_VARIABLES_MAP: this.SCRIPT_VARIABLES_MAP,
-      SUBDIR_ALIAS: this[SUBDIR_ALIAS],
+      subdirAlias: this._subdirAlias,
       TARGET_COLLECTION: this[TARGET_COLLECTION],
     };
   }

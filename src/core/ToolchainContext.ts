@@ -8,19 +8,19 @@
  */
 
 import { GlobalContext } from "@/core/GlobalContext";
-import { SystemScope } from "@/core/SystemScope";
+import { VariableMap } from "@/core/Scope";
 import { BaseContext } from "@/core/BaseContext";
 
 const GLOBAL = Symbol("GLOBAL");
 const SCOPE = Symbol("SCOPE");
 
 export class ToolchainContext extends BaseContext {
+  [SCOPE]: VariableMap;
   [GLOBAL]: GlobalContext;
-  [SCOPE]: SystemScope;
 
-  constructor(scope: SystemScope, global: GlobalContext) {
+  constructor(global: GlobalContext, scope: VariableMap) {
     super();
-    this[SCOPE] = scope;
     this[GLOBAL] = global;
+    this[SCOPE] = scope;
   }
 }

@@ -60,7 +60,8 @@ export default async function(config: any, environment: any, settings: SettingsS
     const toolchain = await importModule(toolchainUrl);
     if (!toolchain.default)
       throw new Error("Toolchain module has no default export");
-    const ctx = new ToolchainContext(scope, global);
+    const variableMap = ScopeHelper.getVariableMap(scope);
+    const ctx = new ToolchainContext(global, variableMap);
     const mk = ScopeHelper.createProxy(ScopeHelper.getVariableMap(scope), ctx);
     const result = toolchain.default(mk);
     if (result instanceof Promise)
@@ -72,18 +73,25 @@ export default async function(config: any, environment: any, settings: SettingsS
 
   for (const plugin of (scope.MAKE_PLUGIN_LIST || [])) {
     const cwdSave = process.cwd();
-    
+
     scope.SCRIPT_FILE = FilePath.create(plugin);
     scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
+    scope.SOURCE_DIR = scope.SCRIPT_DIR;
 
-    process.chdir(scope.SCRIPT_DIR.toString());
+    const binaryDir1 = scope.PROJECT_BINARY_DIR.relative(sourceDir);
+    const binaryDir2 = scope.PROJECT_SOURCE_DIR.relative(sourceDir);
+    const binaryDir = (binaryDir2.length < binaryDir1.length ? binaryDir2 : binaryDir1).replace("../", "__/");
+    scope.BINARY_DIR = scope.PROJECT_BINARY_DIR.join("MakePluginBinaries", binaryDir);
+
+    process.chdir(scope.SOURCE_DIR.toString());
     const pluginUrl = getURLString(scope.SCRIPT_FILE.toString());
     const module = await importModule(pluginUrl);
     
     if (!module.default)
       throw new Error(`Plugin ${scope.SCRIPT_FILE.basename()} not contain default export`);
 
-    const ctx = new PluginContext(scope, global);
+    const variableMap = ScopeHelper.getVariableMap(scope);
+    const ctx = new PluginContext(global, variableMap);
     const mk = ScopeHelper.createProxy(ScopeHelper.getVariableMap(scope), ctx);
     if (typeof module.default !== "function")
       throw new Error(`Plugin ${scope.SCRIPT_FILE.basename()} export has no function or class`);
@@ -109,7 +117,7 @@ export default async function(config: any, environment: any, settings: SettingsS
     scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
   }
 
-  global.addSubdirectory(ScopeHelper.getVariableMap(scope));
+  global.addSubdirectory(ScopeHelper.getVariableMap(scope), "work", scope.PROJECT_SOURCE_DIR, scope.PROJECT_BINARY_DIR);
 
   await global.doSubdirectory();
   logger.info("Configuring done");

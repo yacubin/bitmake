@@ -96,28 +96,9 @@ export class MakeContext extends BaseContext {
 
   public addSubdirectory(sourceDir: any, binaryDir: any) {
     const variableMap = ScopeHelper.getVariableMap(this[SCOPE]);
-
-    binaryDir = binaryDir || path.isAbsolute(sourceDir) ? undefined : sourceDir;
-
-    const SOURCE_DIR = variableMap.SOURCE_DIR.getValue().resolve(sourceDir);
-    const BINARY_DIR = variableMap.BINARY_DIR.getValue().resolve(binaryDir);
-
-    const resolvePath = this[GLOBAL].resolveSubdirectory(SOURCE_DIR);
-    if (!resolvePath) {
-      logger.info(`Source dir "${SOURCE_DIR}" was disabled`);
-      return;
-    }
-
-    const newVariableMap = ScopeHelper.cloneVariableMap(variableMap);
-
-    newVariableMap.SOURCE_DIR.setValue(resolvePath.toString());
-    newVariableMap.BINARY_DIR.setValue(BINARY_DIR);
-    newVariableMap.SCRIPT_FILE.value = undefined;
-    newVariableMap.SCRIPT_DIR.value = undefined;
-
-    this[GLOBAL].addSubdirectory(newVariableMap);
+    this[GLOBAL].addSubdirectory(variableMap, "work", sourceDir, binaryDir);
   }
-  
+
   public addCustomScript(script: any, params: any): CustomScript {
     const newScope = ScopeHelper.clone({}, this[SCOPE]);
     for (const [name, value] of Object.entries(params)) {

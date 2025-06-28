@@ -13,7 +13,7 @@ import { SourceFileList } from "@/core/SourceFileList";
 import { InterfaceIncludes } from "@/core/InterfaceIncludes";
 import { InterfaceObjects } from "@/core/InterfaceObjects";
 import { AbsolutePath, FilePath } from "@/core/Path";
-import { ScopeHelper } from "@/core/Scope";
+import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
 import { TargetStruct, TargetType, LiveString } from "@/core/TargetStruct";
 
@@ -82,16 +82,16 @@ const IMPL                = Symbol("IMPL");
 const TARGET_SCOPE        = Symbol("TARGET_SCOPE");
 
 export class InterfaceTarget {
-  private [TARGET_SCOPE]: SystemScope;
   private [IMPL]: TargetStruct;
+  private [TARGET_SCOPE]: SystemScope;
 
-  private constructor(scope: SystemScope, impl: TargetStruct) {
-    this[TARGET_SCOPE] = ScopeHelper.clone({}, scope);
+  private constructor(impl: TargetStruct, variableMap: VariableMap) {
     this[IMPL] = impl;
+    this[TARGET_SCOPE] = ScopeHelper.createVariableValues(variableMap) as SystemScope;
   }
 
-  public static create(scope: any, utarget: any) {
-    return Object.seal(new InterfaceTarget(scope, utarget));
+  public static create(impl: TargetStruct, variableMap: VariableMap) {
+    return Object.seal(new InterfaceTarget(impl, variableMap));
   }
 
   public static ensureInstance(value: any) {
@@ -179,9 +179,10 @@ export class BaseTarget {
   private [IMPL]: TargetStruct;
   private [TARGET_SCOPE]: SystemScope;
 
-  protected constructor(impl: TargetStruct, scope: SystemScope) {
+  protected constructor(impl: TargetStruct, variableMap: VariableMap) {
     this[IMPL] = impl;
 
+    const scope = ScopeHelper.createVariableValues(variableMap) as SystemScope;
     const targetFile = impl.targetFile;
     targetFile.fileDir = scope.BINARY_DIR;
     targetFile.setInitOutputName(impl.name);
@@ -189,7 +190,7 @@ export class BaseTarget {
     this[IMPL].addIncludes("initialize", false, scope.SOURCE_DIR, ...scope.INCLUDES);
     this[IMPL].positionIndependentCode = scope.POSITION_INDEPENDENT_CODE;
 
-    this[TARGET_SCOPE] = ScopeHelper.clone({}, scope);
+    this[TARGET_SCOPE] = scope;
   }
 
   public get targetName() {
@@ -296,8 +297,8 @@ export class BaseTarget {
 };
 
 export class BaseLibrary extends BaseTarget {
-  protected constructor(impl: TargetStruct, scope: SystemScope) {
-    super(impl, scope);
+  protected constructor(impl: TargetStruct, variableMap: VariableMap) {
+    super(impl, variableMap);
   }
 
   public setPositionIndependentCode(value: boolean) {
@@ -326,57 +327,57 @@ export class BaseLibrary extends BaseTarget {
 };
 
 export class ObjectLibrary extends BaseLibrary {
-  private constructor(impl: TargetStruct, scope: SystemScope) {
-    super(impl, scope);
+  private constructor(impl: TargetStruct, variableMap: VariableMap) {
+    super(impl, variableMap);
     this[IMPL].type = TargetType.ObjectLibrary;
-    this[IMPL].targetFile.setInitPrefix(scope.OBJECT_LIBRARY_PREFIX);
-    this[IMPL].targetFile.setInitSuffix(scope.OBJECT_LIBRARY_SUFFIX);
-    this[IMPL].addLinkOptions("initialize", true, ...scope.OBJECT_LINKER_FLAGS);
+    this[IMPL].targetFile.setInitPrefix(this[TARGET_SCOPE].OBJECT_LIBRARY_PREFIX);
+    this[IMPL].targetFile.setInitSuffix(this[TARGET_SCOPE].OBJECT_LIBRARY_SUFFIX);
+    this[IMPL].addLinkOptions("initialize", true, ...this[TARGET_SCOPE].OBJECT_LINKER_FLAGS);
   }
 
-  public static create(impl: TargetStruct, scope: SystemScope) {
-    return Object.seal(new ObjectLibrary(impl, scope));
+  public static create(impl: TargetStruct, variableMap: VariableMap) {
+    return Object.seal(new ObjectLibrary(impl, variableMap));
   }
 };
 
 export class StaticLibrary extends BaseLibrary {
-  private constructor(impl: TargetStruct, scope: SystemScope) {
-    super(impl, scope);
+  private constructor(impl: TargetStruct, variableMap: VariableMap) {
+    super(impl, variableMap);
     this[IMPL].type = TargetType.StaticLibrary;
-    this[IMPL].targetFile.setInitPrefix(scope.STATIC_LIBRARY_PREFIX);
-    this[IMPL].targetFile.setInitSuffix(scope.STATIC_LIBRARY_SUFFIX);
-    this[IMPL].addLinkOptions("initialize", true, ...scope.STATIC_LINKER_FLAGS);
+    this[IMPL].targetFile.setInitPrefix(this[TARGET_SCOPE].STATIC_LIBRARY_PREFIX);
+    this[IMPL].targetFile.setInitSuffix(this[TARGET_SCOPE].STATIC_LIBRARY_SUFFIX);
+    this[IMPL].addLinkOptions("initialize", true, ...this[TARGET_SCOPE].STATIC_LINKER_FLAGS);
   }
 
-  public static create(impl: TargetStruct, scope: SystemScope) {
-    return Object.seal(new StaticLibrary(impl, scope));
+  public static create(impl: TargetStruct, variableMap: VariableMap) {
+    return Object.seal(new StaticLibrary(impl, variableMap));
   }
 };
 
 export class SharedLibrary extends BaseLibrary {
-  private constructor(impl: TargetStruct, scope: SystemScope) {
-    super(impl, scope);
+  private constructor(impl: TargetStruct, variableMap: VariableMap) {
+    super(impl, variableMap);
     this[IMPL].type = TargetType.SharedLibrary;
-    this[IMPL].targetFile.setInitPrefix(scope.SHARED_LIBRARY_PREFIX);
-    this[IMPL].targetFile.setInitSuffix(scope.SHARED_LIBRARY_SUFFIX);
-    this[IMPL].addLinkOptions("initialize", true, ...scope.SHARED_LINKER_FLAGS);
+    this[IMPL].targetFile.setInitPrefix(this[TARGET_SCOPE].SHARED_LIBRARY_PREFIX);
+    this[IMPL].targetFile.setInitSuffix(this[TARGET_SCOPE].SHARED_LIBRARY_SUFFIX);
+    this[IMPL].addLinkOptions("initialize", true, ...this[TARGET_SCOPE].SHARED_LINKER_FLAGS);
   }
 
-  public static create(impl: TargetStruct, scope: SystemScope) {
-    return Object.seal(new SharedLibrary(impl, scope));
+  public static create(impl: TargetStruct, variableMap: VariableMap) {
+    return Object.seal(new SharedLibrary(impl, variableMap));
   }
 }
 
 export class Executable extends BaseTarget {
-  private constructor(impl: TargetStruct, scope: SystemScope) {
-    super(impl, scope);
+  private constructor(impl: TargetStruct, variableMap: VariableMap) {
+    super(impl, variableMap);
     this[IMPL].type = TargetType.Executable;
     this[IMPL].targetFile.setInitPrefix("");
-    this[IMPL].targetFile.setInitSuffix(scope.EXECUTABLE_SUFFIX);
-    this[IMPL].addLinkOptions("initialize", true, ...scope.EXE_LINKER_FLAGS);
+    this[IMPL].targetFile.setInitSuffix(this[TARGET_SCOPE].EXECUTABLE_SUFFIX);
+    this[IMPL].addLinkOptions("initialize", true, ...this[TARGET_SCOPE].EXE_LINKER_FLAGS);
   }
 
-  public static create(impl: TargetStruct, scope: SystemScope) {
-    return Object.seal(new Executable(impl, scope));
+  public static create(impl: TargetStruct, variableMap: VariableMap) {
+    return Object.seal(new Executable(impl, variableMap));
   }
 };

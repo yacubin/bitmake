@@ -232,7 +232,7 @@ export class GlobalContext {
     return script;
   }
 
-  public addCustomScript(scope: SystemScope, script: any, params: any): CustomScript {
+  public addCustomScript(variableMap: VariableMap, script: any, params: any): CustomScript {
     if (!params)
       throw new Error("Argument with parameters is missing");
 
@@ -240,23 +240,23 @@ export class GlobalContext {
     if (typeof script === "string")
       scriptObj = this.findScriptFunction(script);
     if (!scriptObj)
-      scriptObj = FilePath.create(scope.SOURCE_DIR.resolve(script));
+      scriptObj = FilePath.create(variableMap.SOURCE_DIR.getValue().resolve(script));
 
     let inputFile = params.SCRIPT_INPUT;
     if (inputFile)
-      inputFile = FilePath.create(scope.SOURCE_DIR.resolve(inputFile));
+      inputFile = FilePath.create(variableMap.SOURCE_DIR.getValue().resolve(inputFile));
 
     if (!params.SCRIPT_OUTPUT)
       throw new Error("CustomScript parameters required output entity");
-    const outputFile = FilePath.create(scope.SOURCE_DIR.resolve(params.SCRIPT_OUTPUT));
+    const outputFile = FilePath.create(variableMap.SOURCE_DIR.getValue().resolve(params.SCRIPT_OUTPUT));
 
     const options: CustomScript.Options = {
-      scope,
+      variableMap,
       name: params.SCRIPT_NAME,
       script: scriptObj,
       output: outputFile,
       input: inputFile,
-      workDir: scope.BINARY_DIR,
+      workDir: variableMap.BINARY_DIR.getValue(),
     };
 
     const target = CustomScript.create(options);
@@ -341,41 +341,51 @@ export class GlobalContext {
     }
   }
 
-  public addStaticLibrary(scope: SystemScope, name: string, ...sources: any[]): StaticLibrary {
+  public addStaticLibrary(variableMap: VariableMap, name: string, ...sources: any[]): StaticLibrary {
     const impl = this[TARGET_COLLECTION].get(name);
-    const target = StaticLibrary.create(impl, scope);
+    const target = StaticLibrary.create(impl, variableMap);
     target.addSources(...sources);
     this[TARGETS].set(name, target);
     return target;
   }
 
-  public addObjectLibrary(scope: SystemScope, name: string, ...sources: any[]): ObjectLibrary {
+  public addObjectLibrary(variableMap: VariableMap, name: string, ...sources: any[]): ObjectLibrary {
     const impl = this[TARGET_COLLECTION].get(name);
-    const target = ObjectLibrary.create(impl, scope);
+    const target = ObjectLibrary.create(impl, variableMap);
     target.addSources(...sources);
     this[TARGETS].set(name, target);
     return target;
   }
 
-  public addSharedLibrary(scope: SystemScope, name: string, ...sources: any[]): SharedLibrary {
+  public addSharedLibrary(variableMap: VariableMap, name: string, ...sources: any[]): SharedLibrary {
     const impl = this[TARGET_COLLECTION].get(name);
-    const target = SharedLibrary.create(impl, scope);
+    const target = SharedLibrary.create(impl, variableMap);
     target.addSources(...sources);
     this[TARGETS].set(name, target);
     return target;
   }
 
-  public addExecutable(scope: SystemScope, name: string, ...sources: any[]): Executable {
+  public addExecutable(variableMap: VariableMap, name: string, ...sources: any[]): Executable {
     const impl = this[TARGET_COLLECTION].get(name);
-    const target = Executable.create(impl, scope);
+    const target = Executable.create(impl, variableMap);
     target.addSources(...sources);
     this[TARGETS].set(name, target);
     return target;
   }
 
-  getTarget(scope: SystemScope, name: string): InterfaceTarget {
+  public getTarget(variableMap: VariableMap, name: string): InterfaceTarget {
     const impl = this[TARGET_COLLECTION].get(name);
-    return InterfaceTarget.create(scope, impl);
+    return InterfaceTarget.create(impl, variableMap);
+  }
+
+  public executeScriptSync(variableMap: VariableMap, script: any, params: any) {
+    const newVariableMap = ScopeHelper.cloneVariableMap(variableMap);
+    params && ScopeHelper.extendVariableMapByValues(newVariableMap, "", params);
+    const scriptPath = newVariableMap.SOURCE_DIR.getValue().resolve(script);
+    const func = requireSync(scriptPath.toString());
+    const ctx = new ScriptContext(this, newVariableMap);
+    const mk = ScopeHelper.createProxy(newVariableMap, ctx);
+    func(mk);
   }
 
   public writeCacheVariables(filename: string) {
@@ -450,7 +460,7 @@ export class GlobalContext {
     if (!module.default)
       throw new Error(`Subdirectory ${scope.SCRIPT_FILE.basename()} not contain default function`);
 
-    const ctx = new MakeContext(this, scope);
+    const ctx = new MakeContext(this, variableMap);
     const mk = ScopeHelper.createProxy(variableMap, ctx);
     const result = module.default(mk);
     if (result instanceof Promise)
@@ -475,7 +485,7 @@ export class GlobalContext {
       const script = this[CUSTOM_SCRIPTS].get(iter.NAME);
       if (!script)
         throw new Error(`There is no CustomScript named ${iter.NAME}`);
-      script.mergeVariables(iter.VARIABLES);
+      script.mergeVariables(iter.variables);
     }
   
     const goalList = GoalCollection.create();
@@ -490,8 +500,7 @@ export class GlobalContext {
       worker.message = msg;
       worker.output = script.OUTPUT.toString();
       worker.addDependency(...depends);
-      const variableMap = ScopeHelper.getVariableMap(script.SCOPE);
-      worker.addScript(this, variableMap, script.SCRIPT);
+      worker.addScript(this, script.variableMap, script.SCRIPT);
       goalList.add(worker);
     }
 

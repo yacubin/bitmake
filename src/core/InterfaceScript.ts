@@ -9,12 +9,12 @@
 
 import { ScopeHelper } from "@/core/Scope";
 
-const NAME       = Symbol("NAME");
+const NAME      = Symbol("NAME");
 const VARIABLES = Symbol("VARIABLES");
 
 export class InterfaceScript {
   private [NAME]: string;
-  private [VARIABLES]: object;
+  private [VARIABLES]: any;
 
   private constructor(name: string) {
     this[NAME] = name;
@@ -25,7 +25,7 @@ export class InterfaceScript {
     return this[NAME];
   }
 
-  public get VARIABLES() {
+  public get variables() {
     return this[VARIABLES];
   }
 
@@ -35,8 +35,8 @@ export class InterfaceScript {
 
   public toJSON(): object {
     return {
-      NAME: this.NAME,
-      VARIABLES: this.VARIABLES,
+      name: this[NAME],
+      variableMap: this[VARIABLES],
     };
   }
   

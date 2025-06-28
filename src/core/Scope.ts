@@ -7,7 +7,6 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { ensureBoolean, ensureString, ensureNumber, ensureArray } from "@/utils/StrictType";
 import { AbsolutePath, DirPath, FilePath } from "@/core/Path";
 import { SystemScope } from "@/core/SystemScope";
 import SystemVariables from "@/core/SystemVariables";
@@ -293,6 +292,18 @@ export function cloneVariableMap(map: VariableMap) {
   return result;
 }
 
+export function extendVariableMapByValues(map: VariableMap, group: string, values: { [key: string]: any }) {
+  for (const [name, value] of Object.entries(values))
+    defineVariableImpl2(map, group, name, { value });
+}
+
+export function defineVariablesInVariableMap(map: VariableMap, group: string, variables: any) {
+  for (const [name, value] of Object.entries(variables)) {
+    const descriptor = value && typeof value === "object" ? value : {value };
+    defineVariableImpl2(map, group, name, descriptor);
+  }
+}
+
 export function getVariablesByGroup(descMap: VariableMap, group?: string) {
   const result: any = {};
   for (const [ name, entry ] of Object.entries(descMap)) {
@@ -304,6 +315,13 @@ export function getVariablesByGroup(descMap: VariableMap, group?: string) {
       value: entry.getValue(),
     };
   }
+  return result;
+}
+
+export function createVariableValues(descMap: VariableMap): any {
+  const result: any = {};
+  for (const [ name, entry ] of Object.entries(descMap))
+    result[name] = entry.getValue();
   return result;
 }
 
@@ -329,6 +347,19 @@ export function mergeVariables(target: any, source: any): object {
     }
     else {
       throw new Error(`Source ${key} has ${val} which is not ${typeof target[key]}`);
+    }
+  }
+  return target;
+}
+
+export function mergeVariableMap(target: VariableMap, source: any): VariableMap {
+  for (const [name, value] of Object.entries(source)) {
+    let entry = target[name];
+    if (!entry)
+      defineVariableImpl2(target, "", name, { value });
+    else {
+      let dest = entry.getValue();
+      entry.setValue((dest && typeof dest === "object") ? mergeVariables(dest, value) : value);
     }
   }
   return target;

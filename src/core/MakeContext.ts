@@ -95,18 +95,12 @@ export class MakeContext extends BaseContext {
   }
 
   public addSubdirectory(sourceDir: any, binaryDir: any) {
+    const variableMap = ScopeHelper.getVariableMap(this[SCOPE]);
+
     binaryDir = binaryDir || path.isAbsolute(sourceDir) ? undefined : sourceDir;
 
-    const SOURCE_DIR = this[SCOPE].SOURCE_DIR.resolve(sourceDir);
-    const BINARY_DIR = this[SCOPE].BINARY_DIR.resolve(binaryDir);
-
-    const variableMap = ScopeHelper.getVariableMap(this[SCOPE]);
-    const newVariableMap = ScopeHelper.cloneVariableMap(variableMap);
-
-    newVariableMap.SCRIPT_FILE.value = undefined;
-    newVariableMap.SCRIPT_DIR.value = undefined;
-
-    const newScope = ScopeHelper.createProxy(newVariableMap) as SystemScope;
+    const SOURCE_DIR = variableMap.SOURCE_DIR.getValue().resolve(sourceDir);
+    const BINARY_DIR = variableMap.BINARY_DIR.getValue().resolve(binaryDir);
 
     const resolvePath = this[GLOBAL].resolveSubdirectory(SOURCE_DIR);
     if (!resolvePath) {
@@ -114,8 +108,12 @@ export class MakeContext extends BaseContext {
       return;
     }
 
-    newScope.SOURCE_DIR = AbsolutePath.create(resolvePath.toString());
-    newScope.BINARY_DIR = BINARY_DIR;
+    const newVariableMap = ScopeHelper.cloneVariableMap(variableMap);
+
+    newVariableMap.SOURCE_DIR.setValue(resolvePath.toString());
+    newVariableMap.BINARY_DIR.setValue(BINARY_DIR);
+    newVariableMap.SCRIPT_FILE.value = undefined;
+    newVariableMap.SCRIPT_DIR.value = undefined;
 
     this[GLOBAL].addSubdirectory(newVariableMap);
   }

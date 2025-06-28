@@ -7,8 +7,6 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import path from "node:path";
-
 import { fileExistsSync } from "@/utils/FileSystem";
 import { AbsolutePath } from "@/core/Path";
 import { InterfaceScript } from "@/core/InterfaceScript";
@@ -20,10 +18,9 @@ import { ScopeHelper } from "@/core/Scope";
 import { BaseContext } from "@/core/BaseContext";
 import { SystemScope } from "@/core/SystemScope";
 import { createLogger } from "@/logger";
+import { requireSync } from "@/utils/Module";
 
 const logger = createLogger(import.meta.url);
-
-const requireImpl = eval("require");
 
 function scopeValueAsPrimitives(o: any): any {
   if (typeof o === "undefined")
@@ -82,7 +79,7 @@ export class MakeContext extends BaseContext {
       const filename = this[SCOPE].SOURCE_DIR.resolve(params).toString();
       if (!fileExistsSync(filename))
         return;
-      variables = requireImpl(filename);
+      variables = requireSync(filename);
     }
 
     ScopeHelper.defineVariables(this[SCOPE], VARIABLE_GROUP, variables);
@@ -147,7 +144,7 @@ export class MakeContext extends BaseContext {
 
   public executeScript(script: any, options: any) {
     const scriptPath = this[SCOPE].SOURCE_DIR.resolve(script);
-    const module = requireImpl(scriptPath.toString());
+    const module = requireSync(scriptPath.toString());
     module(scopeValueAsPrimitives(options));
   }
 };

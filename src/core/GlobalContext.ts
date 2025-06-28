@@ -22,7 +22,7 @@ import { InterfaceScript } from "@/core/InterfaceScript";
 import { MakeContext } from "@/core/MakeContext";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget, InterfaceTarget } from "@/core/Target";
 import { SystemScope } from "@/core/SystemScope";
-import { importModule, requireResolve } from "@/utils/Module";
+import { importModule, requireSync } from "@/utils/Module";
 import { createLogger } from "@/logger";
 import { InstallEntity } from "@/core/InstallEntity";
 import { CustomScript } from "@/core/CustomScript";
@@ -301,7 +301,7 @@ export class GlobalContext {
 
   public loadCacheVariables(filename: AbsolutePath | string) {
     if (fileExistsSync(filename.toString())) {
-      const variables = requireResolve(filename.toString());
+      const variables = requireSync(filename.toString());
       this.addCacheVariables(variables);
     }
   }

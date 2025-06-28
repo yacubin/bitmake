@@ -8,8 +8,7 @@
  */
 
 import { FilePath, DirPath } from "@/core/Path";
-import { ScopeHelper } from "@/core/Scope";
-import { SystemScope } from "@/core/SystemScope";
+import { ScopeHelper, VariableMap } from "@/core/Scope";
 
 const SCOPE        = Symbol("SCOPE");
 const NAME         = Symbol("NAME");
@@ -19,7 +18,7 @@ const OUTPUT       = Symbol("OUTPUT");
 const WORK_DIR     = Symbol("WORK_DIR");
 
 export class CustomScript {
-  private [SCOPE]: SystemScope;
+  private [SCOPE]: VariableMap;
   private [NAME]: string;
   private [SCRIPT]: FilePath | Function;
   private [INPUT]: FilePath | undefined;
@@ -27,7 +26,7 @@ export class CustomScript {
   private [WORK_DIR]: DirPath;
 
   private constructor(options: CustomScript.Options) {
-    this[SCOPE] = options.scope;
+    this[SCOPE] = options.variableMap;
     this[NAME] = options.name || "";
     this[INPUT] = options.input;
     this[SCRIPT] = options.script;
@@ -40,7 +39,7 @@ export class CustomScript {
   }
 
   public mergeVariables(variables: any) {
-    ScopeHelper.mergeVariables(this[SCOPE], variables);
+    ScopeHelper.mergeVariableMap(this[SCOPE], variables);
   }
 
   public get NAME() {
@@ -63,13 +62,13 @@ export class CustomScript {
     return this[WORK_DIR];
   }
 
-  public get SCOPE() {
+  public get variableMap() {
     return this[SCOPE];
   }
 
   public toJSON(): object {
     return {
-      SCOPE: this[SCOPE],
+      variableMap: this[SCOPE],
       NAME: this[NAME],
       SCRIPT: this.SCRIPT,
       INPUT: this.INPUT,
@@ -81,7 +80,7 @@ export class CustomScript {
 export namespace CustomScript {
 
 export interface Options {
-  scope: SystemScope,
+  variableMap: VariableMap,
   name?: string,
   script: FilePath | Function,
   input?: FilePath,

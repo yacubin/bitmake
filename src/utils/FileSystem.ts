@@ -11,6 +11,7 @@ import fs from "node:fs";
 import path from "node:path";
 import url from "node:url";
 
+import { FILE_SCHEME, IMPORT_SCHEME, HTTP_SCHEME, HTTPS_SCHEME } from "@/utils/UrlScheme";
 import { requireResolve } from "@/utils/Module";
 
 export async function pathExists(path: string) {
@@ -101,11 +102,6 @@ export async function saveIfDifferent(filename: string, content: string) {
 
   return true;
 }
-
-export const FILE_SCHEME = "file://";
-export const IMPORT_SCHEME = "import://";
-export const HTTP_SCHEME = "http://";
-export const HTTPS_SCHEME = "https://";
 
 export function getPathString(str: string) {
   if (str.startsWith(IMPORT_SCHEME))

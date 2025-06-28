@@ -7,7 +7,6 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { ensureBoolean, ensureString, ensureNumber, ensureArray } from "@/utils/StrictType";
 import { AbsolutePath, DirPath, FilePath } from "@/core/Path";
 import { SystemScope } from "@/core/SystemScope";
 import SystemVariables from "@/core/SystemVariables";
@@ -21,12 +20,15 @@ interface VariableDescriptor {
 };
 
 interface VariableEntry {
+  name: string;
   type: string | string[];
   initValue: any;
   group: string;
   value: any;
   description: string;
-  ensureValue: (value: any) => any;
+
+  getValue(this: VariableEntry): any;
+  setValue(this: VariableEntry, value: any): void;
 };
 
 export interface VariableMap {
@@ -44,10 +46,19 @@ function toDescriptor(value: any): VariableDescriptor {
 
 function defineVariableImpl2(map: VariableMap, group: string, name: string, descriptor: VariableDescriptor) {
   let defineEntry = map[name];
+  let isValidValue = (value: any) => true;
   if (!defineEntry) {
     defineEntry = {
+      name,
       type: "", group, value: undefined,  initValue: undefined, description: "",
-      ensureValue: (value: any) => value,
+      getValue: function(this: VariableEntry) {
+        /*if (value === undefined)
+          throw new Error(`Value of ${name} cannot be obtained because it has not been established`);*/
+        return (this.value === undefined) ? this.initValue : this.value;
+      },
+      setValue: function(this: VariableEntry, value: any) {
+        this.value = value;
+      },
     };
     map[name] = defineEntry;
   }
@@ -85,26 +96,57 @@ function defineVariableImpl2(map: VariableMap, group: string, name: string, desc
     }
     if (itemType !== "boolean" && itemType !== "number" && itemType !== "string")
       throw new Error(`Enum ${name} not support ${itemType} type`);
-      defineEntry.ensureValue = (value: any) => {
-      if (type.includes(value))
-        return value;
-      throw new Error(`The '${value}' is not a ${type}`);
+    isValidValue = (value: any) => type.includes(value);
+    defineEntry.setValue = function(this: VariableEntry, value: any) {
+      if (!isValidValue(value))
+        throw new TypeError(`Attempting to set "${value}" to ${this.name} as a ${type}`);
+      this.value = value;
     }
   }
-  else if (type === "boolean")
-    defineEntry.ensureValue = ensureBoolean;
-  else if (type === "number")
-    defineEntry.ensureValue = ensureNumber;
-  else if (type === "string")
-    defineEntry.ensureValue = ensureString;
-  else if (type === "array")
-    defineEntry.ensureValue = ensureArray;
-  else if (type === "AbsolutePath")
-    defineEntry.ensureValue = AbsolutePath.create;
-  else if (type === "DirPath")
-    defineEntry.ensureValue = DirPath.create;
-  else if (type === "FilePath")
-    defineEntry.ensureValue = FilePath.create;
+  else if (type === "boolean") {
+    isValidValue = (value: any) => typeof value === "boolean";
+    defineEntry.setValue = function(this: VariableEntry, value: any) {
+      if (!isValidValue(value))
+        throw new TypeError(`Attempting to set "${value}" to ${this.name} as a boolean`);
+      this.value = value;
+    }
+  }
+  else if (type === "number") {
+    isValidValue = (value: any) => typeof value === "number";
+    defineEntry.setValue = function(this: VariableEntry, value: any) {
+      if (!isValidValue(value))
+        throw new TypeError(`Attempting to set "${value}" to ${this.name} as a number`);
+      this.value = value;
+    }
+  }
+  else if (type === "string") {
+    isValidValue = (value: any) => typeof value === "string";
+    defineEntry.setValue = function(this: VariableEntry, value: any) {
+      if (!isValidValue(value))
+        throw new TypeError(`Attempting to set "${value}" to ${this.name} as a string`);
+      this.value = value;
+    }
+  }
+  else if (type === "array") {
+    defineEntry.setValue = function(this: VariableEntry, value: any) {
+      isValidValue = Array.isArray;
+      if (!isValidValue(value))
+        throw new TypeError(`Attempting to set "${value}" to ${this.name} as an array`);
+      this.value = Array.from(value);
+    }
+  }
+  else if (type === "AbsolutePath") {
+    isValidValue = (value: any) => !!AbsolutePath.create(value);
+    defineEntry.setValue = function(this: VariableEntry, value: any) { this.value = AbsolutePath.create(value); }
+  }
+  else if (type === "DirPath") {
+    isValidValue = (value: any) => !!DirPath.create(value);
+    defineEntry.setValue = function(this: VariableEntry, value: any) { this.value = DirPath.create(value); }
+  }
+  else if (type === "FilePath") {
+    isValidValue = (value: any) => !!FilePath.create(value);
+    defineEntry.setValue = function(this: VariableEntry, value: any) { this.value = FilePath.create(value); }
+  }
   else if (type !== "object")
     throw new Error(`Variable "${name}" has wrong "${type}" type`);
 
@@ -112,12 +154,29 @@ function defineVariableImpl2(map: VariableMap, group: string, name: string, desc
     defineEntry.initValue = (type === "array") ? [] : undefined;
   }
   else {
-    defineEntry.initValue = (type === "array") ? Array.from(descriptor.value) : defineEntry.ensureValue(descriptor.value);
+    if (!isValidValue(descriptor.value))
+        throw new TypeError(`Attempting to set "${descriptor.value}" to ${name} as initValue`);
+    defineEntry.initValue = (type === "array") ? Array.from(descriptor.value) : descriptor.value;
   }
 
   if (defineEntry.value !== undefined) {
-    defineEntry.value = defineEntry.ensureValue(defineEntry.value);
+    defineEntry.setValue(defineEntry.value);
   }
+}
+
+function definePropertyByName(scope: any, name: string) {
+  Object.defineProperty(scope, name, {
+    configurable: true,
+    enumerable: true,
+    get(this: any) {
+      const entry = this[DEFINE_MAP][name] as VariableEntry;
+      return entry.getValue();
+    },
+    set(this: any, value: any) {
+      const entry = this[DEFINE_MAP][name] as VariableEntry;
+      return entry.setValue(value);
+    },
+  });
 }
 
 function defineVariableImpl(scope: any, group: string, name: string, descriptor: VariableDescriptor) {
@@ -125,20 +184,7 @@ function defineVariableImpl(scope: any, group: string, name: string, descriptor:
     scope[DEFINE_MAP] = {};
 
   defineVariableImpl2(scope[DEFINE_MAP] as VariableMap, group, name, descriptor);
-  Object.defineProperty(scope, name, {
-    configurable: true,
-    enumerable: true,
-    get(this: any) {
-      const entry = this[DEFINE_MAP][name];
-      /*if (value === undefined)
-        throw new Error(`Value of ${name} cannot be obtained because it has not been established`);*/
-      return (entry.value === undefined) ? entry.initValue : entry.value;
-    },
-    set(this: any, value: any) {
-      const entry = this[DEFINE_MAP][name];
-      entry.value = entry.ensureValue(value);
-    },
-  });
+  definePropertyByName(scope, name);
 }
 
 export function defineVariable(scope: any, group: string, name: string, descriptor: any) {
@@ -167,17 +213,20 @@ export function getVariableMap(scope: any): VariableMap {
 }
 
 export function createProxy<T>(map: VariableMap, o?: any): T {
+  o = o || {};
   const handler: ProxyHandler<any> = {
     get(target: VariableMap, key: string, receiver: any) {
+      if ((key as any) === DEFINE_MAP)
+        return target;
       const entry = target[key];
-      if (!entry)
-        return o && o[key];
-      return (entry.value === undefined) ? entry.initValue : entry.value;
+      if (entry)
+        return entry.getValue();
+      return o[key];
     },
     set(target: VariableMap, key: string, value: any): boolean {
       const entry = target[key];
       if (entry)
-        entry.value = entry.ensureValue(value);
+        entry.setValue(value);
       else
         defineVariableImpl2(target, "", key, toDescriptor(value));
       return true;
@@ -212,24 +261,67 @@ export function clone(target: any, scope: any) {
         description: entry.description,
         value: entry.initValue,
       });
-      if (entry.value !== undefined)
-        target[name] = entry.value;
+      if (entry.getValue() !== undefined)
+        target[name] = entry.getValue();
     }
   }
   return target;
 }
 
-export function getVariablesByGroup(scope: any, group?: string) {
+export function createScope(map: VariableMap) {
+  const scope: any = {};
+  scope[DEFINE_MAP] = map;
+
+  for (const name of Object.keys(map))
+    definePropertyByName(scope, name);
+
+  return scope;
+}
+
+export function cloneVariableMap(map: VariableMap) {
+  const result: VariableMap = {};
+  for (const [ name, entry ] of Object.entries(map)) {
+    defineVariableImpl2(result, entry.group, name, {
+      type: entry.type,
+      description: entry.description,
+      value: entry.initValue,
+    });
+    if (entry.getValue() !== undefined)
+      result[name].value = entry.getValue();
+  }
+  return result;
+}
+
+export function extendVariableMapByValues(map: VariableMap, group: string, values: { [key: string]: any }) {
+  for (const [name, value] of Object.entries(values))
+    defineVariableImpl2(map, group, name, { value });
+}
+
+export function defineVariablesInVariableMap(map: VariableMap, group: string, variables: any) {
+  for (const [name, value] of Object.entries(variables)) {
+    const descriptor = value && typeof value === "object" ? value : {value };
+    defineVariableImpl2(map, group, name, descriptor);
+  }
+}
+
+export function getVariablesByGroup(descMap: VariableMap, group?: string) {
   const result: any = {};
-  for (const [ name, entry ] of Object.entries(scope[DEFINE_MAP]) as any) {
+  for (const [ name, entry ] of Object.entries(descMap)) {
     if (group !== undefined && entry.group && entry.group !== group)
       continue;
     result[name] = {
       type: entry.type,
       description: entry.description,
-      value: (entry.value === undefined) ? entry.initValue : entry.value,
+      value: entry.getValue(),
     };
   }
+  return result;
+}
+
+export function createVariableValues(descMap: VariableMap): any {
+  const result: any = {};
+  for (const [ name, entry ] of Object.entries(descMap))
+    result[name] = entry.getValue();
   return result;
 }
 
@@ -255,6 +347,19 @@ export function mergeVariables(target: any, source: any): object {
     }
     else {
       throw new Error(`Source ${key} has ${val} which is not ${typeof target[key]}`);
+    }
+  }
+  return target;
+}
+
+export function mergeVariableMap(target: VariableMap, source: any): VariableMap {
+  for (const [name, value] of Object.entries(source)) {
+    let entry = target[name];
+    if (!entry)
+      defineVariableImpl2(target, "", name, { value });
+    else {
+      let dest = entry.getValue();
+      entry.setValue((dest && typeof dest === "object") ? mergeVariables(dest, value) : value);
     }
   }
   return target;

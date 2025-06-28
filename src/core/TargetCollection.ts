@@ -71,7 +71,7 @@ export class TargetCollection {
     this[ENTRIES][name] = target;
   }
 
-  private __getAllIncludes(includes: string[], targetSet: Set<string>, list: any) {
+  private __getAllIncludes(includes: string[], targetSet: Set<string>, list: Array<DirPath | InterfaceIncludes> | Array<InterfaceTarget>) {
     for (const iter of list) {
       if (iter instanceof InterfaceIncludes || iter instanceof InterfaceTarget) {
         if (!targetSet.has(iter.targetName)) {
@@ -91,16 +91,16 @@ export class TargetCollection {
     }
   }
 
-  public allIncludesOf(params: any): string[] {
-    const target = ((typeof params === "string") ? this.get(params) : params) as BaseTarget;
+  public allIncludesOf(params: string | BaseTarget): string[] {
+    const target = (typeof params === "string") ? this.get(params) : params;
     const includes: string[] = [];
-    const targetSet = new Set([ target.NAME ]);
+    const targetSet = new Set([ target.IMPL.name ]);
     this.__getAllIncludes(includes, targetSet, target.IMPL.getIncludes());
     this.__getAllIncludes(includes, targetSet, target.IMPL.getLibraries());
     return includes;
   }
 
-  private __getAllHeaders(headers: string[], targetSet: Set<string>, list: any) {
+  private __getAllHeaders(headers: string[], targetSet: Set<string>, list: Array<DirPath | InterfaceIncludes> | Array<InterfaceTarget>) {
     for (const iter of list) {
       if (iter instanceof InterfaceIncludes || iter instanceof InterfaceTarget) {
         if (!targetSet.has(iter.targetName)) {
@@ -117,16 +117,16 @@ export class TargetCollection {
     }
   }
 
-  public allHeadersOf(params: any) {
-    const target = ((typeof params === "string") ? this.get(params) : params) as BaseTarget;
+  public allHeadersOf(params: string | BaseTarget) {
+    const target = (typeof params === "string") ? this.get(params) : params;
     const headers = target.IMPL.getHeaders().map((i: any) => i.FILE.toString());
-    const targetSet = new Set([ target.NAME ]);
+    const targetSet = new Set([ target.IMPL.name ]);
     this.__getAllHeaders(headers, targetSet, target.IMPL.getIncludes());
     this.__getAllHeaders(headers, targetSet, target.IMPL.getLibraries());
     return headers;
   }
 
-  private __getAllLibraries(libraries: string[], targetSet: Set<string>, list: any) {
+  private __getAllLibraries(libraries: string[], targetSet: Set<string>, list: Array<InterfaceTarget>) {
     for (const iter of list) {
       console.assert(iter instanceof InterfaceTarget);
       if (!targetSet.has(iter.targetName)) {
@@ -138,15 +138,15 @@ export class TargetCollection {
     }
   }
 
-  public allLibrariesOf(params: any) {
+  public allLibrariesOf(params: string | BaseTarget) {
     const target = (typeof params === "string") ? this.get(params) : params;
     const libraries: string[] = [];
-    const targetSet = new Set([ target.NAME ]);
+    const targetSet = new Set([ target.IMPL.name ]);
     this.__getAllLibraries(libraries, targetSet, target.IMPL.getLibraries());
     return libraries;
   }
 
-  private __getAllDefinitions(definitions: string[], targetSet: Set<string>, list: any) {
+  private __getAllDefinitions(definitions: string[], targetSet: Set<string>, list: Array<string> | Array<InterfaceTarget>) {
     for (const iter of list) {
       if (iter instanceof InterfaceTarget) {
         if (!targetSet.has(iter.targetName)) {
@@ -166,16 +166,16 @@ export class TargetCollection {
     }
   }
 
-  public allDefinitionsOf(params: any) {
-    const target = ((typeof params === "string") ? this.get(params) : params) as BaseTarget;
+  public allDefinitionsOf(params: string | BaseTarget) {
+    const target = (typeof params === "string") ? this.get(params) : params;
     const definitions: string[] = [];
-    const targetSet = new Set([ target.NAME ]);
+    const targetSet = new Set([ target.IMPL.name ]);
     this.__getAllDefinitions(definitions, targetSet, target.IMPL.getDefinitions());
     this.__getAllDefinitions(definitions, targetSet, target.IMPL.getPublicLibraries());
     return definitions;
   }
 
-  private __getAllCompileOptions(options: Array<string|string[]>, targetSet: Set<string>, list: any) {
+  private __getAllCompileOptions(options: Array<string|string[]>, targetSet: Set<string>, list: Array<string|string[]> | Array<InterfaceTarget>) {
     for (const iter of list) {
       if (iter instanceof InterfaceTarget) {
         if (!targetSet.has(iter.targetName)) {
@@ -199,16 +199,16 @@ export class TargetCollection {
     }
   }
 
-  public allCompileOptionsOf(params: any) {
-    const target = ((typeof params === "string") ? this.get(params) : params) as BaseTarget;
+  public allCompileOptionsOf(params: string | BaseTarget) {
+    const target = (typeof params === "string") ? this.get(params) : params;
     const options: string[] = [];
-    const targetSet = new Set([ target.NAME ]);
+    const targetSet = new Set([ target.IMPL.name ]);
     this.__getAllCompileOptions(options, targetSet, target.IMPL.getCompileOptions());
     this.__getAllCompileOptions(options, targetSet, target.IMPL.getPublicLibraries());
     return options.flat();
   }
 
-  private __getLinkOptions(options: Array<string|string[]>, targetSet: Set<string>, list: any) {
+  private __getLinkOptions(options: Array<string|string[]>, targetSet: Set<string>, list: Array<string|string[]> | Array<InterfaceTarget>) {
     for (const iter of list) {
       if (iter instanceof InterfaceTarget) {
         if (!targetSet.has(iter.targetName)) {
@@ -232,10 +232,10 @@ export class TargetCollection {
     }
   }
 
-  public allLinkOptionsOf(params: any) {
-    const target = ((typeof params === "string") ? this.get(params) : params) as BaseTarget;
+  public allLinkOptionsOf(params: string | BaseTarget) {
+    const target = (typeof params === "string") ? this.get(params) : params;
     const options: string[] = [];
-    const targetSet = new Set([ target.NAME ]);
+    const targetSet = new Set([ target.IMPL.name ]);
     this.__getLinkOptions(options, targetSet, target.IMPL.getLinkOptions());
     this.__getLinkOptions(options, targetSet, target.IMPL.getPublicLibraries());
     return options.flat();

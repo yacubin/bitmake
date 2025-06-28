@@ -13,7 +13,7 @@ import { SourceFileList } from "@/core/SourceFileList";
 import { InterfaceIncludes } from "@/core/InterfaceIncludes";
 import { InterfaceObjects } from "@/core/InterfaceObjects";
 import { AbsolutePath, FilePath } from "@/core/Path";
-import { ScopeHelper } from "@/core/Scope";
+import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
 import { TargetStruct, TargetType, LiveString } from "@/core/TargetStruct";
 
@@ -61,20 +61,37 @@ function createSources(scope: SystemScope, source: any): InterfaceObjects | Sour
   throw new Error(`Not support instance ${source}`);
 }
 
+function getSourceFiles(impl: TargetStruct, scope: SystemScope, ...sources: any[]): SourceFileList {
+  const result = [];
+  const sourceFiles = impl.getSourceFiles();
+  for (const it of sources.flat()) {
+    const filename = scope.SOURCE_DIR.resolve(it).toString();
+    const src = sourceFiles.find(i => i.FILE.toString() === filename);
+    if (!src)
+      throw new Error(`Cannot find "${it}"`);
+    result.push(src);
+  }
+
+  if (result.length)
+    return SourceFileList.create(scope, result);
+
+  return SourceFileList.create(scope, sourceFiles);
+}
+
 const IMPL                = Symbol("IMPL");
 const TARGET_SCOPE        = Symbol("TARGET_SCOPE");
 
 export class InterfaceTarget {
-  private [TARGET_SCOPE]: SystemScope;
   private [IMPL]: TargetStruct;
+  private [TARGET_SCOPE]: SystemScope;
 
-  private constructor(scope: SystemScope, impl: TargetStruct) {
-    this[TARGET_SCOPE] = ScopeHelper.clone({}, scope);
+  private constructor(impl: TargetStruct, variableMap: VariableMap) {
     this[IMPL] = impl;
+    this[TARGET_SCOPE] = ScopeHelper.createVariableValues(variableMap) as SystemScope;
   }
 
-  public static create(scope: any, utarget: any) {
-    return Object.seal(new InterfaceTarget(scope, utarget));
+  public static create(impl: TargetStruct, variableMap: VariableMap) {
+    return Object.seal(new InterfaceTarget(impl, variableMap));
   }
 
   public static ensureInstance(value: any) {
@@ -93,6 +110,18 @@ export class InterfaceTarget {
 
   public get objects(): InterfaceObjects {
     return InterfaceObjects.create(this.targetName);
+  }
+
+  public setPrefix(prefix: any) {
+    this[IMPL].targetFile.setForcePrefix(ensureString(prefix));
+  }
+
+  public setSuffix(suffix: any) {
+    this[IMPL].targetFile.setForceSuffix(ensureString(suffix));
+  }
+
+  public setOutputName(outputName: any) {
+    this[IMPL].targetFile.setForceOutputName(ensureString(outputName));
   }
 
   public toJSON(): string {
@@ -140,32 +169,52 @@ export class InterfaceTarget {
   public addPublicLinkOptions(...options: string[]): void {
     this[IMPL].addLinkOptions("indirectly", true, ...options);
   }
+
+  public getSourceFiles(...sources: any[]): SourceFileList {
+    return getSourceFiles(this[IMPL], this[TARGET_SCOPE], ...sources);
+  }
 };
 
 export class BaseTarget {
   private [IMPL]: TargetStruct;
   private [TARGET_SCOPE]: SystemScope;
 
-  protected constructor(impl: TargetStruct, scope: SystemScope, prefix: string, suffix: string) {
+  protected constructor(impl: TargetStruct, variableMap: VariableMap) {
     this[IMPL] = impl;
 
+    const scope = ScopeHelper.createVariableValues(variableMap) as SystemScope;
     const targetFile = impl.targetFile;
     targetFile.fileDir = scope.BINARY_DIR;
-    if (targetFile.prefix === undefined)
-      targetFile.prefix = prefix;
-    if (targetFile.outputName === undefined)
-      targetFile.outputName = impl.name;
-    if (targetFile.suffix === undefined)
-      targetFile.suffix = suffix;
+    targetFile.setInitOutputName(impl.name);
 
     this[IMPL].addIncludes("initialize", false, scope.SOURCE_DIR, ...scope.INCLUDES);
     this[IMPL].positionIndependentCode = scope.POSITION_INDEPENDENT_CODE;
 
-    this[TARGET_SCOPE] = ScopeHelper.clone({}, scope);
+    this[TARGET_SCOPE] = scope;
   }
 
-  public get NAME() {
+  public get targetName() {
     return this[IMPL].name;
+  }
+
+  public get includes(): InterfaceIncludes {
+    return InterfaceIncludes.create(this.targetName);
+  }
+
+  public get objects(): InterfaceObjects {
+    return InterfaceObjects.create(this.targetName);
+  }
+
+  public setPrefix(prefix: any) {
+    this[IMPL].targetFile.setTargetPrefix(ensureString(prefix));
+  }
+
+  public setSuffix(suffix: any) {
+    this[IMPL].targetFile.setTargetSuffix(ensureString(suffix));
+  }
+
+  public setOutputName(outputName: any) {
+    this[IMPL].targetFile.setTargetOutputName(ensureString(outputName));
   }
 
   public get TARGET_SCOPE() {
@@ -174,19 +223,19 @@ export class BaseTarget {
 
   public get FILE_DIR(): AbsolutePath {
     if (!this[IMPL].targetFile.fileDir)
-      throw new Error(`Target "${this.NAME}" is not defined`);
+      throw new Error(`Target "${this.targetName}" is not defined`);
     return this[IMPL].targetFile.fileDir;
   }
 
   public get FILE_NAME(): string {
     if (!this[IMPL].targetFile.fileName)
-      throw new Error(`Target "${this.NAME}" is not defined`);
+      throw new Error(`Target "${this.targetName}" is not defined`);
     return this[IMPL].targetFile.fileName;
   }
 
   public get FILE(): AbsolutePath {
     if (!this[IMPL].targetFile.file)
-      throw new Error(`Target "${this.NAME}" is not defined`);
+      throw new Error(`Target "${this.targetName}" is not defined`);
     return this[IMPL].targetFile.file;
   }
 
@@ -217,32 +266,7 @@ export class BaseTarget {
   }
 
   public getSourceFiles(...sources: any[]): SourceFileList {
-    const result = [];
-    const sourceFiles = this[IMPL].getSourceFiles();
-    for (const it of sources.flat()) {
-      const filename = this[TARGET_SCOPE].SOURCE_DIR.resolve(it).toString();
-      const src = sourceFiles.find(i => i.FILE.toString() === filename);
-      if (!src)
-        throw new Error(`Cannot find "${it}"`);
-      result.push(src);
-    }
-
-    if (result.length)
-      return SourceFileList.create(this[TARGET_SCOPE], result);
-  
-    return SourceFileList.create(this[TARGET_SCOPE], sourceFiles);
-  }
-
-  public setPrefix(prefix: any) {
-    this[IMPL].targetFile.prefix = ensureString(prefix);
-  }
-
-  public setSuffix(suffix: any) {
-    this[IMPL].targetFile.suffix = ensureString(suffix);
-  }
-
-  public setOutputName(outputName: any) {
-    this[IMPL].targetFile.outputName = ensureString(outputName);
+    return getSourceFiles(this[IMPL], this[TARGET_SCOPE], ...sources);
   }
 
   public addDefinitions(...definitions: any[]) {
@@ -264,7 +288,7 @@ export class BaseTarget {
 
   public toJSON(): object {
     return {
-      NAME: this.NAME,
+      NAME: this.targetName,
       TARGET_SCOPE: this.TARGET_SCOPE,
       FILE_DIR: this.FILE_DIR,
       FILE: this.FILE,
@@ -273,8 +297,8 @@ export class BaseTarget {
 };
 
 export class BaseLibrary extends BaseTarget {
-  protected constructor(impl: TargetStruct, scope: SystemScope, prefix: string, suffix: string) {
-    super(impl, scope, prefix, suffix);
+  protected constructor(impl: TargetStruct, variableMap: VariableMap) {
+    super(impl, variableMap);
   }
 
   public setPositionIndependentCode(value: boolean) {
@@ -303,49 +327,57 @@ export class BaseLibrary extends BaseTarget {
 };
 
 export class ObjectLibrary extends BaseLibrary {
-  private constructor(impl: TargetStruct, scope: SystemScope) {
-    super(impl, scope, scope.OBJECT_LIBRARY_PREFIX, scope.OBJECT_LIBRARY_SUFFIX);
+  private constructor(impl: TargetStruct, variableMap: VariableMap) {
+    super(impl, variableMap);
     this[IMPL].type = TargetType.ObjectLibrary;
-    this[IMPL].addLinkOptions("initialize", true, ...scope.OBJECT_LINKER_FLAGS);
+    this[IMPL].targetFile.setInitPrefix(this[TARGET_SCOPE].OBJECT_LIBRARY_PREFIX);
+    this[IMPL].targetFile.setInitSuffix(this[TARGET_SCOPE].OBJECT_LIBRARY_SUFFIX);
+    this[IMPL].addLinkOptions("initialize", true, ...this[TARGET_SCOPE].OBJECT_LINKER_FLAGS);
   }
 
-  public static create(impl: TargetStruct, scope: SystemScope) {
-    return Object.seal(new ObjectLibrary(impl, scope));
+  public static create(impl: TargetStruct, variableMap: VariableMap) {
+    return Object.seal(new ObjectLibrary(impl, variableMap));
   }
 };
 
 export class StaticLibrary extends BaseLibrary {
-  private constructor(impl: TargetStruct, scope: SystemScope) {
-    super(impl, scope, scope.STATIC_LIBRARY_PREFIX, scope.STATIC_LIBRARY_SUFFIX);
+  private constructor(impl: TargetStruct, variableMap: VariableMap) {
+    super(impl, variableMap);
     this[IMPL].type = TargetType.StaticLibrary;
-    this[IMPL].addLinkOptions("initialize", true, ...scope.STATIC_LINKER_FLAGS);
+    this[IMPL].targetFile.setInitPrefix(this[TARGET_SCOPE].STATIC_LIBRARY_PREFIX);
+    this[IMPL].targetFile.setInitSuffix(this[TARGET_SCOPE].STATIC_LIBRARY_SUFFIX);
+    this[IMPL].addLinkOptions("initialize", true, ...this[TARGET_SCOPE].STATIC_LINKER_FLAGS);
   }
 
-  public static create(impl: TargetStruct, scope: SystemScope) {
-    return Object.seal(new StaticLibrary(impl, scope));
+  public static create(impl: TargetStruct, variableMap: VariableMap) {
+    return Object.seal(new StaticLibrary(impl, variableMap));
   }
 };
 
 export class SharedLibrary extends BaseLibrary {
-  private constructor(impl: TargetStruct, scope: SystemScope) {
-    super(impl, scope, scope.SHARED_LIBRARY_PREFIX, scope.SHARED_LIBRARY_SUFFIX);
+  private constructor(impl: TargetStruct, variableMap: VariableMap) {
+    super(impl, variableMap);
     this[IMPL].type = TargetType.SharedLibrary;
-    this[IMPL].addLinkOptions("initialize", true, ...scope.SHARED_LINKER_FLAGS);
+    this[IMPL].targetFile.setInitPrefix(this[TARGET_SCOPE].SHARED_LIBRARY_PREFIX);
+    this[IMPL].targetFile.setInitSuffix(this[TARGET_SCOPE].SHARED_LIBRARY_SUFFIX);
+    this[IMPL].addLinkOptions("initialize", true, ...this[TARGET_SCOPE].SHARED_LINKER_FLAGS);
   }
 
-  public static create(impl: TargetStruct, scope: SystemScope) {
-    return Object.seal(new SharedLibrary(impl, scope));
+  public static create(impl: TargetStruct, variableMap: VariableMap) {
+    return Object.seal(new SharedLibrary(impl, variableMap));
   }
 }
 
 export class Executable extends BaseTarget {
-  private constructor(impl: TargetStruct, scope: SystemScope) {
-    super(impl, scope, "", scope.EXECUTABLE_SUFFIX);
+  private constructor(impl: TargetStruct, variableMap: VariableMap) {
+    super(impl, variableMap);
     this[IMPL].type = TargetType.Executable;
-    this[IMPL].addLinkOptions("initialize", true, ...scope.EXE_LINKER_FLAGS);
+    this[IMPL].targetFile.setInitPrefix("");
+    this[IMPL].targetFile.setInitSuffix(this[TARGET_SCOPE].EXECUTABLE_SUFFIX);
+    this[IMPL].addLinkOptions("initialize", true, ...this[TARGET_SCOPE].EXE_LINKER_FLAGS);
   }
 
-  public static create(impl: TargetStruct, scope: SystemScope) {
-    return Object.seal(new Executable(impl, scope));
+  public static create(impl: TargetStruct, variableMap: VariableMap) {
+    return Object.seal(new Executable(impl, variableMap));
   }
 };

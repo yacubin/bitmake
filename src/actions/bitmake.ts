@@ -22,6 +22,7 @@ import { SettingsStorage } from "@/utils/SettingsStorage";
 import { IMPORT_SCHEME } from "@/utils/UrlScheme";
 import { INSTALL_TARGET, PACKAGE_JSON, MAKE_CACHE } from "@/Constants";
 import { requireResolve } from "@/utils/Module";
+import { createWorker } from "@/utils/Worker";
 import { createLogger } from "@/logger";
 
 const logger = createLogger(import.meta.url);
@@ -116,6 +117,23 @@ export default async function(config: any, environment: any, settings: SettingsS
     scope.SCRIPT_FILE = AbsolutePath.create(scriptFile);
     scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
   }
+
+  const worker = createWorker();
+  worker.postMessage({
+    type: "hello",
+  });
+
+  worker.on("message", (message) => {
+    logger.info(">>> Worker Message", message);
+
+  });
+  worker.on("error", (error) => {
+    logger.info(">>> Worker Error", error);
+
+  });
+  worker.on('exit', (code) => {
+    logger.info(">>> Worker Exit", code);
+  });
 
   global.addSubdirectory(ScopeHelper.getVariableMap(scope), "work", scope.PROJECT_SOURCE_DIR, scope.PROJECT_BINARY_DIR);
 

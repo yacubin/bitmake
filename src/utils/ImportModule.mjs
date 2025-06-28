@@ -18,3 +18,11 @@ export function isEntryPoint() {
     return require.main === module;
   throw new Error("No compatible module resolver found");
 }
+
+export function currentScriptURL() {
+  if (Object(import.meta).url)
+    return url.fileURLToPath(Object(import.meta).url);
+  if (typeof require !== 'undefined')
+    return url.pathToFileURL(/* webpackIgnore: true */ __filename);
+  throw new Error("Unknown current filename");
+}

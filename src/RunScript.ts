@@ -7,10 +7,15 @@
  * under the MIT License. See LICENSE file for details.
  */
 
+import { isMainThread, parentPort, workerData } from "node:worker_threads";
 import { Args }  from "@/utils/Args";
 import commands from "@/commands";
+import { createLogger } from "@/logger";
+
+const logger = createLogger(import.meta.url);
 
 export async function runMainScript() {
+  logger.info(">>> runMainScript")
   const options: any = {
     handler: "default",
     workDir: process.cwd(),
@@ -44,5 +49,27 @@ export async function runMainScript() {
   const res = handler(options);
   if (res instanceof Promise) {
     await res;
+  }
+}
+
+export function runWorkerScript() {
+  logger.info(">>> runWorkerScript", workerData);
+  parentPort && parentPort.on("message", (message) => {
+    logger.info(">>> Main Message", message);
+  });
+}
+
+export function runScript() {
+  if (isMainThread) {
+    runMainScript().then(() => process.exit(0)).catch((e) => {
+      if (e instanceof Error)
+        console.error(e.stack);
+      else
+        console.error(e);
+      process.exit(1);
+    });
+  }
+  else {
+    runWorkerScript();
   }
 }

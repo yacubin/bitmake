@@ -9,6 +9,8 @@
 
 export { isEntryPoint } from "./ImportModule.mjs";
 export { importModule } from "./ImportModule.mjs";
+export { currentScriptURL } from "./ImportModule.mjs";
+
 export const requireSync = eval("require") as NodeJS.Require;
 
 export function requireResolve(name: string) {

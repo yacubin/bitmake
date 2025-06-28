@@ -16,7 +16,7 @@ import { CMakeProcess, CTestProcess, ScriptModeOptions, getProjectInfo } from "@
 import { spawnAsync } from "@/utils/ChildProcess";
 import { requestGet, downloadFile } from "@/utils/HttpRequest";
 import { Path } from "@/utils/Path";
-import commands from "@/commands";
+import { runMainScript } from "@/RunScript";
 
 export default {
   cxx,
@@ -29,7 +29,6 @@ export default {
     ctest: (args: any) => CTestProcess.getInstance().ctest(args),
     getProjectInfo,
   },
-  commands,
   process: {
     spawn: spawnAsync,
   },
@@ -42,4 +41,11 @@ export default {
 
 if (isEntryPoint()) {
   console.log(">>> Is Entry Point")
+  runMainScript().then(() => process.exit(0)).catch((e) => {
+    if (e instanceof Error)
+      console.error(e.stack);
+    else
+      console.error(e);
+    process.exit(1);
+  });
 }

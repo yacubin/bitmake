@@ -14,7 +14,7 @@ import bitmake from "bitmake";
 
 import { Args }  from "@/utils/Args";
 
-async function runScript() {
+async function runMainScript() {
   const options: any = {
     handler: "default",
     workDir: process.cwd(),
@@ -51,7 +51,7 @@ async function runScript() {
   }
 }
 
-runScript().then(() => process.exit(0)).catch((e) => {
+runMainScript().then(() => process.exit(0)).catch((e) => {
   if (e instanceof Error)
     console.error(e.stack);
   else

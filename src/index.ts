@@ -9,6 +9,7 @@
 
 /// <reference path="global.d.ts" />
 
+import { isEntryPoint } from "@/utils/Module";
 import * as cxx from "@/cxx";
 import { CMakeProcess, CTestProcess, ScriptModeOptions, getProjectInfo } from "@/cmake";
 
@@ -38,3 +39,7 @@ export default {
   },
   path: Path,
 };
+
+if (isEntryPoint()) {
+  console.log(">>> Is Entry Point")
+}

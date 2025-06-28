@@ -81,6 +81,10 @@ export default async (env, argv) => {
     module,
     plugins: [
       new webpack.DefinePlugin(globalVariables),
+      new webpack.BannerPlugin({
+        banner: "#!/usr/bin/env node",
+        raw: true,
+      }),
     ],
   };
 

@@ -8,10 +8,6 @@
  */
 
 import { AbsolutePath, DirPath, FilePath } from "@/core/Path";
-import { SystemScope } from "@/core/SystemScope";
-import SystemVariables from "@/core/SystemVariables";
-
-const DEFINE_MAP = Symbol("DEFINE_MAP");
 
 interface VariableDescriptor {
   type?: string | string[];
@@ -32,7 +28,7 @@ interface VariableEntry {
 };
 
 export interface VariableMap {
-  [name: string]: VariableEntry;
+  [ name: string ]: VariableEntry;
 };
 
 export namespace ScopeHelper {
@@ -164,60 +160,10 @@ function defineVariableImpl2(map: VariableMap, group: string, name: string, desc
   }
 }
 
-function definePropertyByName(scope: any, name: string) {
-  Object.defineProperty(scope, name, {
-    configurable: true,
-    enumerable: true,
-    get(this: any) {
-      const entry = this[DEFINE_MAP][name] as VariableEntry;
-      return entry.getValue();
-    },
-    set(this: any, value: any) {
-      const entry = this[DEFINE_MAP][name] as VariableEntry;
-      return entry.setValue(value);
-    },
-  });
-}
-
-function defineVariableImpl(scope: any, group: string, name: string, descriptor: VariableDescriptor) {
-  if (!scope[DEFINE_MAP])
-    scope[DEFINE_MAP] = {};
-
-  defineVariableImpl2(scope[DEFINE_MAP] as VariableMap, group, name, descriptor);
-  definePropertyByName(scope, name);
-}
-
-export function defineVariable(scope: any, group: string, name: string, descriptor: any) {
-  if (!group) {
-    throw new Error(`Attempting to create "${name}" variable with an empty group`);
-  }
-  defineVariableImpl(scope, group, name, descriptor);
-}
-
-export function create(variables: object): SystemScope {
-  const scope = {} as any;
-
-  for (const [ name, value ] of Object.entries(variables)) {
-    defineVariableImpl(scope, "", name, toDescriptor(value));
-    scope[name] = value;
-  }
-
-  for (const [ name, value ] of Object.entries(SystemVariables))
-    defineVariableImpl(scope, "system", name, toDescriptor(value));
-
-  return scope as SystemScope;
-}
-
-export function getVariableMap(scope: any): VariableMap {
-  return scope[DEFINE_MAP] as VariableMap;
-}
-
 export function createProxy<T>(map: VariableMap, o?: any): T {
   o = o || {};
   const handler: ProxyHandler<any> = {
     get(target: VariableMap, key: string, receiver: any) {
-      if ((key as any) === DEFINE_MAP)
-        return target;
       const entry = target[key];
       if (entry)
         return entry.getValue();
@@ -244,40 +190,6 @@ export function createProxy<T>(map: VariableMap, o?: any): T {
   return new Proxy(map, handler);
 }
 
-export function defineVariables(scope: any, group: string, descriptors: any) {
-  for (let [ name, descriptor ] of Object.entries(descriptors)) {
-    if (!descriptor || typeof descriptor === "boolean" || typeof descriptor === "number" || typeof descriptor === "string" || Array.isArray(descriptor)) {
-      descriptor = { value: descriptor }; 
-    }
-    ScopeHelper.defineVariable(scope, group, name, descriptor);
-  }
-}
-
-export function clone(target: any, scope: any) {
-  if (scope[DEFINE_MAP]) {
-    for (const [ name, entry ] of Object.entries(scope[DEFINE_MAP] as VariableMap)) {
-      defineVariableImpl(target, entry.group, name, {
-        type: entry.type,
-        description: entry.description,
-        value: entry.initValue,
-      });
-      if (entry.getValue() !== undefined)
-        target[name] = entry.getValue();
-    }
-  }
-  return target;
-}
-
-export function createScope(map: VariableMap) {
-  const scope: any = {};
-  scope[DEFINE_MAP] = map;
-
-  for (const name of Object.keys(map))
-    definePropertyByName(scope, name);
-
-  return scope;
-}
-
 export function cloneVariableMap(map: VariableMap) {
   const result: VariableMap = {};
   for (const [ name, entry ] of Object.entries(map)) {
@@ -292,9 +204,11 @@ export function cloneVariableMap(map: VariableMap) {
   return result;
 }
 
-export function extendVariableMapByValues(map: VariableMap, group: string, values: { [key: string]: any }) {
-  for (const [name, value] of Object.entries(values))
+export function extendVariableMapByValues(map: VariableMap, group: string, values: { [ key: string ]: any }) {
+  for (const [name, value] of Object.entries(values)) {
     defineVariableImpl2(map, group, name, { value });
+    map[name].value = value;
+  }
 }
 
 export function defineVariablesInVariableMap(map: VariableMap, group: string, variables: any) {
@@ -304,9 +218,9 @@ export function defineVariablesInVariableMap(map: VariableMap, group: string, va
   }
 }
 
-export function getVariablesByGroup(descMap: VariableMap, group?: string) {
+export function getVariablesByGroup(map: VariableMap, group?: string) {
   const result: any = {};
-  for (const [ name, entry ] of Object.entries(descMap)) {
+  for (const [ name, entry ] of Object.entries(map)) {
     if (group !== undefined && entry.group && entry.group !== group)
       continue;
     result[name] = {
@@ -318,9 +232,9 @@ export function getVariablesByGroup(descMap: VariableMap, group?: string) {
   return result;
 }
 
-export function createVariableValues(descMap: VariableMap): any {
+export function createVariableValues(map: VariableMap): any {
   const result: any = {};
-  for (const [ name, entry ] of Object.entries(descMap))
+  for (const [ name, entry ] of Object.entries(map))
     result[name] = entry.getValue();
   return result;
 }

@@ -12,7 +12,7 @@ import fs from "node:fs";
 import { Path } from "@/utils/Path";
 import { PluginContext } from "@/core/PluginContext";
 import { GlobalContext } from "@/core/GlobalContext";
-import { ScopeHelper } from "@/core/Scope";
+import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { ToolchainContext } from "@/core/ToolchainContext";
 import { getPathString, getURLString }  from "@/utils/FileSystem";
 import { AbsolutePath, DirPath, FilePath } from "@/core/Path";
@@ -24,13 +24,18 @@ import { INSTALL_TARGET, PACKAGE_JSON, MAKE_CACHE } from "@/Constants";
 import { requireResolve } from "@/utils/Module";
 import { createWorker } from "@/utils/Worker";
 import { createLogger } from "@/logger";
+import { SystemScope } from "@/core/SystemScope";
+import SystemVariables from "@/core/SystemVariables";
 
 const logger = createLogger(import.meta.url);
 
 export default async function(config: any, environment: any, settings: SettingsStorage) {
   process.env = environment;
 
-  const scope = ScopeHelper.create(config.variables);
+  const variableMap: VariableMap = {};
+  ScopeHelper.extendVariableMapByValues(variableMap, "", config.variables);
+  ScopeHelper.defineVariablesInVariableMap(variableMap, "system", SystemVariables);
+  const scope = ScopeHelper.createProxy(variableMap) as SystemScope;
 
   const sourceDir = getPathString(config.sourceDir);
   const binaryDir = getPathString(config.binaryDir);
@@ -61,9 +66,8 @@ export default async function(config: any, environment: any, settings: SettingsS
     const toolchain = await importModule(toolchainUrl);
     if (!toolchain.default)
       throw new Error("Toolchain module has no default export");
-    const variableMap = ScopeHelper.getVariableMap(scope);
     const ctx = new ToolchainContext(global, variableMap);
-    const mk = ScopeHelper.createProxy(ScopeHelper.getVariableMap(scope), ctx);
+    const mk = ScopeHelper.createProxy(variableMap, ctx);
     const result = toolchain.default(mk);
     if (result instanceof Promise)
       await result;
@@ -91,9 +95,8 @@ export default async function(config: any, environment: any, settings: SettingsS
     if (!module.default)
       throw new Error(`Plugin ${scope.SCRIPT_FILE.basename()} not contain default export`);
 
-    const variableMap = ScopeHelper.getVariableMap(scope);
     const ctx = new PluginContext(global, variableMap);
-    const mk = ScopeHelper.createProxy(ScopeHelper.getVariableMap(scope), ctx);
+    const mk = ScopeHelper.createProxy(variableMap, ctx);
     if (typeof module.default !== "function")
       throw new Error(`Plugin ${scope.SCRIPT_FILE.basename()} export has no function or class`);
     let result: any;
@@ -135,7 +138,7 @@ export default async function(config: any, environment: any, settings: SettingsS
     logger.info(">>> Worker Exit", code);
   });
 
-  global.addSubdirectory(ScopeHelper.getVariableMap(scope), "work", scope.PROJECT_SOURCE_DIR, scope.PROJECT_BINARY_DIR);
+  global.addSubdirectory(variableMap, "work", scope.PROJECT_SOURCE_DIR, scope.PROJECT_BINARY_DIR);
 
   await global.doSubdirectory();
   logger.info("Configuring done");

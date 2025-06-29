@@ -431,7 +431,7 @@ export class GlobalContext {
   }
 
   private async doSubdirectoryImpl(variableMap: VariableMap) {
-    const scope = ScopeHelper.createScope(variableMap) as SystemScope;
+    const scope = ScopeHelper.createProxy(variableMap) as SystemScope;
     if (!scope.SCRIPT_FILE) {
       let scriptFile: AbsolutePath | undefined;
       const fileList = [ ".js", ".mjs" ].map(i => "MakeScript" + i);

@@ -102,4 +102,9 @@ export class MakeContext extends BaseContext {
   public executeScript(script: any, params: any) {
     this[GLOBAL].executeScriptSync(this[SCOPE], script, params);
   }
+
+  public static create(global: GlobalContext, variableMap: VariableMap) {
+    const ctx = new MakeContext(global, variableMap);
+    return ScopeHelper.createProxy(variableMap, ctx);
+  }
 };

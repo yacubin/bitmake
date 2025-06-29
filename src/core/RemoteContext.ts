@@ -9,14 +9,13 @@
 
 import { IRequestSync } from "@/transport/Common";
 import { InterfaceScript } from "@/core/InterfaceScript";
-import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget, InterfaceTarget } from "@/core/Target";
+import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, InterfaceTarget } from "@/core/Target";
 import { CustomScript } from "@/core/CustomScript";
 import { BaseContext } from "@/core/BaseContext";
+import { CONFIGURE_ADDCACHEVARIABLES } from "@/worker/RemoteMethods";
 import { createLogger } from "@/logger";
 
 const logger = createLogger(import.meta.url);
-
-const VARIABLE_GROUP = "custom";
 
 const REQUEST = Symbol("REQUEST");
 
@@ -31,21 +30,21 @@ export class RemoteContext extends BaseContext {
   public getCacheVariables() {
     return this[REQUEST].requestSync({
       method: "Configure.getCacheVariables",
-    });
+    }).result;
   }
 
   public addCacheVariables(params: any) {
     return this[REQUEST].requestSync({
-      method: "Configure.addCacheVariables",
+      method: CONFIGURE_ADDCACHEVARIABLES,
       params,
-    });
+    }).result;
   }
 
   public addIncludeDirectories(...dirs: any[]) {
     return this[REQUEST].requestSync({
       method: "Configure.addCacheVariables",
       params: dirs,
-    });
+    }).result;
   }
 
   public addSubdirectory(sourceDir: any, binaryDir: any) {
@@ -55,7 +54,7 @@ export class RemoteContext extends BaseContext {
         sourceDir,
         binaryDir,
       },
-    });
+    }).result;
   }
 
   public addCustomScript(script: any, params: any): CustomScript {
@@ -90,13 +89,81 @@ export class RemoteContext extends BaseContext {
     throw new Error("Not Implemented");
   }
 
-  public executeScript(script: any, params: any) {
+  public executeScript(script: any, options: any) {
     return this[REQUEST].requestSync({
       method: "Configure.executeScript",
       params: {
         script,
-        params,
+        options,
       },
-    });
+    }).result;
+  }
+
+  public getProperty(name: string): any {
+    return this[REQUEST].requestSync({
+      method: "Configure.getProperty",
+      params: {
+        name,
+      },
+    }).result;
+  }
+
+  public setProperty(name: string, value: any): any {
+    return this[REQUEST].requestSync({
+      method: "Configure.setProperty",
+      params: {
+        name,
+        value,
+      },
+    }).result;
+  }
+
+  public hasProperty(name: string): boolean {
+    return this[REQUEST].requestSync({
+      method: "Configure.hasProperty",
+      params: {
+        name,
+      },
+    }).result;
+  }
+
+  public getPropertyNames(): string[] {
+    return this[REQUEST].requestSync({
+      method: "Configure.getPropertyNames",
+    }).result;
+  }
+
+  public deleteProperty(name: string): boolean {
+    return this[REQUEST].requestSync({
+      method: "Configure.deleteProperty",
+      params: {
+        name,
+      },
+    }).result;
+  }
+
+  public static create(requestSync: IRequestSync): RemoteContext {
+    const ctx = new RemoteContext(requestSync);
+    const handler: ProxyHandler<RemoteContext> = {
+      get(target: RemoteContext, name: string, receiver: any) {
+        if (name in target)
+          return (target as any)[name];
+        return target.getProperty(name);
+      },
+      set(target: RemoteContext, name: string, value: any): boolean {
+        target.setProperty(name, value);
+        return true;
+      },
+      has(target: RemoteContext, name: string) {
+        return name in target || target.hasProperty(name);
+      },
+      ownKeys(target: RemoteContext) {
+        return target.getPropertyNames();
+      },
+      deleteProperty(target: RemoteContext, name: string) {
+        return target.deleteProperty(name);
+      },
+    };
+    return new Proxy(ctx, handler);
   }
 };

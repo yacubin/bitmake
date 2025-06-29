@@ -28,6 +28,8 @@ import { SystemScope } from "@/core/SystemScope";
 import SystemVariables from "@/core/SystemVariables";
 import { currentScriptURL } from "@/utils/Module";
 import { MemoryTransport } from "@/transport/MemoryTransport";
+import { WORKERNODE_LOADSUBDIRECTORY } from "@/worker/RemoteMethods";
+import { CONFIGURE_ADDCACHEVARIABLES } from "@/worker/RemoteMethods";
 
 const logger = createLogger(import.meta.url);
 
@@ -83,8 +85,7 @@ export default async function(config: any, environment: any, settings: SettingsS
     if (!module.default)
       throw new Error(`Plugin ${scope.SCRIPT_FILE.basename()} not contain default export`);
 
-    const ctx = new PluginContext(global, variableMap);
-    const mk = ScopeHelper.createProxy(variableMap, ctx);
+    const mk = PluginContext.create(global, variableMap);
     if (typeof module.default !== "function")
       throw new Error(`Plugin ${scope.SCRIPT_FILE.basename()} export has no function or class`);
     let result: any;
@@ -108,8 +109,7 @@ export default async function(config: any, environment: any, settings: SettingsS
     const toolchain = await importModule(toolchainUrl);
     if (!toolchain.default)
       throw new Error("Toolchain module has no default export");
-    const ctx = new ToolchainContext(global, variableMap);
-    const mk = ScopeHelper.createProxy(variableMap, ctx);
+    const mk = ToolchainContext.create(global, variableMap);
     const result = toolchain.default(mk);
     if (result instanceof Promise)
       await result;
@@ -134,8 +134,8 @@ export default async function(config: any, environment: any, settings: SettingsS
   });
   worker.postMessage({
     jsonrpc: "2.0",
-    method: "Module.import",
-    params: "/mnt/c/opt/work/source/darkit-sdk/external/wasmux/MakeScript.mjs",
+    method: WORKERNODE_LOADSUBDIRECTORY,
+    params: scope.SCRIPT_FILE.toJSON(),
     id: 2,
   });
   worker.on("message", (message) => {
@@ -144,10 +144,10 @@ export default async function(config: any, environment: any, settings: SettingsS
       const memory = new MemoryTransport.Buffer(message);
       const json = memory.get();
       logger.info(">>> json", json);
-      if (json.method === "System.wait") {
+      if (json.method === CONFIGURE_ADDCACHEVARIABLES) {
         setTimeout(() => {
           logger.info(">>> notify", json);
-          memory.set({ result: null }, true);
+          memory.set({ result: true }, true);
         }, json.params);
       }
     }

@@ -46,5 +46,5 @@ export interface IJsonRpcRequest {
 };
 
 export interface IJsonRpcResponse {
-
+  sendResult(json: any): void;
 };

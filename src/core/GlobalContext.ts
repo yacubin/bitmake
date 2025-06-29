@@ -460,8 +460,7 @@ export class GlobalContext {
     if (!module.default)
       throw new Error(`Subdirectory ${scope.SCRIPT_FILE.basename()} not contain default function`);
 
-    const ctx = new MakeContext(this, variableMap);
-    const mk = ScopeHelper.createProxy(variableMap, ctx);
+    const mk = MakeContext.create(this, variableMap);
     const result = module.default(mk);
     if (result instanceof Promise)
       await result;

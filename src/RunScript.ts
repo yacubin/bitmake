@@ -12,12 +12,12 @@ import { Args }  from "@/utils/Args";
 import commands from "@/commands";
 import { createLogger } from "@/logger";
 import { MessagePortSender } from "@/transport/MessagePortSender";
-import { WorkerServer } from "@/transport/WorkerServer";
+import { WorkerLooper } from "@/worker/WorkerLooper";
 
 const logger = createLogger(import.meta.url);
 
 export async function runMainScript() {
-  logger.info(">>> runMainScript")
+  logger.info("Main thread started")
   const options: any = {
     handler: "default",
     workDir: process.cwd(),
@@ -55,17 +55,16 @@ export async function runMainScript() {
 }
 
 export function runWorkerScript() {
-  logger.debug("Worker started", workerData);
+  logger.debug("Worker thread started", workerData);
 
   if (!parentPort) {
     throw new Error(`Worker not supported parentPort`);
   }
 
   const sender = new MessagePortSender(parentPort);
-  const server = new WorkerServer(sender);
+  const looper = new WorkerLooper(sender);
 
-  parentPort.on("message", (message) => server.emitMessage(message));
-  self.onmessage = (message) => server.emitMessage(message);
+  parentPort.on("message", (message) => looper.emitMessage(message));
 }
 
 export function runScript() {

@@ -8,7 +8,7 @@
  */
 
 import { GlobalContext } from "@/core/GlobalContext";
-import { VariableMap } from "@/core/Scope";
+import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { BaseContext } from "@/core/BaseContext";
 
 const GLOBAL = Symbol("GLOBAL");
@@ -22,5 +22,10 @@ export class ToolchainContext extends BaseContext {
     super();
     this[GLOBAL] = global;
     this[SCOPE] = scope;
+  }
+
+  public static create(global: GlobalContext, variableMap: VariableMap) {
+    const ctx = new ToolchainContext(global, variableMap);
+    return ScopeHelper.createProxy(variableMap, ctx);
   }
 }

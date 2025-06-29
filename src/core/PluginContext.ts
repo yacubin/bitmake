@@ -8,7 +8,7 @@
  */
 
 import { GlobalContext } from "@/core/GlobalContext";
-import { VariableMap } from "@/core/Scope";
+import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { BaseContext } from "@/core/BaseContext";
 
 const GLOBAL = Symbol("GLOBAL");
@@ -18,10 +18,10 @@ export class PluginContext extends BaseContext {
   [GLOBAL]: GlobalContext;
   [SCOPE]: VariableMap;
 
-  public constructor(global: GlobalContext, scope: VariableMap) {
+  public constructor(global: GlobalContext, variableMap: VariableMap) {
     super();
     this[GLOBAL] = global;
-    this[SCOPE] = scope;
+    this[SCOPE] = variableMap;
   }
 
   public addSubdirectory(sourceDir: any, binaryDir: any) {
@@ -30,5 +30,10 @@ export class PluginContext extends BaseContext {
 
   public addSubdirectoryAlias(src: any, dest: any) {
     this[GLOBAL].addSubdirectoryAlias(this[SCOPE], src, dest);
+  }
+
+  public static create(global: GlobalContext, variableMap: VariableMap) {
+    const ctx = new PluginContext(global, variableMap);
+    return ScopeHelper.createProxy(variableMap, ctx);
   }
 };

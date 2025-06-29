@@ -9,7 +9,8 @@
 
 import { IMessageSender, IMessageEmitter, JsonRpcData, JsonRpcRequestHandler, IJsonRpcRequest, IJsonRpcResponse } from "@/transport/Common";
 import { MemoryTransport } from "@/transport/MemoryTransport";
-import { importModule } from "@/utils/Module";
+import { WorkerNode } from "@/worker/WorkerNode";
+import { WORKERNODE_LOADSUBDIRECTORY } from "@/worker/RemoteMethods";
 import { createLogger } from "@/logger";
 
 const logger = createLogger(import.meta.url);
@@ -26,6 +27,24 @@ class JsonRpcRequest implements IJsonRpcRequest {
   }
 }
 
+class JsonRpcResponse implements IJsonRpcResponse {
+  private _sender: IMessageSender;
+  private _id: number;
+
+  public constructor(sender: IMessageSender, id: number) {
+    this._sender = sender;
+    this._id = id;
+  }
+
+  sendResult(json: any): void {
+    this._sender.sendMessage({
+      jsonrpc: "2.0",
+      result: json,
+      id: this._id,
+    })
+  }
+};
+
 class JsonRpcServer {
   private _sender: IMessageSender;
   private _requestHandlers = new Map<string, JsonRpcRequestHandler>();
@@ -41,7 +60,7 @@ class JsonRpcServer {
   public onRequest(method: any, id: any, params: any): void {
     const handler = (typeof method === "string") ? this._requestHandlers.get(method) : undefined;
     if (handler) {
-      handler(new JsonRpcRequest(params), {});
+      handler(new JsonRpcRequest(params), new JsonRpcResponse(this._sender, id));
     }
     else {
       this._sender.sendMessage({ error: { code: -32601, message: "Method not found" }, id })
@@ -90,8 +109,9 @@ class JsonRpcServer {
   }
 };
 
-export class WorkerServer implements IMessageEmitter {
+export class WorkerLooper implements IMessageEmitter {
   private _jsonrpcServer: JsonRpcServer;
+  private _workerNode: WorkerNode;
 
   public constructor(sender: IMessageSender) {
     this._jsonrpcServer = new JsonRpcServer(sender);
@@ -99,15 +119,13 @@ export class WorkerServer implements IMessageEmitter {
     const buffer = new SharedArrayBuffer(1024);
     const transport = new MemoryTransport(sender, buffer);
 
+    this._workerNode = new WorkerNode(transport);
+
     this._jsonrpcServer.registerHandler("PostMessage.buffer", (request: IJsonRpcRequest, response: IJsonRpcResponse) => {
-      logger.info("Handler");
+      response.sendResult(null);
     });
-    this._jsonrpcServer.registerHandler("Module.import", async (request: IJsonRpcRequest, response: IJsonRpcResponse) => {
-      logger.info("> Module.import");
-      const module = await importModule(request.params);
-      const result = transport.requestSync({ method: "System.wait", params: 1000 });
-      logger.info("< Module.import", result);
-    });
+
+    this._jsonrpcServer.registerHandler(WORKERNODE_LOADSUBDIRECTORY, this._workerNode.loadSubdirectory.bind(this._workerNode));
   }
 
   public emitMessage(message: any): void {

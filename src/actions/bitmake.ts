@@ -124,7 +124,7 @@ export default async function(config: any, environment: any, settings: SettingsS
     scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
   }
 
-  /*const worker = new Worker(currentScriptURL(), { workerData: "DATA" });
+  const worker = new Worker(currentScriptURL(), { workerData: "DATA" });
   const buffer = new SharedArrayBuffer(1024);
   worker.postMessage({
     jsonrpc: "2.0",
@@ -162,7 +162,7 @@ export default async function(config: any, environment: any, settings: SettingsS
   worker.on("exit", (code: number) => {
     if (code)
       process.exit(code);
-  });*/
+  });
 
   global.addSubdirectory(variableMap, "work", scope.PROJECT_SOURCE_DIR, scope.PROJECT_BINARY_DIR);
 

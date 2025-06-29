@@ -65,6 +65,7 @@ export function runWorkerScript() {
   const server = new WorkerServer(sender);
 
   parentPort.on("message", (message) => server.emitMessage(message));
+  self.onmessage = (message) => server.emitMessage(message);
 }
 
 export function runScript() {

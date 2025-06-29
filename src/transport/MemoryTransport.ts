@@ -29,20 +29,22 @@ export class MemoryTransport implements IRequestSync {
 
 export namespace MemoryTransport {
 
+const MAGIC_OFFSET = 0;
+
 export class Buffer {
   private _signal: Int32Array;
   private _data: Uint8Array;
   private _magic: number;
 
   public constructor(buffer: SharedArrayBuffer) {
-    this._signal = new Int32Array(buffer, 0, 1);
-    this._data = new Uint8Array(buffer, 4);
+    this._signal = new Int32Array(buffer, MAGIC_OFFSET, 1);
+    this._data = new Uint8Array(buffer, this._signal.BYTES_PER_ELEMENT);
     this._magic = 0;
   }
 
   public get(sync = false): any {
     if (sync) {
-      Atomics.wait(this._signal, 0, this._magic);
+      Atomics.wait(this._signal, MAGIC_OFFSET, this._magic);
     }
 
     this._magic = this._signal[0];
@@ -61,7 +63,7 @@ export class Buffer {
     this._signal[0] = this._magic;
 
     if (notify) {
-      Atomics.notify(this._signal, 0, 1);
+      Atomics.notify(this._signal, MAGIC_OFFSET, 1);
     }
   }
 };

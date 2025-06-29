@@ -63,20 +63,6 @@ export default async function(config: any, environment: any, settings: SettingsS
     scope.DESTDIR = config.destDir;
 
   const global = GlobalContext.create();
-  if (scope.TOOLCHAIN_FILE) {
-    const toolchainUrl = getURLString(scope.TOOLCHAIN_FILE.toString());
-    const toolchain = await importModule(toolchainUrl);
-    if (!toolchain.default)
-      throw new Error("Toolchain module has no default export");
-    const ctx = new ToolchainContext(global, variableMap);
-    const mk = ScopeHelper.createProxy(variableMap, ctx);
-    const result = toolchain.default(mk);
-    if (result instanceof Promise)
-      await result;
-  }
-  else {
-    await determineCompiler(scope);
-  }
 
   for (const plugin of (scope.MAKE_PLUGIN_LIST || [])) {
     const cwdSave = process.cwd();
@@ -115,6 +101,21 @@ export default async function(config: any, environment: any, settings: SettingsS
       await result;
 
     process.chdir(cwdSave);
+  }
+
+  if (scope.TOOLCHAIN_FILE) {
+    const toolchainUrl = getURLString(scope.TOOLCHAIN_FILE.toString());
+    const toolchain = await importModule(toolchainUrl);
+    if (!toolchain.default)
+      throw new Error("Toolchain module has no default export");
+    const ctx = new ToolchainContext(global, variableMap);
+    const mk = ScopeHelper.createProxy(variableMap, ctx);
+    const result = toolchain.default(mk);
+    if (result instanceof Promise)
+      await result;
+  }
+  else {
+    await determineCompiler(scope);
   }
 
   if (config.sourceUrl && config.sourceUrl.startsWith(IMPORT_SCHEME)) {

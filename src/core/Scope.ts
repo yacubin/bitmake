@@ -40,7 +40,7 @@ function toDescriptor(value: any): VariableDescriptor {
   return value;
 }
 
-function defineVariableImpl2(map: VariableMap, group: string, name: string, descriptor: VariableDescriptor) {
+function defineVariable(map: VariableMap, group: string, name: string, descriptor: VariableDescriptor) {
   let defineEntry = map[name];
   let isValidValue = (value: any) => true;
   if (!defineEntry) {
@@ -82,8 +82,9 @@ function defineVariableImpl2(map: VariableMap, group: string, name: string, desc
     type = typeof descriptor.value;
 
   if (Array.isArray(type)) {
+    const enumList = type;
     let itemType;
-    for (const iter of type) {
+    for (const iter of enumList) {
       const it = typeof iter;
       if (!itemType)
         itemType = it;
@@ -92,12 +93,13 @@ function defineVariableImpl2(map: VariableMap, group: string, name: string, desc
     }
     if (itemType !== "boolean" && itemType !== "number" && itemType !== "string")
       throw new Error(`Enum ${name} not support ${itemType} type`);
-    isValidValue = (value: any) => type.includes(value);
+    isValidValue = (value: any) => enumList.includes(value);
     defineEntry.setValue = function(this: VariableEntry, value: any) {
       if (!isValidValue(value))
-        throw new TypeError(`Attempting to set "${value}" to ${this.name} as a ${type}`);
+        throw new TypeError(`Attempting to set "${value}" to ${this.name} as a ${enumList}`);
       this.value = value;
     }
+    type = "enum";
   }
   else if (type === "boolean") {
     isValidValue = (value: any) => typeof value === "boolean";
@@ -174,7 +176,7 @@ export function createProxy<T>(map: VariableMap, o?: any): T {
       if (entry)
         entry.setValue(value);
       else
-        defineVariableImpl2(target, "", key, toDescriptor(value));
+        defineVariable(target, "", key, toDescriptor(value));
       return true;
     },
     has(target: VariableMap, key: string) {
@@ -193,7 +195,7 @@ export function createProxy<T>(map: VariableMap, o?: any): T {
 export function cloneVariableMap(map: VariableMap) {
   const result: VariableMap = {};
   for (const [ name, entry ] of Object.entries(map)) {
-    defineVariableImpl2(result, entry.group, name, {
+    defineVariable(result, entry.group, name, {
       type: entry.type,
       description: entry.description,
       value: entry.initValue,
@@ -206,7 +208,7 @@ export function cloneVariableMap(map: VariableMap) {
 
 export function extendVariableMapByValues(map: VariableMap, group: string, values: { [ key: string ]: any }) {
   for (const [name, value] of Object.entries(values)) {
-    defineVariableImpl2(map, group, name, { value });
+    defineVariable(map, group, name, { value });
     map[name].value = value;
   }
 }
@@ -214,7 +216,7 @@ export function extendVariableMapByValues(map: VariableMap, group: string, value
 export function defineVariablesInVariableMap(map: VariableMap, group: string, variables: any) {
   for (const [name, value] of Object.entries(variables)) {
     const descriptor = value && typeof value === "object" ? value : {value };
-    defineVariableImpl2(map, group, name, descriptor);
+    defineVariable(map, group, name, descriptor);
   }
 }
 
@@ -270,7 +272,7 @@ export function mergeVariableMap(target: VariableMap, source: any): VariableMap 
   for (const [name, value] of Object.entries(source)) {
     let entry = target[name];
     if (!entry)
-      defineVariableImpl2(target, "", name, { value });
+      defineVariable(target, "", name, { value });
     else {
       let dest = entry.getValue();
       entry.setValue((dest && typeof dest === "object") ? mergeVariables(dest, value) : value);

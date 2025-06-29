@@ -88,7 +88,7 @@ export default async (env, argv) => {
     ],
   };
 
-  const cliConfig = {
+  /*const cliConfig = {
     mode,
     devtool,
     resolve,
@@ -111,7 +111,7 @@ export default async (env, argv) => {
     externals: {
       "bitmake": "commonjs2 ./bitmake.js",
     },
-  };
+  };*/
 
-  return [ libConfig, cliConfig ];
+  return libConfig;
 }

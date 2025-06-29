@@ -1,4 +1,4 @@
-declare const _default$1: {
+declare const _default: {
 	cxx: typeof cxx;
 	cmake: {
 		scriptMode: (scriptFile: string, variables: object, options?: ScriptModeOptions) => Promise<void>;
@@ -9,11 +9,6 @@ declare const _default$1: {
 		ctest: (args: any) => Promise<void>;
 		getProjectInfo: typeof getProjectInfo;
 	};
-	commands: {
-		default: (options: CommandOptions) => Promise<void>;
-		init: typeof _default;
-		build: (options: CommandOptions) => Promise<void>;
-	};
 	process: {
 		spawn: typeof spawnAsync;
 	};
@@ -23,7 +18,6 @@ declare const _default$1: {
 	};
 	path: typeof Path;
 };
-declare function _default(options: CommandOptions): Promise<void>;
 declare function downloadFile(url: string, file: string, options?: FetchOptions): Promise<undefined>;
 declare function filenameToPragmaOnceMacro(filepath: string, deep: number): string;
 declare function generatedScriptNameComment(filename: string): string;
@@ -44,15 +38,6 @@ declare namespace Path {
 	function basename(path: string, suffix?: string): string;
 	function relative(from: string, to: string): string;
 }
-export interface CommandOptions {
-	handler: string;
-	workDir: string;
-	env: {
-		buildType?: string;
-		config?: string;
-		preset?: string;
-	};
-}
 export interface FetchOptions {
 	attempts?: number;
 }
@@ -69,7 +54,7 @@ declare namespace cxx {
 }
 
 export {
-	_default$1 as default,
+	_default as default,
 };
 
 export as namespace bitmake;

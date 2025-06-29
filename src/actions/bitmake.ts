@@ -8,6 +8,7 @@
  */
 
 import fs from "node:fs";
+import { Worker } from "node:worker_threads";
 
 import { Path } from "@/utils/Path";
 import { PluginContext } from "@/core/PluginContext";
@@ -22,10 +23,11 @@ import { SettingsStorage } from "@/utils/SettingsStorage";
 import { IMPORT_SCHEME } from "@/utils/UrlScheme";
 import { INSTALL_TARGET, PACKAGE_JSON, MAKE_CACHE } from "@/Constants";
 import { requireResolve } from "@/utils/Module";
-import { createWorker } from "@/utils/Worker";
 import { createLogger } from "@/logger";
 import { SystemScope } from "@/core/SystemScope";
 import SystemVariables from "@/core/SystemVariables";
+import { currentScriptURL } from "@/utils/Module";
+import { MemoryTransport } from "@/transport/MemoryTransport";
 
 const logger = createLogger(import.meta.url);
 
@@ -121,22 +123,45 @@ export default async function(config: any, environment: any, settings: SettingsS
     scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
   }
 
-  const worker = createWorker();
+  /*const worker = new Worker(currentScriptURL(), { workerData: "DATA" });
+  const buffer = new SharedArrayBuffer(1024);
   worker.postMessage({
-    type: "hello",
+    jsonrpc: "2.0",
+    method: "PostMessage.buffer",
+    params: buffer,
+    id: 1,
   });
-
+  worker.postMessage({
+    jsonrpc: "2.0",
+    method: "Module.import",
+    params: "/mnt/c/opt/work/source/darkit-sdk/external/wasmux/MakeScript.mjs",
+    id: 2,
+  });
   worker.on("message", (message) => {
     logger.info(">>> Worker Message", message);
-
+    if (message instanceof SharedArrayBuffer) {
+      const memory = new MemoryTransport.Buffer(message);
+      const json = memory.get();
+      logger.info(">>> json", json);
+      if (json.method === "System.wait") {
+        setTimeout(() => {
+          logger.info(">>> notify", json);
+          memory.set({ result: null }, true);
+        }, json.params);
+      }
+    }
   });
-  worker.on("error", (error) => {
-    logger.info(">>> Worker Error", error);
-
+  worker.on("error", (e) => {
+    if (e instanceof Error)
+      console.error(e.stack);
+    else
+      console.error(e);
+    process.exit(1);
   });
-  worker.on('exit', (code) => {
-    logger.info(">>> Worker Exit", code);
-  });
+  worker.on("exit", (code: number) => {
+    if (code)
+      process.exit(code);
+  });*/
 
   global.addSubdirectory(variableMap, "work", scope.PROJECT_SOURCE_DIR, scope.PROJECT_BINARY_DIR);
 

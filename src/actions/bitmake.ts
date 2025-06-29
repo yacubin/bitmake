@@ -124,14 +124,7 @@ export default async function(config: any, environment: any, settings: SettingsS
     scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
   }
 
-  const worker = new Worker(currentScriptURL(), { workerData: "DATA" });
-  const buffer = new SharedArrayBuffer(1024);
-  worker.postMessage({
-    jsonrpc: "2.0",
-    method: "PostMessage.buffer",
-    params: buffer,
-    id: 1,
-  });
+  /*const worker = new Worker(currentScriptURL());
   worker.postMessage({
     jsonrpc: "2.0",
     method: WORKERNODE_LOADSUBDIRECTORY,
@@ -162,9 +155,9 @@ export default async function(config: any, environment: any, settings: SettingsS
   worker.on("exit", (code: number) => {
     if (code)
       process.exit(code);
-  });
+  });*/
 
-  global.addSubdirectory(variableMap, "work", scope.PROJECT_SOURCE_DIR, scope.PROJECT_BINARY_DIR);
+  global.addSubdirectory(variableMap, scope.PROJECT_SOURCE_DIR, scope.PROJECT_BINARY_DIR);
 
   await global.doSubdirectory();
   logger.info("Configuring done");

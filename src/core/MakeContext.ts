@@ -58,7 +58,7 @@ export class MakeContext extends BaseContext {
   }
 
   public addSubdirectory(sourceDir: any, binaryDir: any) {
-    this[GLOBAL].addSubdirectory(this[SCOPE], "work", sourceDir, binaryDir);
+    this[GLOBAL].addSubdirectory(this[SCOPE], sourceDir, binaryDir);
   }
 
   public addCustomScript(script: any, params: any): CustomScript {

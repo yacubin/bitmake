@@ -24,10 +24,6 @@ export class PluginContext extends BaseContext {
     this[SCOPE] = variableMap;
   }
 
-  public addSubdirectory(sourceDir: any, binaryDir: any) {
-    this[GLOBAL].addSubdirectory(this[SCOPE], "post", sourceDir, binaryDir);
-  }
-
   public addSubdirectoryAlias(src: any, dest: any) {
     this[GLOBAL].addSubdirectoryAlias(this[SCOPE], src, dest);
   }

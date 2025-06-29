@@ -191,8 +191,7 @@ export class GlobalContext {
   private [SCRIPT_VARIABLES_MAP]: any;
   private [BUILTIN_SCRIPTS]: BuildinScripts;
   private _subdirAlias: SubdirectoryAlias;
-  private _workSubdirList: VariableMap[];
-  private _postSubdirList: VariableMap[];
+  private _subdirList: VariableMap[];
 
   private constructor() {
     this[TARGETS] = TargetCollection.create();
@@ -203,8 +202,7 @@ export class GlobalContext {
     this[SCRIPT_VARIABLES_MAP] = {};
     this._subdirAlias = {};
     this[BUILTIN_SCRIPTS] = BuildinScripts;
-    this._workSubdirList = [];
-    this._postSubdirList = [];
+    this._subdirList = [];
   }
 
   public static create() {
@@ -393,7 +391,7 @@ export class GlobalContext {
     fs.writeFileSync(filename, json, "utf-8");
   }
 
-  public addSubdirectory(variableMap: VariableMap, type: "work" | "post", sourceDir: any, binaryDir?: any) {
+  public addSubdirectory(variableMap: VariableMap, sourceDir: any, binaryDir?: any) {
     if (binaryDir === undefined) {
       if (!AbsolutePath.isAbsolute(sourceDir))
         binaryDir = sourceDir;
@@ -420,10 +418,7 @@ export class GlobalContext {
     newVariableMap.SCRIPT_FILE.value = undefined;
     newVariableMap.SCRIPT_DIR.value = undefined;
 
-    if (type === "post")
-      this._postSubdirList.push(newVariableMap);
-    else
-      this._workSubdirList.push(newVariableMap);
+    this._subdirList.push(newVariableMap);
   }
 
   public findScriptFunction(name: string): Function | undefined {
@@ -469,13 +464,11 @@ export class GlobalContext {
   }
 
   public async doSubdirectory() {
-    for (const subdirList of [this._workSubdirList, this._postSubdirList]) {
-      for (;;) {
-        const variableMap = subdirList.shift();
-        if (!variableMap)
-          break;
-        await this.doSubdirectoryImpl(variableMap);
-      }
+    for (;;) {
+      const variableMap = this._subdirList.shift();
+      if (!variableMap)
+        break;
+      await this.doSubdirectoryImpl(variableMap);
     }
   }
 

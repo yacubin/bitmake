@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { GlobalContext } from "@/core/GlobalContext";
+import { ConfigureContext } from "@/core/ConfigureContext";
 import { VariableMap } from "@/core/Scope";
 import { BaseContext } from "@/core/BaseContext";
 
@@ -16,9 +16,9 @@ const SCOPE = Symbol("SCOPE");
 
 export class ScriptContext extends BaseContext {
   [SCOPE]: VariableMap;
-  [GLOBAL]: GlobalContext;
+  [GLOBAL]: ConfigureContext;
 
-  constructor(global: GlobalContext, scope: VariableMap) {
+  constructor(global: ConfigureContext, scope: VariableMap) {
     super();
     this[SCOPE] = scope;
     this[GLOBAL] = global;

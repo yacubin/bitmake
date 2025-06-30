@@ -12,7 +12,7 @@ import { InterfaceScript } from "@/core/InterfaceScript";
 import { InstallEntity } from "@/core/InstallEntity";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget, InterfaceTarget } from "@/core/Target";
 import { CustomScript } from "@/core/CustomScript";
-import { GlobalContext } from "@/core/GlobalContext";
+import { ConfigureContext } from "@/core/ConfigureContext";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { BaseContext } from "@/core/BaseContext";
 import { createLogger } from "@/logger";
@@ -26,10 +26,10 @@ const GLOBAL = Symbol("GLOBAL");
 const SCOPE = Symbol("SCOPE");
 
 export class MakeContext extends BaseContext {
-  [GLOBAL]: GlobalContext;
+  [GLOBAL]: ConfigureContext;
   [SCOPE]: VariableMap;
 
-  public constructor(global: GlobalContext, variableMap: VariableMap) {
+  public constructor(global: ConfigureContext, variableMap: VariableMap) {
     super();
     this[GLOBAL] = global;
     this[SCOPE] = variableMap;
@@ -103,7 +103,7 @@ export class MakeContext extends BaseContext {
     this[GLOBAL].executeScriptSync(this[SCOPE], script, params);
   }
 
-  public static create(global: GlobalContext, variableMap: VariableMap) {
+  public static create(global: ConfigureContext, variableMap: VariableMap) {
     const ctx = new MakeContext(global, variableMap);
     return ScopeHelper.createProxy(variableMap, ctx);
   }

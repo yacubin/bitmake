@@ -12,7 +12,7 @@ import { Worker } from "node:worker_threads";
 
 import { Path } from "@/utils/Path";
 import { PluginContext } from "@/core/PluginContext";
-import { GlobalContext } from "@/core/GlobalContext";
+import { ConfigureContext } from "@/core/ConfigureContext";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { ToolchainContext } from "@/core/ToolchainContext";
 import { getPathString, getURLString }  from "@/utils/FileSystem";
@@ -64,7 +64,7 @@ export default async function(config: any, environment: any, settings: SettingsS
   if (config.destDir)
     scope.DESTDIR = config.destDir;
 
-  const global = GlobalContext.create();
+  const global = ConfigureContext.create();
 
   for (const plugin of (scope.MAKE_PLUGIN_LIST || [])) {
     const cwdSave = process.cwd();

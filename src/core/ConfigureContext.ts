@@ -160,7 +160,7 @@ export class GoalWorkerImpl {
     })
   }
 
-  addScript(global: GlobalContext, variableMap: VariableMap, script: FilePath | Function): void {
+  addScript(global: ConfigureContext, variableMap: VariableMap, script: FilePath | Function): void {
     this.addCallback(async () => {
       let func: any = script;
       if (script instanceof FilePath) {
@@ -181,7 +181,7 @@ export class GoalWorkerImpl {
   }
 };
 
-export class GlobalContext {
+export class ConfigureContext {
   private [TARGET_COLLECTION] = new TargetStructCollection;
   private [TARGETS]: TargetCollection;
   private [CUSTOM_SCRIPTS]: ScriptCollection;
@@ -206,7 +206,7 @@ export class GlobalContext {
   }
 
   public static create() {
-    return Object.seal(new GlobalContext);
+    return Object.seal(new ConfigureContext);
   }
 
   public get TARGETS() {

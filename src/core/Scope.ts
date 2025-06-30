@@ -31,6 +31,11 @@ export interface VariableMap {
   [ name: string ]: VariableEntry;
 };
 
+export type Variant = boolean | number | string | boolean[] | number[] | string[];
+export type VariantMap = {
+  [ name: string ]: Variant;
+};
+
 export namespace ScopeHelper {
 
 function toDescriptor(value: any): VariableDescriptor {

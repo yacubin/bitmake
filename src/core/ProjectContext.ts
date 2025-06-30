@@ -37,7 +37,6 @@ const TARGETS = Symbol("TARGETS");
 const CUSTOM_SCRIPTS = Symbol("CUSTOM_SCRIPTS");
 const CACHE = Symbol("CACHE");
 const INSTALL_LIST = Symbol("INSTALL_LIST");
-const SCRIPT_VARIABLES_MAP = Symbol("SCRIPT_VARIABLES_MAP");
 const BUILTIN_SCRIPTS = Symbol("BUILTIN_SCRIPTS");
 const TARGET_COLLECTION = Symbol("TARGET_COLLECTION");
 
@@ -160,7 +159,7 @@ export class GoalWorkerImpl {
     })
   }
 
-  addScript(global: ConfigureContext, variableMap: VariableMap, script: FilePath | Function): void {
+  addScript(global: ProjectContext, variableMap: VariableMap, script: FilePath | Function): void {
     this.addCallback(async () => {
       let func: any = script;
       if (script instanceof FilePath) {
@@ -181,14 +180,14 @@ export class GoalWorkerImpl {
   }
 };
 
-export class ConfigureContext {
+export class ProjectContext {
   private [TARGET_COLLECTION] = new TargetStructCollection;
   private [TARGETS]: TargetCollection;
   private [CUSTOM_SCRIPTS]: ScriptCollection;
   private [CACHE]: CacheVariableDescriptors;
   private _interfaceScripts: InterfaceScripts;
   private [INSTALL_LIST]: InstallEntity[];
-  private [SCRIPT_VARIABLES_MAP]: any;
+  private _processedVariableMap: any;
   private [BUILTIN_SCRIPTS]: BuildinScripts;
   private _subdirAlias: SubdirectoryAlias;
   private _subdirList: VariableMap[];
@@ -199,14 +198,14 @@ export class ConfigureContext {
     this[CACHE] = {};
     this._interfaceScripts = {};
     this[INSTALL_LIST] = [];
-    this[SCRIPT_VARIABLES_MAP] = {};
+    this._processedVariableMap = {};
     this._subdirAlias = {};
     this[BUILTIN_SCRIPTS] = BuildinScripts;
     this._subdirList = [];
   }
 
   public static create() {
-    return Object.seal(new ConfigureContext);
+    return Object.seal(new ProjectContext);
   }
 
   public get TARGETS() {
@@ -215,10 +214,6 @@ export class ConfigureContext {
 
   public get CACHE() {
     return this[CACHE];
-  }
-
-  public get SCRIPT_VARIABLES_MAP() {
-    return this[SCRIPT_VARIABLES_MAP];
   }
 
   public getInterfaceScript(variableMap: VariableMap, name: string): InterfaceScript {
@@ -266,10 +261,10 @@ export class ConfigureContext {
     return target;
   }
 
-  public registerSystemScope(name: string, scope: SystemScope) {
-    if (this[SCRIPT_VARIABLES_MAP][name])
+  public registerVariableMap(name: string, variableMap: VariableMap) {
+    if (this._processedVariableMap[name])
       throw new Error(`SystemVariables exists for ${name}`);
-    this[SCRIPT_VARIABLES_MAP][name] = scope;
+    this._processedVariableMap[name] = variableMap;
   }
 
   public resolveSubdirectory(path: AbsolutePath | string): AbsolutePath | string | undefined {
@@ -391,7 +386,7 @@ export class ConfigureContext {
     fs.writeFileSync(filename, json, "utf-8");
   }
 
-  public addSubdirectory(variableMap: VariableMap, sourceDir: any, binaryDir?: any) {
+  public createVariableMapForSubdirectory(variableMap: VariableMap, sourceDir: any, binaryDir?: any): VariableMap | undefined {
     if (binaryDir === undefined) {
       if (!AbsolutePath.isAbsolute(sourceDir))
         binaryDir = sourceDir;
@@ -417,15 +412,22 @@ export class ConfigureContext {
     newVariableMap.BINARY_DIR.setValue(BINARY_DIR);
     newVariableMap.SCRIPT_FILE.value = undefined;
     newVariableMap.SCRIPT_DIR.value = undefined;
+    
+    return newVariableMap;
+  }
 
-    this._subdirList.push(newVariableMap);
+  public addSubdirectory(variableMap: VariableMap, sourceDir: any, binaryDir?: any) {
+    const newVariableMap = this.createVariableMapForSubdirectory(variableMap, sourceDir, binaryDir);
+    if (newVariableMap) {
+      this._subdirList.push(newVariableMap);
+    }
   }
 
   public findScriptFunction(name: string): Function | undefined {
     return this[BUILTIN_SCRIPTS][name];
   }
 
-  private async doSubdirectoryImpl(variableMap: VariableMap) {
+  public async createMakeContext(variableMap: VariableMap): Promise<MakeContext> {
     const scope = ScopeHelper.createProxy(variableMap) as SystemScope;
     if (!scope.SCRIPT_FILE) {
       let scriptFile: AbsolutePath | undefined;
@@ -445,22 +447,9 @@ export class ConfigureContext {
       scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
     }
 
-    this.registerSystemScope(scope.SCRIPT_FILE.toString(), scope);
+    this.registerVariableMap(scope.SCRIPT_FILE.toString(), variableMap);
 
-    const cwdSave = process.cwd();
-    process.chdir(scope.SOURCE_DIR.toString());
-
-    const scriptUrl = url.pathToFileURL(scope.SCRIPT_FILE.toString());
-    const module = await importModule(scriptUrl);
-    if (!module.default)
-      throw new Error(`Subdirectory ${scope.SCRIPT_FILE.basename()} not contain default function`);
-
-    const mk = MakeContext.create(this, variableMap);
-    const result = module.default(mk);
-    if (result instanceof Promise)
-      await result;
-
-    process.chdir(cwdSave);
+    return MakeContext.create(this, variableMap);
   }
 
   public async doSubdirectory() {
@@ -468,7 +457,22 @@ export class ConfigureContext {
       const variableMap = this._subdirList.shift();
       if (!variableMap)
         break;
-      await this.doSubdirectoryImpl(variableMap);
+      const mk = await this.createMakeContext(variableMap);
+      const importName = variableMap.SCRIPT_FILE.getValue().toString();
+      const cwd = variableMap.SOURCE_DIR.getValue().toString();
+      const cwdSave = process.cwd();
+      process.chdir(cwd);
+    
+      const scriptUrl = url.pathToFileURL(importName);
+      const module = await importModule(scriptUrl);
+      if (!module.default)
+        throw new Error(`Script ${importName} has not contain a default function`);
+
+      const result = module.default(mk);
+      if (result instanceof Promise)
+        await result;
+
+      process.chdir(cwdSave);
     }
   }
 
@@ -697,7 +701,7 @@ export class ConfigureContext {
       CACHE: this.CACHE,
       interfaceScripts: this._interfaceScripts,
       INSTALL_LIST: this[INSTALL_LIST],
-      SCRIPT_VARIABLES_MAP: this.SCRIPT_VARIABLES_MAP,
+      processedVariableMap: this._processedVariableMap,
       subdirAlias: this._subdirAlias,
       TARGET_COLLECTION: this[TARGET_COLLECTION],
     };

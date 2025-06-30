@@ -7,8 +7,8 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { IJsonRpcRequest, IJsonRpcResponse, IRequestSync } from "@/transport/Common";
-import { RemoteContext } from "@/core/RemoteContext";
+import { IRequestSync } from "@/transport/Common";
+import { RemoteMakeContext } from "@/core/RemoteMakeContext";
 import { importModule } from "@/utils/Module";
 
 export class WorkerNode {
@@ -18,16 +18,14 @@ export class WorkerNode {
     this._transport = requestSync;
   }
 
-  public async loadSubdirectory(request: IJsonRpcRequest, response: IJsonRpcResponse): Promise<void> {
-    const module = await importModule(request.params);
+  public async loadSubdirectory(params: any): Promise<void> {
+    const module = await importModule(params);
     if (!module.default)
-      throw new Error(`Subdirectory ${request.params} not contain default function`);
+      throw new Error(`Subdirectory ${params} not contain default function`);
 
-    const mk = RemoteContext.create(this._transport);
+    const mk = RemoteMakeContext.create(this._transport);
     const result = module.default(mk);
     if (result instanceof Promise)
       await result;
-
-    response.sendResult(null);
   }
 };

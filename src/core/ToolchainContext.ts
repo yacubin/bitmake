@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { ConfigureContext } from "@/core/ConfigureContext";
+import { ProjectContext } from "@/core/ProjectContext";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { BaseContext } from "@/core/BaseContext";
 
@@ -16,16 +16,16 @@ const SCOPE = Symbol("SCOPE");
 
 export class ToolchainContext extends BaseContext {
   [SCOPE]: VariableMap;
-  [GLOBAL]: ConfigureContext;
+  [GLOBAL]: ProjectContext;
 
-  constructor(global: ConfigureContext, scope: VariableMap) {
+  constructor(global: ProjectContext, scope: VariableMap) {
     super();
     this[GLOBAL] = global;
     this[SCOPE] = scope;
   }
 
-  public static create(global: ConfigureContext, variableMap: VariableMap) {
+  public static create(global: ProjectContext, variableMap: VariableMap) {
     const ctx = new ToolchainContext(global, variableMap);
     return ScopeHelper.createProxy(variableMap, ctx);
   }
-}
+};

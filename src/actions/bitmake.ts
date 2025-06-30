@@ -8,12 +8,11 @@
  */
 
 import fs from "node:fs";
-import { Worker } from "node:worker_threads";
 
 import { Path } from "@/utils/Path";
+import { MakeServer } from "@/core/MakeServer";
 import { PluginContext } from "@/core/PluginContext";
-import { ConfigureContext } from "@/core/ConfigureContext";
-import { ScopeHelper, VariableMap } from "@/core/Scope";
+import { ScopeHelper } from "@/core/Scope";
 import { ToolchainContext } from "@/core/ToolchainContext";
 import { getPathString, getURLString }  from "@/utils/FileSystem";
 import { AbsolutePath, DirPath, FilePath } from "@/core/Path";
@@ -23,20 +22,18 @@ import { SettingsStorage } from "@/utils/SettingsStorage";
 import { IMPORT_SCHEME } from "@/utils/UrlScheme";
 import { INSTALL_TARGET, PACKAGE_JSON, MAKE_CACHE } from "@/Constants";
 import { requireResolve } from "@/utils/Module";
-import { createLogger } from "@/logger";
 import { SystemScope } from "@/core/SystemScope";
 import SystemVariables from "@/core/SystemVariables";
-import { currentScriptURL } from "@/utils/Module";
-import { MemoryTransport } from "@/transport/MemoryTransport";
-import { WORKERNODE_LOADSUBDIRECTORY } from "@/worker/RemoteMethods";
-import { CONFIGURE_ADDCACHEVARIABLES } from "@/worker/RemoteMethods";
+import { createLogger } from "@/logger";
 
 const logger = createLogger(import.meta.url);
 
 export default async function(config: any, environment: any, settings: SettingsStorage) {
   process.env = environment;
 
-  const variableMap: VariableMap = {};
+  const project = new MakeServer;
+
+  const variableMap = project.rootVariableMap;
   ScopeHelper.extendVariableMapByValues(variableMap, "", config.variables);
   ScopeHelper.defineVariablesInVariableMap(variableMap, "system", SystemVariables);
   const scope = ScopeHelper.createProxy(variableMap) as SystemScope;
@@ -64,8 +61,6 @@ export default async function(config: any, environment: any, settings: SettingsS
   if (config.destDir)
     scope.DESTDIR = config.destDir;
 
-  const global = ConfigureContext.create();
-
   for (const plugin of (scope.MAKE_PLUGIN_LIST || [])) {
     const cwdSave = process.cwd();
 
@@ -85,7 +80,7 @@ export default async function(config: any, environment: any, settings: SettingsS
     if (!module.default)
       throw new Error(`Plugin ${scope.SCRIPT_FILE.basename()} not contain default export`);
 
-    const mk = PluginContext.create(global, variableMap);
+    const mk = PluginContext.create(project.preparation, variableMap);
     if (typeof module.default !== "function")
       throw new Error(`Plugin ${scope.SCRIPT_FILE.basename()} export has no function or class`);
     let result: any;
@@ -109,7 +104,7 @@ export default async function(config: any, environment: any, settings: SettingsS
     const toolchain = await importModule(toolchainUrl);
     if (!toolchain.default)
       throw new Error("Toolchain module has no default export");
-    const mk = ToolchainContext.create(global, variableMap);
+    const mk = ToolchainContext.create(project.preparation, variableMap);
     const result = toolchain.default(mk);
     if (result instanceof Promise)
       await result;
@@ -124,66 +119,43 @@ export default async function(config: any, environment: any, settings: SettingsS
     scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
   }
 
-  /*const worker = new Worker(currentScriptURL());
-  worker.postMessage({
-    jsonrpc: "2.0",
-    method: WORKERNODE_LOADSUBDIRECTORY,
-    params: scope.SCRIPT_FILE.toJSON(),
-    id: 2,
-  });
-  worker.on("message", (message) => {
-    logger.info(">>> Worker Message", message);
-    if (message instanceof SharedArrayBuffer) {
-      const memory = new MemoryTransport.Buffer(message);
-      const json = memory.get();
-      logger.info(">>> json", json);
-      if (json.method === CONFIGURE_ADDCACHEVARIABLES) {
-        setTimeout(() => {
-          logger.info(">>> notify", json);
-          memory.set({ result: true }, true);
-        }, json.params);
-      }
+  project.addEventListener("configure", async (event) => {
+    logger.info("Configuring done");
+
+    if (scope.GLOBAL_CONTEXT_JSON) {
+      const filename = scope.GLOBAL_CONTEXT_JSON.toString();
+      const content = JSON.stringify(project.preparation, null, 2);
+      await fs.promises.mkdir(Path.dirname(filename), { recursive: true });
+      await fs.promises.writeFile(filename, content, { encoding: "utf8" });
+    }
+
+    const allGoalList = project.preparation.createGoals(scope);
+    const goalList = allGoalList.getTargetList(INSTALL_TARGET);
+
+    if (scope.TARGET_GOALS_JSON) {
+      const filename = scope.TARGET_GOALS_JSON.toString();
+      const content = JSON.stringify(goalList, null, 2);
+      await fs.promises.mkdir(Path.dirname(filename), { recursive: true });
+      await fs.promises.writeFile(filename, content, { encoding: "utf8" });
+    }
+
+    let loaded = 0;
+    const total = goalList.length;
+    for (const goal of goalList) {
+      goal.updateProgress({ loaded, total });
+      await goal.doWork();
+      loaded++;
     }
   });
-  worker.on("error", (e) => {
-    if (e instanceof Error)
-      console.error(e.stack);
-    else
-      console.error(e);
-    process.exit(1);
+
+  let finishResolve: () => void;
+  const result = new Promise<void>((resolve) => {
+    finishResolve = resolve;
   });
-  worker.on("exit", (code: number) => {
-    if (code)
-      process.exit(code);
-  });*/
 
-  global.addSubdirectory(variableMap, scope.PROJECT_SOURCE_DIR, scope.PROJECT_BINARY_DIR);
+  project.addEventListener("build", (event) => finishResolve());
 
-  await global.doSubdirectory();
-  logger.info("Configuring done");
+  project.start();
 
-  if (scope.GLOBAL_CONTEXT_JSON) {
-    const filename = scope.GLOBAL_CONTEXT_JSON.toString();
-    const content = JSON.stringify(global, null, 2);
-    await fs.promises.mkdir(Path.dirname(filename), { recursive: true });
-    await fs.promises.writeFile(filename, content, { encoding: "utf8" });
-  }
-
-  const allGoalList = global.createGoals(scope);
-  const goalList = allGoalList.getTargetList(INSTALL_TARGET);
-
-  if (scope.TARGET_GOALS_JSON) {
-    const filename = scope.TARGET_GOALS_JSON.toString();
-    const content = JSON.stringify(goalList, null, 2);
-    await fs.promises.mkdir(Path.dirname(filename), { recursive: true });
-    await fs.promises.writeFile(filename, content, { encoding: "utf8" });
-  }
-
-  let loaded = 0;
-  const total = goalList.length;
-  for (const goal of goalList) {
-    goal.updateProgress({ loaded, total });
-    await goal.doWork();
-    loaded++;
-  }
+  return result;
 }

@@ -64,7 +64,7 @@ export function runWorkerScript() {
   const sender = new MessagePortSender(parentPort);
   const looper = new WorkerLooper(sender);
 
-  parentPort.on("message", (message) => looper.emitMessage(message));
+  parentPort.on("message", (message) => looper.emitMessage(sender, message));
 }
 
 export function runScript() {

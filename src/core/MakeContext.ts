@@ -12,9 +12,10 @@ import { InterfaceScript } from "@/core/InterfaceScript";
 import { InstallEntity } from "@/core/InstallEntity";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget, InterfaceTarget } from "@/core/Target";
 import { CustomScript } from "@/core/CustomScript";
-import { ConfigureContext } from "@/core/ConfigureContext";
-import { ScopeHelper, VariableMap } from "@/core/Scope";
+import { ProjectContext } from "@/core/ProjectContext";
+import { ScopeHelper, VariantMap, VariableMap } from "@/core/Scope";
 import { BaseContext } from "@/core/BaseContext";
+import { IMakeContext } from "@/core/IMakeContext";
 import { createLogger } from "@/logger";
 import { requireSync } from "@/utils/Module";
 
@@ -25,11 +26,11 @@ const VARIABLE_GROUP = "custom";
 const GLOBAL = Symbol("GLOBAL");
 const SCOPE = Symbol("SCOPE");
 
-export class MakeContext extends BaseContext {
-  [GLOBAL]: ConfigureContext;
+export class MakeContext extends BaseContext implements IMakeContext {
+  [GLOBAL]: ProjectContext;
   [SCOPE]: VariableMap;
 
-  public constructor(global: ConfigureContext, variableMap: VariableMap) {
+  public constructor(global: ProjectContext, variableMap: VariableMap) {
     super();
     this[GLOBAL] = global;
     this[SCOPE] = variableMap;
@@ -39,7 +40,7 @@ export class MakeContext extends BaseContext {
     return ScopeHelper.getVariablesByGroup(this[SCOPE], VARIABLE_GROUP);
   }
 
-  public addCacheVariables(params: any) {
+  public addCacheVariables(params: string | VariantMap): void {
     let variables = params;
     if (typeof params === "string") {
       const filename = this[SCOPE].SOURCE_DIR.getValue().resolve(params).toString();
@@ -103,7 +104,7 @@ export class MakeContext extends BaseContext {
     this[GLOBAL].executeScriptSync(this[SCOPE], script, params);
   }
 
-  public static create(global: ConfigureContext, variableMap: VariableMap) {
+  public static create(global: ProjectContext, variableMap: VariableMap): MakeContext {
     const ctx = new MakeContext(global, variableMap);
     return ScopeHelper.createProxy(variableMap, ctx);
   }

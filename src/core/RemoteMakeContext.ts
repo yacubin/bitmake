@@ -13,30 +13,36 @@ import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, InterfaceTarge
 import { CustomScript } from "@/core/CustomScript";
 import { BaseContext } from "@/core/BaseContext";
 import { CONFIGURE_ADDCACHEVARIABLES } from "@/worker/RemoteMethods";
+import { IMakeContext } from "@/core/IMakeContext";
 import { createLogger } from "@/logger";
 
 const logger = createLogger(import.meta.url);
 
 const REQUEST = Symbol("REQUEST");
+const REQUEST_ID = Symbol("REQUEST_ID");
 
-export class RemoteContext extends BaseContext {
+export class RemoteMakeContext extends BaseContext implements IMakeContext {
   [REQUEST]: IRequestSync;
+  [REQUEST_ID]: number;
 
   public constructor(requestSync: IRequestSync) {
     super();
     this[REQUEST] = requestSync;
+    this[REQUEST_ID] = 1;
   }
 
   public getCacheVariables() {
     return this[REQUEST].requestSync({
       method: "Configure.getCacheVariables",
+      id: this[REQUEST_ID],
     }).result;
   }
 
-  public addCacheVariables(params: any) {
+  public addCacheVariables(...params: any): void {
     return this[REQUEST].requestSync({
       method: CONFIGURE_ADDCACHEVARIABLES,
       params,
+      id: this[REQUEST_ID],
     }).result;
   }
 
@@ -54,6 +60,7 @@ export class RemoteContext extends BaseContext {
         sourceDir,
         binaryDir,
       },
+      id: this[REQUEST_ID],
     }).result;
   }
 
@@ -96,6 +103,7 @@ export class RemoteContext extends BaseContext {
         script,
         options,
       },
+      id: this[REQUEST_ID],
     }).result;
   }
 
@@ -115,6 +123,7 @@ export class RemoteContext extends BaseContext {
         name,
         value,
       },
+      id: this[REQUEST_ID],
     }).result;
   }
 
@@ -124,12 +133,14 @@ export class RemoteContext extends BaseContext {
       params: {
         name,
       },
+      id: this[REQUEST_ID],
     }).result;
   }
 
   public getPropertyNames(): string[] {
     return this[REQUEST].requestSync({
       method: "Configure.getPropertyNames",
+      id: this[REQUEST_ID],
     }).result;
   }
 
@@ -139,28 +150,29 @@ export class RemoteContext extends BaseContext {
       params: {
         name,
       },
+      id: this[REQUEST_ID],
     }).result;
   }
 
-  public static create(requestSync: IRequestSync): RemoteContext {
-    const ctx = new RemoteContext(requestSync);
-    const handler: ProxyHandler<RemoteContext> = {
-      get(target: RemoteContext, name: string, receiver: any) {
+  public static create(requestSync: IRequestSync): RemoteMakeContext {
+    const ctx = new RemoteMakeContext(requestSync);
+    const handler: ProxyHandler<RemoteMakeContext> = {
+      get(target: RemoteMakeContext, name: string, receiver: any) {
         if (name in target)
           return (target as any)[name];
         return target.getProperty(name);
       },
-      set(target: RemoteContext, name: string, value: any): boolean {
+      set(target: RemoteMakeContext, name: string, value: any): boolean {
         target.setProperty(name, value);
         return true;
       },
-      has(target: RemoteContext, name: string) {
+      has(target: RemoteMakeContext, name: string) {
         return name in target || target.hasProperty(name);
       },
-      ownKeys(target: RemoteContext) {
+      ownKeys(target: RemoteMakeContext) {
         return target.getPropertyNames();
       },
-      deleteProperty(target: RemoteContext, name: string) {
+      deleteProperty(target: RemoteMakeContext, name: string) {
         return target.deleteProperty(name);
       },
     };

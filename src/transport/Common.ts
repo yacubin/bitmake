@@ -12,7 +12,7 @@ export interface IMessageSender {
 };
 
 export interface IMessageEmitter {
-  emitMessage(message: any): void;
+  emitMessage(sender: IMessageSender, message: any): void;
 };
 
 export interface IRequestSync {
@@ -40,6 +40,7 @@ export interface JsonRpcData {
 };
 
 export type JsonRpcRequestHandler = (request: IJsonRpcRequest, response: IJsonRpcResponse) => void;
+export type JsonRpcCallback = (params: any) => any;
 
 export interface IJsonRpcRequest {
   get params(): any;

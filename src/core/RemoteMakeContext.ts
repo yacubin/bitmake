@@ -11,7 +11,7 @@ import { IRequestSync } from "@/transport/Common";
 import { InterfaceScript } from "@/core/InterfaceScript";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, InterfaceTarget } from "@/core/Target";
 import { CustomScript } from "@/core/CustomScript";
-import { BaseContext } from "@/core/BaseContext";
+import { createContext } from "@/core/BaseContext";
 import { CONFIGURE_ADDCACHEVARIABLES } from "@/worker/RemoteMethods";
 import { IMakeContext } from "@/core/IMakeContext";
 import { createLogger } from "@/logger";
@@ -21,12 +21,11 @@ const logger = createLogger(import.meta.url);
 const REQUEST = Symbol("REQUEST");
 const REQUEST_ID = Symbol("REQUEST_ID");
 
-export class RemoteMakeContext extends BaseContext implements IMakeContext {
+export class RemoteMakeContext implements IMakeContext {
   [REQUEST]: IRequestSync;
   [REQUEST_ID]: number;
 
   public constructor(requestSync: IRequestSync) {
-    super();
     this[REQUEST] = requestSync;
     this[REQUEST_ID] = 1;
   }
@@ -155,27 +154,6 @@ export class RemoteMakeContext extends BaseContext implements IMakeContext {
   }
 
   public static create(requestSync: IRequestSync): RemoteMakeContext {
-    const ctx = new RemoteMakeContext(requestSync);
-    const handler: ProxyHandler<RemoteMakeContext> = {
-      get(target: RemoteMakeContext, name: string, receiver: any) {
-        if (name in target)
-          return (target as any)[name];
-        return target.getProperty(name);
-      },
-      set(target: RemoteMakeContext, name: string, value: any): boolean {
-        target.setProperty(name, value);
-        return true;
-      },
-      has(target: RemoteMakeContext, name: string) {
-        return name in target || target.hasProperty(name);
-      },
-      ownKeys(target: RemoteMakeContext) {
-        return target.getPropertyNames();
-      },
-      deleteProperty(target: RemoteMakeContext, name: string) {
-        return target.deleteProperty(name);
-      },
-    };
-    return new Proxy(ctx, handler);
+    return createContext(new RemoteMakeContext(requestSync));
   }
 };

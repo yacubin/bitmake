@@ -8,8 +8,8 @@
  */
 
 import { ProjectContext } from "@/core/ProjectContext";
-import { ScopeHelper, VariableMap } from "@/core/Scope";
-import { BaseContext } from "@/core/BaseContext";
+import { VariableMap } from "@/core/Scope";
+import { BaseContext, createContext } from "@/core/BaseContext";
 
 const GLOBAL = Symbol("GLOBAL");
 const SCOPE = Symbol("SCOPE");
@@ -19,7 +19,7 @@ export class PluginContext extends BaseContext {
   [SCOPE]: VariableMap;
 
   public constructor(global: ProjectContext, variableMap: VariableMap) {
-    super();
+    super(variableMap);
     this[GLOBAL] = global;
     this[SCOPE] = variableMap;
   }
@@ -29,7 +29,6 @@ export class PluginContext extends BaseContext {
   }
 
   public static create(global: ProjectContext, variableMap: VariableMap) {
-    const ctx = new PluginContext(global, variableMap);
-    return ScopeHelper.createProxy(variableMap, ctx);
+    return createContext(new PluginContext(global, variableMap));
   }
 };

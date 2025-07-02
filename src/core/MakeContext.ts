@@ -14,14 +14,13 @@ import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget, In
 import { CustomScript } from "@/core/CustomScript";
 import { ProjectContext } from "@/core/ProjectContext";
 import { ScopeHelper, VariantMap, VariableMap } from "@/core/Scope";
-import { BaseContext } from "@/core/BaseContext";
+import { BaseContext, createContext } from "@/core/BaseContext";
 import { IMakeContext } from "@/core/IMakeContext";
 import { createLogger } from "@/logger";
 import { requireSync } from "@/utils/Module";
+import { CUSTOM_VARIABLE_GROUP } from "@/Constants";
 
 const logger = createLogger(import.meta.url);
-
-const VARIABLE_GROUP = "custom";
 
 const GLOBAL = Symbol("GLOBAL");
 const SCOPE = Symbol("SCOPE");
@@ -31,13 +30,13 @@ export class MakeContext extends BaseContext implements IMakeContext {
   [SCOPE]: VariableMap;
 
   public constructor(global: ProjectContext, variableMap: VariableMap) {
-    super();
+    super(variableMap);
     this[GLOBAL] = global;
     this[SCOPE] = variableMap;
   }
 
   public getCacheVariables() {
-    return ScopeHelper.getVariablesByGroup(this[SCOPE], VARIABLE_GROUP);
+    return ScopeHelper.getVariablesByGroup(this[SCOPE], CUSTOM_VARIABLE_GROUP);
   }
 
   public addCacheVariables(params: string | VariantMap): void {
@@ -49,7 +48,7 @@ export class MakeContext extends BaseContext implements IMakeContext {
       variables = requireSync(filename);
     }
 
-    ScopeHelper.defineVariablesInVariableMap(this[SCOPE], VARIABLE_GROUP, variables);
+    ScopeHelper.defineVariablesInVariableMap(this[SCOPE], CUSTOM_VARIABLE_GROUP, variables);
   }
 
   public addIncludeDirectories(...dirs: any[]) {
@@ -64,7 +63,7 @@ export class MakeContext extends BaseContext implements IMakeContext {
 
   public addCustomScript(script: any, params: any): CustomScript {
     const newVariableMap = ScopeHelper.cloneVariableMap(this[SCOPE]);
-    ScopeHelper.extendVariableMapByValues(newVariableMap, VARIABLE_GROUP, params);
+    ScopeHelper.extendVariableMapByValues(newVariableMap, CUSTOM_VARIABLE_GROUP, params);
     return this[GLOBAL].addCustomScript(newVariableMap, script, params);
   }
 
@@ -105,7 +104,6 @@ export class MakeContext extends BaseContext implements IMakeContext {
   }
 
   public static create(global: ProjectContext, variableMap: VariableMap): MakeContext {
-    const ctx = new MakeContext(global, variableMap);
-    return ScopeHelper.createProxy(variableMap, ctx);
+    return createContext(new MakeContext(global, variableMap));
   }
 };

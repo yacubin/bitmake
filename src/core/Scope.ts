@@ -45,7 +45,7 @@ function toDescriptor(value: any): VariableDescriptor {
   return value;
 }
 
-function defineVariable(map: VariableMap, group: string, name: string, descriptor: VariableDescriptor) {
+export function defineVariable(map: VariableMap, group: string, name: string, descriptor: VariableDescriptor) {
   let defineEntry = map[name];
   let isValidValue = (value: any) => true;
   if (!defineEntry) {

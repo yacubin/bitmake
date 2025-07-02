@@ -9,7 +9,7 @@
 
 import { ProjectContext } from "@/core/ProjectContext";
 import { VariableMap } from "@/core/Scope";
-import { BaseContext } from "@/core/BaseContext";
+import { BaseContext, createContext } from "@/core/BaseContext";
 
 const GLOBAL = Symbol("GLOBAL");
 const SCOPE = Symbol("SCOPE");
@@ -19,8 +19,12 @@ export class ScriptContext extends BaseContext {
   [GLOBAL]: ProjectContext;
 
   constructor(global: ProjectContext, scope: VariableMap) {
-    super();
+    super(scope);
     this[SCOPE] = scope;
     this[GLOBAL] = global;
+  }
+
+  public static create(global: ProjectContext, variableMap: VariableMap) {
+    return createContext(new ScriptContext(global, variableMap));
   }
 };

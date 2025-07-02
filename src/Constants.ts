@@ -14,3 +14,4 @@ export const ALL_TARGET = "all";
 export const INSTALL_TARGET = "install";
 export const PACKAGE_JSON = "package.json";
 export const MAKE_CACHE = "MakeCache.json";
+export const CUSTOM_VARIABLE_GROUP = "custom";

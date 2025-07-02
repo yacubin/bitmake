@@ -167,8 +167,7 @@ export class GoalWorkerImpl {
         func = (await importModule(scriptUrl)).default;
       }
       if (func instanceof Function) {
-        const ctx = new ScriptContext(global, variableMap);
-        const mk = ScopeHelper.createProxy(variableMap, ctx);
+        const mk = ScriptContext.create(global, variableMap);
         const result = func(mk);
         if (result instanceof Promise)
           await result;
@@ -376,8 +375,7 @@ export class ProjectContext {
     params && ScopeHelper.extendVariableMapByValues(newVariableMap, "", params);
     const scriptPath = newVariableMap.SOURCE_DIR.getValue().resolve(script);
     const func = requireSync(scriptPath.toString());
-    const ctx = new ScriptContext(this, newVariableMap);
-    const mk = ScopeHelper.createProxy(newVariableMap, ctx);
+    const mk = ScriptContext.create(this, newVariableMap);
     func(mk);
   }
 

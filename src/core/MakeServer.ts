@@ -61,7 +61,7 @@ export class MakeServer {
     const sourceDir = this._rootVariableMap.PROJECT_SOURCE_DIR.getValue();
     const binaryDir = this._rootVariableMap.PROJECT_BINARY_DIR.getValue();
 
-    const jsonRpcServer = new JsonRpcServer;
+    /*const jsonRpcServer = new JsonRpcServer;
     const variableMap = this._preparation.createVariableMapForSubdirectory(this._rootVariableMap, sourceDir, binaryDir);
     if (!variableMap)
       throw Error("Can't creeate VariableMap");
@@ -95,10 +95,10 @@ export class MakeServer {
     worker.on("exit", (code: number) => {
       if (code)
         process.exit(code);
-    });
+    });*/
 
-    //this._preparation.addSubdirectory(this._rootVariableMap, sourceDir, binaryDir);
-    //this._preparation.doSubdirectory().then(() => this.onConfigureEnd());
+    this._preparation.addSubdirectory(this._rootVariableMap, sourceDir, binaryDir);
+    this._preparation.doSubdirectory().then(() => this.onConfigureEnd());
   }
 
   private async onConfigureEnd() {

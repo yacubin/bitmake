@@ -8,6 +8,27 @@
  */
 
 import { IMessageSender, IRequestSync } from "@/transport/Common";
+import { createLogger } from "@/logger";
+
+const logger = createLogger(import.meta.url);
+
+export class MemoryMessageSender implements IMessageSender {
+  private _buffer: SharedArrayBuffer;
+  private _memory: MemoryTransport.Buffer;
+
+  public constructor(buffer: SharedArrayBuffer) {
+    this._buffer = buffer;
+    this._memory = new MemoryTransport.Buffer(buffer);
+  }
+
+  public sendMessage(message: any): void {
+    this._memory.set(message, true);
+  }
+
+  public readMessage(): any {
+    return this._memory.get();
+  }
+};
 
 export class MemoryTransport implements IRequestSync {
   private _sender: IMessageSender;

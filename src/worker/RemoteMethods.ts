@@ -9,3 +9,5 @@
 
 export const WORKERNODE_LOADSUBDIRECTORY = "WorkerNode.loadSubdirectory";
 export const CONFIGURE_ADDCACHEVARIABLES = "Configure.addCacheVariables";
+export const CONFIGURE_GETPROPERTY = "Configure.getProperty";
+export const CONFIGURE_SETPROPERTY = "Configure.setProperty";

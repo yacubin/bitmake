@@ -7,6 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
+export const JSONRPC_VERSION = "2.0";
 export interface IMessageSender {
   sendMessage(message: any): void;
 };

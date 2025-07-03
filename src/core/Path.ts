@@ -65,7 +65,7 @@ export class AbsolutePath {
   }
 
   public toJSON() {
-    return this[PATH];
+    return url.pathToFileURL(this[PATH]);
   }
 
   public static isAbsolute(filepath: AbsolutePath | string) {

@@ -11,10 +11,13 @@ import { ProjectContext } from "@/core/ProjectContext";
 import { VariableMap } from "@/core/Scope";
 import { Worker } from "node:worker_threads";
 import { currentScriptURL } from "@/utils/Module";
-import { MemoryTransport } from "@/transport/MemoryTransport";
+import { MemoryMessageSender } from "@/transport/MemoryTransport";
+import { JSONRPC_VERSION } from "@/transport/Common";
 import { JsonRpcServer } from "@/transport/JsonRpcServer";
 import { WORKERNODE_LOADSUBDIRECTORY } from "@/worker/RemoteMethods";
 import { CONFIGURE_ADDCACHEVARIABLES } from "@/worker/RemoteMethods";
+import { CONFIGURE_GETPROPERTY } from "@/worker/RemoteMethods";
+import { CONFIGURE_SETPROPERTY } from "@/worker/RemoteMethods";
 import { createLogger } from "@/logger";
 
 const logger = createLogger(import.meta.url);
@@ -67,22 +70,24 @@ export class MakeServer {
       throw Error("Can't creeate VariableMap");
 
     const mk = await this._preparation.createMakeContext(variableMap);
-    jsonRpcServer.registerCallback(CONFIGURE_ADDCACHEVARIABLES, params => mk.addCacheVariables(params));
+    jsonRpcServer.registerCallback(CONFIGURE_ADDCACHEVARIABLES, params => mk.addCacheVariables.apply(mk, params));
+    jsonRpcServer.registerCallback(CONFIGURE_GETPROPERTY, params => mk.getProperty.apply(mk, params));
+    jsonRpcServer.registerCallback(CONFIGURE_SETPROPERTY, params => mk.setProperty.apply(mk, params));
 
     const worker = new Worker(currentScriptURL());
     worker.postMessage({
-      jsonrpc: "2.0",
+      jsonrpc: JSONRPC_VERSION,
       method: WORKERNODE_LOADSUBDIRECTORY,
       params: [ this._rootVariableMap.SCRIPT_FILE.getValue().toJSON() ],
       id: 2,
     });
     worker.on("message", (message) => {
-      logger.info(">>> Worker Message", message);
       if (message instanceof SharedArrayBuffer) {
-        const memory = new MemoryTransport.Buffer(message);
-        jsonRpcServer.onMessage({
-          sendMessage() { memory.set({ result: true }, true); }
-        }, memory.get());
+        const mt = new MemoryMessageSender(message)
+        jsonRpcServer.onMessage(mt, mt.readMessage());
+      }
+      else {
+        logger.info(">>> Worker Message", message);
       }
     });
     worker.on("error", (e) => {

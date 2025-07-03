@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { IMessageSender, JsonRpcData, JsonRpcRequestHandler, IJsonRpcRequest, IJsonRpcResponse, JsonRpcCallback } from "@/transport/Common";
+import { JSONRPC_VERSION, IMessageSender, JsonRpcData, JsonRpcRequestHandler, IJsonRpcRequest, IJsonRpcResponse, JsonRpcCallback } from "@/transport/Common";
 import { createLogger } from "@/logger";
 
 const logger = createLogger(import.meta.url);
@@ -35,12 +35,13 @@ class JsonRpcResponse implements IJsonRpcResponse {
 
   sendResult(result: any): void {
     const message: JsonRpcData = {
-      jsonrpc: "2.0",
+      jsonrpc: JSONRPC_VERSION,
       id: this._id,
     };
     if (result !== undefined) {
-      message.result;
+      message.result = result;
     }
+    logger.debug("<--", JSON.stringify(message));
     this._sender.sendMessage(message);
   }
 };
@@ -57,10 +58,11 @@ export class JsonRpcServer {
 
   public registerCallback(method: string, callback: JsonRpcCallback): void {
     this._requestHandlers.set(method, async (request, response) => {
-      logger.info(">>> Call", method, request.params);
-      let result: any = callback.apply(undefined, request.params);
+      let result: any = callback(request.params);
       if (result instanceof Promise)
         result = await result;
+      if (result && typeof result === "object" && typeof result.toJSON === "function")
+        result = result.toJSON();
       response.sendResult(result);
     });
   }
@@ -88,7 +90,6 @@ export class JsonRpcServer {
   }
 
   private onMessageImpl(sender: IMessageSender, message: any): void {
-    logger.debug("-->", JSON.stringify(message));
     if (!message || typeof message !== "object") {
       return;
     }
@@ -110,6 +111,7 @@ export class JsonRpcServer {
   }
 
   public onMessage(sender: IMessageSender, message: any): void {
+    logger.debug("-->", JSON.stringify(message));
     if (Array.isArray(message))
       message.forEach(msg => this.onMessageImpl(sender, msg));
     else

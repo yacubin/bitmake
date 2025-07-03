@@ -12,55 +12,59 @@ import { InterfaceScript } from "@/core/InterfaceScript";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, InterfaceTarget } from "@/core/Target";
 import { CustomScript } from "@/core/CustomScript";
 import { createContext } from "@/core/BaseContext";
-import { CONFIGURE_ADDCACHEVARIABLES } from "@/worker/RemoteMethods";
 import { IMakeContext } from "@/core/IMakeContext";
+import { JSONRPC_VERSION } from "@/transport/Common";
+import { CONFIGURE_ADDCACHEVARIABLES } from "@/worker/RemoteMethods";
+import { CONFIGURE_GETPROPERTY } from "@/worker/RemoteMethods";
+import { CONFIGURE_SETPROPERTY } from "@/worker/RemoteMethods";
 import { createLogger } from "@/logger";
 
 const logger = createLogger(import.meta.url);
 
 const REQUEST = Symbol("REQUEST");
-const REQUEST_ID = Symbol("REQUEST_ID");
 
-export class RemoteMakeContext implements IMakeContext {
-  [REQUEST]: IRequestSync;
-  [REQUEST_ID]: number;
+class JsonRpcRequest {
+  private _request: IRequestSync;
+  private _id: number;
 
   public constructor(requestSync: IRequestSync) {
-    this[REQUEST] = requestSync;
-    this[REQUEST_ID] = 1;
+    this._request = requestSync;
+    this._id = 1;
   }
 
-  public getCacheVariables() {
-    return this[REQUEST].requestSync({
-      method: "Configure.getCacheVariables",
-      id: this[REQUEST_ID],
-    }).result;
-  }
-
-  public addCacheVariables(...params: any): void {
-    return this[REQUEST].requestSync({
-      method: CONFIGURE_ADDCACHEVARIABLES,
+  public requestSync(method: string, params: any): any {
+    const message = {
+      jsonrpc: JSONRPC_VERSION,
+      method,
       params,
-      id: this[REQUEST_ID],
-    }).result;
+      id: this._id++,
+    };
+    const response = this._request.requestSync(message);
+    return response.result;
+  }
+}
+
+export class RemoteMakeContext implements IMakeContext {
+  [REQUEST]: JsonRpcRequest;
+
+  public constructor(requestSync: IRequestSync) {
+    this[REQUEST] = new JsonRpcRequest(requestSync);
   }
 
-  public addIncludeDirectories(...dirs: any[]) {
-    return this[REQUEST].requestSync({
-      method: "Configure.addCacheVariables",
-      params: dirs,
-    }).result;
+  public getCacheVariables(...params: any): any {
+    return this[REQUEST].requestSync("Configure.getCacheVariables", params);
   }
 
-  public addSubdirectory(sourceDir: any, binaryDir: any) {
-    return this[REQUEST].requestSync({
-      method: "Configure.addSubdirectory",
-      params: {
-        sourceDir,
-        binaryDir,
-      },
-      id: this[REQUEST_ID],
-    }).result;
+  public addCacheVariables(...params: any): any {
+    return this[REQUEST].requestSync(CONFIGURE_ADDCACHEVARIABLES, params);
+  }
+
+  public addIncludeDirectories(...params: any): any {
+    return this[REQUEST].requestSync("Configure.addCacheVariables", params);
+  }
+
+  public addSubdirectory(...params: any): any {
+    return this[REQUEST].requestSync("Configure.addSubdirectory", params);
   }
 
   public addCustomScript(script: any, params: any): CustomScript {
@@ -95,62 +99,28 @@ export class RemoteMakeContext implements IMakeContext {
     throw new Error("Not Implemented");
   }
 
-  public executeScript(script: any, options: any) {
-    return this[REQUEST].requestSync({
-      method: "Configure.executeScript",
-      params: {
-        script,
-        options,
-      },
-      id: this[REQUEST_ID],
-    }).result;
+  public executeScript(...params: any): any {
+    return this[REQUEST].requestSync("Configure.executeScript", params);
   }
 
-  public getProperty(name: string): any {
-    return this[REQUEST].requestSync({
-      method: "Configure.getProperty",
-      params: {
-        name,
-      },
-    }).result;
+  public getProperty(...params: any): any {
+    return this[REQUEST].requestSync(CONFIGURE_GETPROPERTY, params);
   }
 
-  public setProperty(name: string, value: any): any {
-    return this[REQUEST].requestSync({
-      method: "Configure.setProperty",
-      params: {
-        name,
-        value,
-      },
-      id: this[REQUEST_ID],
-    }).result;
+  public setProperty(...params: any): any {
+    return this[REQUEST].requestSync(CONFIGURE_SETPROPERTY, params);
   }
 
-  public hasProperty(name: string): boolean {
-    return this[REQUEST].requestSync({
-      method: "Configure.hasProperty",
-      params: {
-        name,
-      },
-      id: this[REQUEST_ID],
-    }).result;
+  public hasProperty(...params: any): any {
+    return this[REQUEST].requestSync("Configure.hasProperty", params);
   }
 
-  public getPropertyNames(): string[] {
-    return this[REQUEST].requestSync({
-      method: "Configure.getPropertyNames",
-      id: this[REQUEST_ID],
-    }).result;
+  public getPropertyNames(...params: any): any {
+    return this[REQUEST].requestSync("Configure.getPropertyNames", params);
   }
 
-  public deleteProperty(name: string): boolean {
-    return this[REQUEST].requestSync({
-      method: "Configure.deleteProperty",
-      params: {
-        name,
-      },
-      id: this[REQUEST_ID],
-    }).result;
+  public deleteProperty(...params: any): any {
+    return this[REQUEST].requestSync("Configure.deleteProperty", params);
   }
 
   public static create(requestSync: IRequestSync): RemoteMakeContext {

@@ -9,6 +9,8 @@
 
 import url from "node:url";
 import { Path } from "@/utils/Path";
+import { FILE_SCHEME } from "@/utils/UrlScheme";
+import path from "node:path";
 
 const PATH = Symbol("PATH");
 
@@ -18,54 +20,52 @@ export class AbsolutePath {
   private [PATH]: string;
 
   protected constructor(filepath: string) {
-    if (!Path.isAbsolute(filepath))
+    if (filepath.startsWith(FILE_SCHEME)) {
+      this[PATH] = filepath;
+    }
+    else if (Path.isAbsolute(filepath)) {
+      this[PATH] = url.pathToFileURL(filepath).toString();
+    }
+    else {
       throw new Error(`Not supported relative path of "${filepath}"`);
-    this[PATH] = filepath;
+    }
   }
 
   public join(...paths: Array<AbsolutePath | string>) {
-    const filepath = Path.join(this[PATH], ...paths.map(i => i.toString()));
+    const filepath = Path.join(url.fileURLToPath(this[PATH]), ...paths.map(i => i.toString()));
     return AbsolutePath.create(filepath);
   }
 
   public dirname() {
-    return DirPath.create(Path.dirname(this[PATH]));
+    return DirPath.create(path.posix.dirname(this[PATH]));
   }
 
   public basename() {
-    return Path.basename(this[PATH]);
+    return path.posix.basename(this[PATH]);
   }
 
   public relative(to: AbsolutePath | string) {
-    return Path.relative(this[PATH], (to instanceof AbsolutePath) ? to[PATH] : to);
+    return Path.relative(url.fileURLToPath(this[PATH]), AbsolutePath.create(to).toString());
   }
 
   public resolve(...paths: Array<AbsolutePath | string>) {
-    return AbsolutePath.create(Path.resolve(this[PATH], ...paths.map(i => i.toString())));
+    return AbsolutePath.create(Path.resolve(url.fileURLToPath(this[PATH]), ...paths.map(i => i.toString())));
   }
 
   public match(regexp: RegExp) {
     return this[PATH].match(regexp);
   }
 
-  public toURL() {
-    return url.pathToFileURL(this[PATH]);
-  }
-
-  public toURLString() {
-    return this.toURL().toString();
-  }
-
   public toString() {
-    return this[PATH];
+    return url.fileURLToPath(this[PATH]);
   }
 
   public valueOf() {
-    return this[PATH];
+    return url.fileURLToPath(this[PATH]);
   }
 
   public toJSON() {
-    return url.pathToFileURL(this[PATH]);
+    return this[PATH];
   }
 
   public static isAbsolute(filepath: AbsolutePath | string) {

@@ -49,7 +49,7 @@ export class BaseContext implements IMakeObject {
   public deleteProperty(name: string): boolean {
     return delete this[VARIABLE_MAP][name];
   }
-};
+}; // getOwnPropertyDescriptor 
 
 export function createContext<T extends IMakeObject>(ctx: T): T {
   const handler: ProxyHandler<T> = {
@@ -70,6 +70,13 @@ export function createContext<T extends IMakeObject>(ctx: T): T {
     },
     deleteProperty(target: T, name: string) {
       return target.deleteProperty(name);
+    },
+    getOwnPropertyDescriptor(target: T, name: string): PropertyDescriptor | undefined {
+      if (target.hasProperty(name)) {
+        const value = target.getProperty(name);
+        return { value, writable: true, enumerable: true, configurable: true };
+      }
+      return undefined;
     },
   };
   return new Proxy(ctx, handler) as T;

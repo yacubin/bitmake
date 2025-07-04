@@ -18,6 +18,8 @@ import { CONFIGURE_ADDCACHEVARIABLES } from "@/worker/RemoteMethods";
 import { CONFIGURE_GETPROPERTY } from "@/worker/RemoteMethods";
 import { CONFIGURE_SETPROPERTY } from "@/worker/RemoteMethods";
 import { createLogger } from "@/logger";
+import { FILE_SCHEME } from "@/utils/UrlScheme";
+import { AbsolutePath } from "@/core/Path";
 
 const logger = createLogger(import.meta.url);
 
@@ -104,7 +106,10 @@ export class RemoteMakeContext implements IMakeContext {
   }
 
   public getProperty(...params: any): any {
-    return this[REQUEST].requestSync(CONFIGURE_GETPROPERTY, params);
+    const value = this[REQUEST].requestSync(CONFIGURE_GETPROPERTY, params);
+    if (typeof value === "string" && value.startsWith(FILE_SCHEME))
+      return AbsolutePath.create(value);
+    return value;
   }
 
   public setProperty(...params: any): any {

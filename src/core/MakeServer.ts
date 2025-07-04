@@ -18,6 +18,9 @@ import { WORKERNODE_LOADSUBDIRECTORY } from "@/worker/RemoteMethods";
 import { CONFIGURE_ADDCACHEVARIABLES } from "@/worker/RemoteMethods";
 import { CONFIGURE_GETPROPERTY } from "@/worker/RemoteMethods";
 import { CONFIGURE_SETPROPERTY } from "@/worker/RemoteMethods";
+import { CONFIGURE_HASPROPERTY } from "@/worker/RemoteMethods";
+import { CONFIGURE_DELETEPROPERTY } from "@/worker/RemoteMethods";
+import { CONFIGURE_GETPROPERTYNAMES } from "@/worker/RemoteMethods";
 import { createLogger } from "@/logger";
 
 const logger = createLogger(import.meta.url);
@@ -64,7 +67,7 @@ export class MakeServer {
     const sourceDir = this._rootVariableMap.PROJECT_SOURCE_DIR.getValue();
     const binaryDir = this._rootVariableMap.PROJECT_BINARY_DIR.getValue();
 
-    const jsonRpcServer = new JsonRpcServer;
+    /*const jsonRpcServer = new JsonRpcServer;
     const variableMap = this._preparation.createVariableMapForSubdirectory(this._rootVariableMap, sourceDir, binaryDir);
     if (!variableMap)
       throw Error("Can't creeate VariableMap");
@@ -73,6 +76,9 @@ export class MakeServer {
     jsonRpcServer.registerCallback(CONFIGURE_ADDCACHEVARIABLES, params => mk.addCacheVariables.apply(mk, params));
     jsonRpcServer.registerCallback(CONFIGURE_GETPROPERTY, params => mk.getProperty.apply(mk, params));
     jsonRpcServer.registerCallback(CONFIGURE_SETPROPERTY, params => mk.setProperty.apply(mk, params));
+    jsonRpcServer.registerCallback(CONFIGURE_HASPROPERTY, params => mk.hasProperty.apply(mk, params));
+    jsonRpcServer.registerCallback(CONFIGURE_DELETEPROPERTY, params => mk.deleteProperty.apply(mk, params));
+    jsonRpcServer.registerCallback(CONFIGURE_GETPROPERTYNAMES, params => mk.getPropertyNames.apply(mk, params));
 
     const worker = new Worker(currentScriptURL());
     worker.postMessage({
@@ -100,10 +106,10 @@ export class MakeServer {
     worker.on("exit", (code: number) => {
       if (code)
         process.exit(code);
-    });
+    });*/
 
-    //this._preparation.addSubdirectory(this._rootVariableMap, sourceDir, binaryDir);
-    //this._preparation.doSubdirectory().then(() => this.onConfigureEnd());
+    this._preparation.addSubdirectory(this._rootVariableMap, sourceDir, binaryDir);
+    this._preparation.doSubdirectory().then(() => this.onConfigureEnd());
   }
 
   private async onConfigureEnd() {

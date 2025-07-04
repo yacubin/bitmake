@@ -36,13 +36,25 @@ class JsonRpcResponse implements IJsonRpcResponse {
   sendResult(result: any): void {
     const message: JsonRpcData = {
       jsonrpc: JSONRPC_VERSION,
+      result: (result !== undefined) ? result : null,
       id: this._id,
     };
-    if (result !== undefined) {
-      message.result = result;
-    }
     logger.debug("<--", JSON.stringify(message));
     this._sender.sendMessage(message);
+  }
+
+  sendError(code: number, message: string, data?: any): void {
+    const error: any = { code, message };
+    if (data !== undefined) {
+      error.data = data;
+    }
+    const msg: JsonRpcData = {
+      jsonrpc: JSONRPC_VERSION,
+      error,
+      id: this._id,
+    };
+    logger.debug("<--", JSON.stringify(msg));
+    this._sender.sendMessage(msg);
   }
 };
 
@@ -69,11 +81,12 @@ export class JsonRpcServer {
 
   public onRequest(sender: IMessageSender, method: any, id: any, params: any): void {
     const handler = (typeof method === "string") ? this._requestHandlers.get(method) : undefined;
+    const response = new JsonRpcResponse(sender, id);
     if (handler) {
-      handler(new JsonRpcRequest(params), new JsonRpcResponse(sender, id));
+      handler(new JsonRpcRequest(params), response);
     }
     else {
-      sender.sendMessage({ error: { code: -32601, message: "Method not found" }, id })
+      response.sendError(-32601, "Method not found");
     }
   }
 

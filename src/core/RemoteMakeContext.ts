@@ -17,6 +17,9 @@ import { JSONRPC_VERSION } from "@/transport/Common";
 import { CONFIGURE_ADDCACHEVARIABLES } from "@/worker/RemoteMethods";
 import { CONFIGURE_GETPROPERTY } from "@/worker/RemoteMethods";
 import { CONFIGURE_SETPROPERTY } from "@/worker/RemoteMethods";
+import { CONFIGURE_HASPROPERTY } from "@/worker/RemoteMethods";
+import { CONFIGURE_DELETEPROPERTY } from "@/worker/RemoteMethods";
+import { CONFIGURE_GETPROPERTYNAMES } from "@/worker/RemoteMethods";
 import { createLogger } from "@/logger";
 import { FILE_SCHEME } from "@/utils/UrlScheme";
 import { AbsolutePath } from "@/core/Path";
@@ -117,15 +120,15 @@ export class RemoteMakeContext implements IMakeContext {
   }
 
   public hasProperty(...params: any): any {
-    return this[REQUEST].requestSync("Configure.hasProperty", params);
-  }
-
-  public getPropertyNames(...params: any): any {
-    return this[REQUEST].requestSync("Configure.getPropertyNames", params);
+    return this[REQUEST].requestSync(CONFIGURE_HASPROPERTY, params);
   }
 
   public deleteProperty(...params: any): any {
-    return this[REQUEST].requestSync("Configure.deleteProperty", params);
+    return this[REQUEST].requestSync(CONFIGURE_DELETEPROPERTY, params);
+  }
+
+  public getPropertyNames(...params: any): any {
+    return this[REQUEST].requestSync(CONFIGURE_GETPROPERTYNAMES, params);
   }
 
   public static create(requestSync: IRequestSync): RemoteMakeContext {

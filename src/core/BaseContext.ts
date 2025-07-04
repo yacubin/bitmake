@@ -43,13 +43,13 @@ export class BaseContext implements IMakeObject {
   public hasProperty(name: string): boolean {
     return Object.hasOwn(this[VARIABLE_MAP], name);
   }
-  public getPropertyNames(): string[] {
-    return Object.keys(this[VARIABLE_MAP]);
-  }
   public deleteProperty(name: string): boolean {
     return delete this[VARIABLE_MAP][name];
   }
-}; // getOwnPropertyDescriptor 
+  public getPropertyNames(): string[] {
+    return Object.keys(this[VARIABLE_MAP]);
+  }
+};
 
 export function createContext<T extends IMakeObject>(ctx: T): T {
   const handler: ProxyHandler<T> = {

@@ -13,8 +13,8 @@ export interface IMakeObject {
   getProperty(name: string): any;
   setProperty(name: string, value: any): boolean;
   hasProperty(name: string): boolean;
-  getPropertyNames(): string[];
   deleteProperty(name: string): boolean;
+  getPropertyNames(): string[];
 };
 
 export interface IMakeContext {

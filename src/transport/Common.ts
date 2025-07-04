@@ -36,7 +36,11 @@ export interface JsonRpcData {
   method?: string;
   params?: any;
   id?: number;
-  error?: object;
+  error?: {
+    code: number,
+    message: string,
+    data?: any,
+  },
   result?: any;
 };
 

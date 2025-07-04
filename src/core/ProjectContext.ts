@@ -426,12 +426,11 @@ export class ProjectContext {
   }
 
   public async createMakeContext(variableMap: VariableMap): Promise<MakeContext> {
-    const scope = ScopeHelper.createProxy(variableMap) as SystemScope;
-    if (!scope.SCRIPT_FILE) {
+    if (!variableMap.SCRIPT_FILE.getValue()) {
       let scriptFile: AbsolutePath | undefined;
       const fileList = [ ".js", ".mjs" ].map(i => "MakeScript" + i);
       for (const filename of fileList) {
-        const iter = scope.SOURCE_DIR.join(filename);
+        const iter = variableMap.SOURCE_DIR.getValue().join(filename);
         if (await fileExists(iter.toString())) {
           scriptFile = iter;
           break;
@@ -439,13 +438,13 @@ export class ProjectContext {
       }
 
       if (!scriptFile)
-        throw new Error(`There are no files ${fileList.join(", ")} in "${scope.SOURCE_DIR}"`);
+        throw new Error(`There are no files ${fileList.join(", ")} in "${variableMap.SOURCE_DIR.getValue()}"`);
 
-      scope.SCRIPT_FILE = scriptFile;
-      scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
+      variableMap.SCRIPT_FILE.setValue(scriptFile);
+      variableMap.SCRIPT_DIR.setValue(variableMap.SCRIPT_FILE.getValue().dirname());
     }
 
-    this.registerVariableMap(scope.SCRIPT_FILE.toString(), variableMap);
+    this.registerVariableMap(variableMap.SCRIPT_FILE.getValue().toString(), variableMap);
 
     return MakeContext.create(this, variableMap);
   }

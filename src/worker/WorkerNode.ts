@@ -9,7 +9,8 @@
 
 import { IRequestSync } from "@/transport/Common";
 import { RemoteMakeContext } from "@/core/RemoteMakeContext";
-import { importModule } from "@/utils/Module";
+import { performContext } from "@/core/BaseContext";
+import { ScopeHelper } from "@/core/Scope";
 
 export class WorkerNode {
   private _transport: IRequestSync;
@@ -18,14 +19,10 @@ export class WorkerNode {
     this._transport = requestSync;
   }
 
-  public async loadSubdirectory(params: any): Promise<void> {
-    const module = await importModule(params);
-    if (!module.default)
-      throw new Error(`Subdirectory ${params} not contain default function`);
+  public async execMakeScript(params: any): Promise<void> {
+    const variableMap = ScopeHelper.fromJSON(params);
 
-    const mk = RemoteMakeContext.create(this._transport);
-    const result = module.default(mk);
-    if (result instanceof Promise)
-      await result;
+    const mk = RemoteMakeContext.create(variableMap, this._transport);
+    await performContext(mk);
   }
 };

@@ -103,7 +103,7 @@ export class MakeContext extends BaseContext implements IMakeContext {
     this[GLOBAL].executeScriptSync(this[SCOPE], script, params);
   }
 
-  public static create(global: ProjectContext, variableMap: VariableMap): MakeContext {
+  public static create(global: ProjectContext, variableMap: VariableMap) {
     return createContext(new MakeContext(global, variableMap));
   }
 };

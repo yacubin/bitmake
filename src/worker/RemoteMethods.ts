@@ -7,10 +7,6 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-export const WORKERNODE_LOADSUBDIRECTORY = "WorkerNode.loadSubdirectory";
-export const CONFIGURE_ADDCACHEVARIABLES = "Configure.addCacheVariables";
-export const CONFIGURE_GETPROPERTY = "Configure.getProperty";
-export const CONFIGURE_SETPROPERTY = "Configure.setProperty";
-export const CONFIGURE_HASPROPERTY = "Configure.hasProperty";
-export const CONFIGURE_DELETEPROPERTY = "Configure.deleteProperty";
-export const CONFIGURE_GETPROPERTYNAMES = "Configure.getPropertyNames";
+export const WORKERNODE_EXECMAKESCRIPT = "WorkerNode.execMakeScript";
+export const MAINNODE_LOADJSON = "MainNode.loadJSON";
+export const MAINNODE_EXECUTESCRIPT = "MainNode.executeScript";

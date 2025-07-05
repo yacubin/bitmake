@@ -11,6 +11,9 @@ import { IMakeObject } from "@/core/IMakeContext";
 import { findProgramSync } from "@/core/FindProgram";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { createLogger } from "@/logger";
+import { SystemScope } from "@/core/SystemScope";
+import { AbsolutePath } from "@/core/Path";
+import { importModule } from "@/utils/Module";
 
 const logger = createLogger(import.meta.url);
 
@@ -50,7 +53,7 @@ export class BaseContext implements IMakeObject {
   }
 };
 
-export function createContext<T extends IMakeObject>(ctx: T): T {
+export function createContext<T extends IMakeObject>(ctx: T): T & SystemScope {
   const handler: ProxyHandler<T> = {
     get(target: T, name: string, receiver: any) {
       if (name in target)
@@ -78,5 +81,40 @@ export function createContext<T extends IMakeObject>(ctx: T): T {
       return undefined;
     },
   };
-  return new Proxy(ctx, handler) as T;
+  return new Proxy(ctx, handler) as T & SystemScope;
+}
+
+export async function performContext(mk: BaseContext & SystemScope) {
+  const scriptUrl = mk.SCRIPT_FILE.toJSON();
+  const module = await importModule(scriptUrl);
+  if (!module.default)
+    throw new Error(`Script ${scriptUrl} has not contain a default function`);
+
+  const result = module.default(mk);
+  if (result instanceof Promise)
+    await result;
+}
+
+export function createVariableMapForDirectory(variableMap: VariableMap, sourceDir: any, binaryDir?: any): VariableMap {
+  if (binaryDir === undefined) {
+    if (!AbsolutePath.isAbsolute(sourceDir))
+      binaryDir = sourceDir;
+    else {
+      const binaryDir1 = ScopeHelper.get(variableMap, "PROJECT_BINARY_DIR").relative(sourceDir);
+      const binaryDir2 = ScopeHelper.get(variableMap, "PROJECT_SOURCE_DIR").relative(sourceDir);
+      binaryDir = (binaryDir1.length > binaryDir2.length) ? binaryDir2 : binaryDir1;
+    }
+  }
+
+  const SOURCE_DIR = ScopeHelper.get(variableMap, "SOURCE_DIR").resolve(sourceDir);
+  const BINARY_DIR = ScopeHelper.get(variableMap, "BINARY_DIR").resolve(binaryDir);
+
+  const newVariableMap = ScopeHelper.cloneVariableMap(variableMap);
+
+  ScopeHelper.set(newVariableMap, "SOURCE_DIR", SOURCE_DIR);
+  ScopeHelper.set(newVariableMap, "BINARY_DIR", BINARY_DIR);
+  ScopeHelper.reset(newVariableMap, "SCRIPT_DIR");
+  ScopeHelper.reset(newVariableMap, "SCRIPT_FILE");
+
+  return newVariableMap;
 }

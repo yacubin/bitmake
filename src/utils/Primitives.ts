@@ -31,19 +31,19 @@ export function equalValue(a: any, b: any): boolean {
   return true;
 }
 
-export function copyValue(o: any): any {
+export function deepCopy(o: any): any {
   if (!o || typeof o !== "object")
     return o;
   if (Array.isArray(o)) {
     const result = [];
     for (const iter of o)
-      result.push(copyValue(iter));
+      result.push(deepCopy(iter));
     return result;
   }
   else {
     const result = {} as any;
     for (const [key,val] of Object.entries(o))
-      result[key] = copyValue(val);
+      result[key] = deepCopy(val);
     return result;
   }
 }
@@ -59,7 +59,7 @@ export function assignObject(target: any, source: any) {
       if (a && typeof a === "object" && b && typeof b === "object")
         assignObject(a, b);
       else
-        target[key] = copyValue(b);
+        target[key] = deepCopy(b);
     }
   }
 }

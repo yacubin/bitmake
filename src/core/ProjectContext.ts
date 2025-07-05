@@ -28,6 +28,7 @@ import { InstallEntity } from "@/core/InstallEntity";
 import { CustomScript } from "@/core/CustomScript";
 import { ScriptContext } from "@/core/ScriptContext";
 import { ScopeHelper, VariableMap } from "./Scope";
+import { performContext, createVariableMapForDirectory } from "@/core/BaseContext";
 
 import BuildinScripts from "@/core/BuildinScripts";
 
@@ -384,48 +385,15 @@ export class ProjectContext {
     fs.writeFileSync(filename, json, "utf-8");
   }
 
-  public createVariableMapForSubdirectory(variableMap: VariableMap, sourceDir: any, binaryDir?: any): VariableMap | undefined {
-    if (binaryDir === undefined) {
-      if (!AbsolutePath.isAbsolute(sourceDir))
-        binaryDir = sourceDir;
-      else {
-        const binaryDir1 = ScopeHelper.get(variableMap, "PROJECT_BINARY_DIR").relative(sourceDir);
-        const binaryDir2 = ScopeHelper.get(variableMap, "PROJECT_SOURCE_DIR").relative(sourceDir);
-        binaryDir = (binaryDir1.length > binaryDir2.length) ? binaryDir2 : binaryDir1;
-      }
+  public async prepearScriptFile(variableMap: VariableMap): Promise<boolean> {
+    const originSourceDir = ScopeHelper.get(variableMap, "SOURCE_DIR").toString();
+    const resolveSourceDir = this.resolveSubdirectory(originSourceDir);
+    if (!resolveSourceDir) {
+      logger.info(`Source dir "${originSourceDir}" was disabled`);
+      return false;
     }
+    ScopeHelper.set(variableMap, "SOURCE_DIR", resolveSourceDir);
 
-    const SOURCE_DIR = ScopeHelper.get(variableMap, "SOURCE_DIR").resolve(sourceDir);
-    const BINARY_DIR = ScopeHelper.get(variableMap, "BINARY_DIR").resolve(binaryDir);
-
-    const resolvePath = this.resolveSubdirectory(SOURCE_DIR);
-    if (!resolvePath) {
-      logger.info(`Source dir "${SOURCE_DIR}" was disabled`);
-      return;
-    }
-
-    const newVariableMap = ScopeHelper.cloneVariableMap(variableMap);
-
-    ScopeHelper.set(newVariableMap, "SOURCE_DIR", resolvePath.toString());
-    ScopeHelper.set(newVariableMap, "BINARY_DIR", BINARY_DIR);
-    ScopeHelper.reset(newVariableMap, "SCRIPT_DIR");
-    ScopeHelper.reset(newVariableMap, "SCRIPT_FILE");
-    
-    return newVariableMap;
-  }
-
-  public addSubdirectory(variableMap: VariableMap, sourceDir: any, binaryDir?: any) {
-    const newVariableMap = this.createVariableMapForSubdirectory(variableMap, sourceDir, binaryDir);
-    if (newVariableMap) {
-      this._subdirList.push(newVariableMap);
-    }
-  }
-
-  public findScriptFunction(name: string): Function | undefined {
-    return this[BUILTIN_SCRIPTS][name];
-  }
-
-  public async createMakeContext(variableMap: VariableMap): Promise<MakeContext> {
     if (!ScopeHelper.get(variableMap, "SCRIPT_FILE")) {
       let scriptFile: AbsolutePath | undefined;
       const fileList = [ ".js", ".mjs" ].map(i => "MakeScript" + i);
@@ -445,8 +413,18 @@ export class ProjectContext {
     }
 
     this.registerVariableMap(ScopeHelper.get(variableMap, "SCRIPT_FILE").toString(), variableMap);
+    return true;
+  }
 
-    return MakeContext.create(this, variableMap);
+  public addSubdirectory(variableMap: VariableMap, sourceDir: any, binaryDir?: any) {
+    const newVariableMap = createVariableMapForDirectory(variableMap, sourceDir, binaryDir);
+    if (newVariableMap) {
+      this._subdirList.push(newVariableMap);
+    }
+  }
+
+  public findScriptFunction(name: string): Function | undefined {
+    return this[BUILTIN_SCRIPTS][name];
   }
 
   public async doSubdirectory() {
@@ -454,21 +432,15 @@ export class ProjectContext {
       const variableMap = this._subdirList.shift();
       if (!variableMap)
         break;
-      const mk = await this.createMakeContext(variableMap);
-      const importName = ScopeHelper.get(variableMap, "SCRIPT_FILE").toString();
-      const cwd = ScopeHelper.get(variableMap, "SOURCE_DIR").toString();
+
+      if (!await this.prepearScriptFile(variableMap))
+        continue;
+
+      const mk = MakeContext.create(this, variableMap);
+
       const cwdSave = process.cwd();
-      process.chdir(cwd);
-    
-      const scriptUrl = url.pathToFileURL(importName);
-      const module = await importModule(scriptUrl);
-      if (!module.default)
-        throw new Error(`Script ${importName} has not contain a default function`);
-
-      const result = module.default(mk);
-      if (result instanceof Promise)
-        await result;
-
+      process.chdir(mk.SCRIPT_DIR.toString());
+      await performContext(mk);
       process.chdir(cwdSave);
     }
   }

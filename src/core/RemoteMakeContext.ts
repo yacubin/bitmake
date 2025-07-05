@@ -11,22 +11,20 @@ import { IRequestSync } from "@/transport/Common";
 import { InterfaceScript } from "@/core/InterfaceScript";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, InterfaceTarget } from "@/core/Target";
 import { CustomScript } from "@/core/CustomScript";
-import { createContext } from "@/core/BaseContext";
-import { IMakeContext } from "@/core/IMakeContext";
+import { BaseContext, createContext } from "@/core/BaseContext";
 import { JSONRPC_VERSION } from "@/transport/Common";
-import { CONFIGURE_ADDCACHEVARIABLES } from "@/worker/RemoteMethods";
-import { CONFIGURE_GETPROPERTY } from "@/worker/RemoteMethods";
-import { CONFIGURE_SETPROPERTY } from "@/worker/RemoteMethods";
-import { CONFIGURE_HASPROPERTY } from "@/worker/RemoteMethods";
-import { CONFIGURE_DELETEPROPERTY } from "@/worker/RemoteMethods";
-import { CONFIGURE_GETPROPERTYNAMES } from "@/worker/RemoteMethods";
+import { MAINNODE_LOADJSON } from "@/worker/RemoteMethods";
+import { MAINNODE_EXECUTESCRIPT } from "@/worker/RemoteMethods";
 import { createLogger } from "@/logger";
 import { FILE_SCHEME } from "@/utils/UrlScheme";
 import { AbsolutePath } from "@/core/Path";
+import { ScopeHelper, VariableMap } from "@/core/Scope";
+import { CUSTOM_VARIABLE_GROUP } from "@/Constants";
 
 const logger = createLogger(import.meta.url);
 
 const REQUEST = Symbol("REQUEST");
+const SCOPE = Symbol("SCOPE");
 
 class JsonRpcRequest {
   private _request: IRequestSync;
@@ -45,27 +43,39 @@ class JsonRpcRequest {
       id: this._id++,
     };
     const response = this._request.requestSync(message);
+    if (response.error)
+      throw new Error(response.error.message, { cause: response.error.code });
     return response.result;
   }
 }
 
-export class RemoteMakeContext implements IMakeContext {
+export class RemoteMakeContext extends BaseContext {
+  [SCOPE]: VariableMap;
   [REQUEST]: JsonRpcRequest;
 
-  public constructor(requestSync: IRequestSync) {
+  public constructor(variableMap: VariableMap, requestSync: IRequestSync) {
+    super(variableMap);
+    this[SCOPE] = variableMap;
     this[REQUEST] = new JsonRpcRequest(requestSync);
   }
 
   public getCacheVariables(...params: any): any {
-    return this[REQUEST].requestSync("Configure.getCacheVariables", params);
+      return ScopeHelper.getVariablesByGroup(this[SCOPE], CUSTOM_VARIABLE_GROUP);
   }
 
-  public addCacheVariables(...params: any): any {
-    return this[REQUEST].requestSync(CONFIGURE_ADDCACHEVARIABLES, params);
+  public addCacheVariables(params: any): any {
+    let variables = params;
+    if (typeof params === "string") {
+      const filename = ScopeHelper.get(this[SCOPE], "SOURCE_DIR").resolve(params).toString();
+      variables = this[REQUEST].requestSync(MAINNODE_LOADJSON, filename);
+    }
+    ScopeHelper.defineVariablesInVariableMap(this[SCOPE], CUSTOM_VARIABLE_GROUP, variables);
   }
 
-  public addIncludeDirectories(...params: any): any {
-    return this[REQUEST].requestSync("Configure.addCacheVariables", params);
+  public addIncludeDirectories(...dirs: any[]): any {
+    const sourceDir = ScopeHelper.get(this[SCOPE], "SOURCE_DIR");
+    for (const iter of dirs.flat())
+      ScopeHelper.get(this[SCOPE], "INCLUDES").push(sourceDir.resolve(iter));
   }
 
   public addSubdirectory(...params: any): any {
@@ -104,34 +114,16 @@ export class RemoteMakeContext implements IMakeContext {
     throw new Error("Not Implemented");
   }
 
-  public executeScript(...params: any): any {
-    return this[REQUEST].requestSync("Configure.executeScript", params);
+  public executeScript(script: any, params: any): any {
+    const newVariableMap = ScopeHelper.cloneVariableMap(this[SCOPE]);
+    params && ScopeHelper.extendVariableMapByValues(newVariableMap, "", params);
+    const scriptFile = ScopeHelper.get(newVariableMap, "SOURCE_DIR").resolve(script);
+    ScopeHelper.set(newVariableMap, "SCRIPT_FILE", scriptFile);
+    ScopeHelper.set(newVariableMap, "SCRIPT_DIR", scriptFile.dirname());
+    return this[REQUEST].requestSync(MAINNODE_EXECUTESCRIPT, ScopeHelper.toJSON(newVariableMap));
   }
 
-  public getProperty(...params: any): any {
-    const value = this[REQUEST].requestSync(CONFIGURE_GETPROPERTY, params);
-    if (typeof value === "string" && value.startsWith(FILE_SCHEME))
-      return AbsolutePath.create(value);
-    return value;
-  }
-
-  public setProperty(...params: any): any {
-    return this[REQUEST].requestSync(CONFIGURE_SETPROPERTY, params);
-  }
-
-  public hasProperty(...params: any): any {
-    return this[REQUEST].requestSync(CONFIGURE_HASPROPERTY, params);
-  }
-
-  public deleteProperty(...params: any): any {
-    return this[REQUEST].requestSync(CONFIGURE_DELETEPROPERTY, params);
-  }
-
-  public getPropertyNames(...params: any): any {
-    return this[REQUEST].requestSync(CONFIGURE_GETPROPERTYNAMES, params);
-  }
-
-  public static create(requestSync: IRequestSync): RemoteMakeContext {
-    return createContext(new RemoteMakeContext(requestSync));
+  public static create(variableMap: VariableMap, requestSync: IRequestSync) {
+    return createContext(new RemoteMakeContext(variableMap, requestSync));
   }
 };

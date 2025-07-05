@@ -11,7 +11,7 @@ import { IMessageSender, IMessageEmitter } from "@/transport/Common";
 import { MemoryTransport } from "@/transport/MemoryTransport";
 import { JsonRpcServer } from "@/transport/JsonRpcServer";
 import { WorkerNode } from "@/worker/WorkerNode";
-import { WORKERNODE_LOADSUBDIRECTORY } from "@/worker/RemoteMethods";
+import { WORKERNODE_EXECMAKESCRIPT } from "@/worker/RemoteMethods";
 import { createLogger } from "@/logger";
 
 const logger = createLogger(import.meta.url);
@@ -22,11 +22,11 @@ export class WorkerLooper implements IMessageEmitter {
   public constructor(sender: IMessageSender) {
     this._jsonrpcServer = new JsonRpcServer;
 
-    const buffer = new SharedArrayBuffer(1024);
+    const buffer = new SharedArrayBuffer(0x8000);
     const transport = new MemoryTransport(sender, buffer);
 
     const workerNode = new WorkerNode(transport);
-    this._jsonrpcServer.registerCallback(WORKERNODE_LOADSUBDIRECTORY, params => workerNode.loadSubdirectory(params));
+    this._jsonrpcServer.registerCallback(WORKERNODE_EXECMAKESCRIPT, params => workerNode.execMakeScript(params));
   }
 
   public emitMessage(sender: IMessageSender, message: any): void {

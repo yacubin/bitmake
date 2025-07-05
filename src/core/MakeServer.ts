@@ -8,20 +8,20 @@
  */
 
 import { ProjectContext } from "@/core/ProjectContext";
+import { createVariableMapForDirectory } from "@/core/BaseContext";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { Worker } from "node:worker_threads";
 import { currentScriptURL } from "@/utils/Module";
 import { MemoryMessageSender } from "@/transport/MemoryTransport";
 import { JSONRPC_VERSION } from "@/transport/Common";
 import { JsonRpcServer } from "@/transport/JsonRpcServer";
-import { WORKERNODE_LOADSUBDIRECTORY } from "@/worker/RemoteMethods";
-import { CONFIGURE_ADDCACHEVARIABLES } from "@/worker/RemoteMethods";
-import { CONFIGURE_GETPROPERTY } from "@/worker/RemoteMethods";
-import { CONFIGURE_SETPROPERTY } from "@/worker/RemoteMethods";
-import { CONFIGURE_HASPROPERTY } from "@/worker/RemoteMethods";
-import { CONFIGURE_DELETEPROPERTY } from "@/worker/RemoteMethods";
-import { CONFIGURE_GETPROPERTYNAMES } from "@/worker/RemoteMethods";
+import { MainNode } from "@/worker/MainNode";
+import { MAINNODE_LOADJSON } from "@/worker/RemoteMethods";
+import { MAINNODE_EXECUTESCRIPT } from "@/worker/RemoteMethods";
+import { WORKERNODE_EXECMAKESCRIPT } from "@/worker/RemoteMethods";
 import { createLogger } from "@/logger";
+import { AbsolutePath } from "@/core/Path";
+import { fileExists } from "@/utils/FileSystem";
 
 const logger = createLogger(import.meta.url);
 
@@ -43,10 +43,17 @@ export interface MemorySender {
   sendMessage(message: any): void;
 };
 
+interface MakeClient {
+  jsonRpcServer: JsonRpcServer,
+  mainNode: MainNode,
+  worker: Worker,
+};
+
 export class MakeServer {
   private _rootVariableMap: VariableMap = {};
-  private _preparation = ProjectContext.create();
+  private _project = ProjectContext.create();
   private _listeners: { [name: string]: Function[] };
+  private _clients = new Array<MakeClient>;;
 
   public constructor() {
     this._listeners = {
@@ -60,31 +67,24 @@ export class MakeServer {
   }
 
   public get preparation() {
-    return this._preparation;
+    return this._project;
   }
 
-  public async start() {
-    const sourceDir = ScopeHelper.get(this._rootVariableMap, "PROJECT_SOURCE_DIR");
-    const binaryDir = ScopeHelper.get(this._rootVariableMap, "PROJECT_BINARY_DIR");
+  public async createClient(variableMap: VariableMap, sourceDir: any, binaryDir?: any): Promise<MakeClient | undefined> {
+    const jsonRpcServer = new JsonRpcServer;
+    const newVariableMap = createVariableMapForDirectory(variableMap, sourceDir, binaryDir);
+    if (!await this._project.prepearScriptFile(newVariableMap))
+      throw Error("Can't prepear ScriptFile");
 
-    /*const jsonRpcServer = new JsonRpcServer;
-    const variableMap = this._preparation.createVariableMapForSubdirectory(this._rootVariableMap, sourceDir, binaryDir);
-    if (!variableMap)
-      throw Error("Can't creeate VariableMap");
-
-    const mk = await this._preparation.createMakeContext(variableMap);
-    jsonRpcServer.registerCallback(CONFIGURE_ADDCACHEVARIABLES, params => mk.addCacheVariables.apply(mk, params));
-    jsonRpcServer.registerCallback(CONFIGURE_GETPROPERTY, params => mk.getProperty.apply(mk, params));
-    jsonRpcServer.registerCallback(CONFIGURE_SETPROPERTY, params => mk.setProperty.apply(mk, params));
-    jsonRpcServer.registerCallback(CONFIGURE_HASPROPERTY, params => mk.hasProperty.apply(mk, params));
-    jsonRpcServer.registerCallback(CONFIGURE_DELETEPROPERTY, params => mk.deleteProperty.apply(mk, params));
-    jsonRpcServer.registerCallback(CONFIGURE_GETPROPERTYNAMES, params => mk.getPropertyNames.apply(mk, params));
+    const mainNode = new MainNode(this._project);
+    jsonRpcServer.registerCallback(MAINNODE_EXECUTESCRIPT, params => mainNode.executeScript(params));
+    jsonRpcServer.registerCallback(MAINNODE_LOADJSON, params => mainNode.loadJSON(params));
 
     const worker = new Worker(currentScriptURL());
     worker.postMessage({
       jsonrpc: JSONRPC_VERSION,
-      method: WORKERNODE_LOADSUBDIRECTORY,
-      params: [ this._rootVariableMap.SCRIPT_FILE.getValue().toJSON() ],
+      method: WORKERNODE_EXECMAKESCRIPT,
+      params: ScopeHelper.toJSON(newVariableMap),
       id: 2,
     });
     worker.on("message", (message) => {
@@ -106,14 +106,25 @@ export class MakeServer {
     worker.on("exit", (code: number) => {
       if (code)
         process.exit(code);
-    });*/
+    });
 
-    this._preparation.addSubdirectory(this._rootVariableMap, sourceDir, binaryDir);
-    this._preparation.doSubdirectory().then(() => this.onConfigureEnd());
+    return { jsonRpcServer, mainNode, worker };
+  }
+
+  public async start() {
+    const sourceDir = ScopeHelper.get(this._rootVariableMap, "PROJECT_SOURCE_DIR");
+    const binaryDir = ScopeHelper.get(this._rootVariableMap, "PROJECT_BINARY_DIR");
+
+    //const client = await this.createClient(this._rootVariableMap, sourceDir, binaryDir);
+    //if (client)
+    //  this._clients.push(client);
+
+    this._project.addSubdirectory(this._rootVariableMap, sourceDir, binaryDir);
+    this._project.doSubdirectory().then(() => this.onConfigureEnd());
   }
 
   private async onConfigureEnd() {
-    const event = { project: this._preparation };
+    const event = { project: this._project };
     await this.emitEvent(CONFIGURE_EVENT, event);
     await this.emitEvent(BUILD_EVENT, event);
   }

@@ -7,7 +7,9 @@
  * under the MIT License. See LICENSE file for details.
  */
 
+import { ValueType } from "@/cmake/Constants";
 import { AbsolutePath, DirPath, FilePath } from "@/core/Path";
+import { deepCopy } from "@/utils/Primitives";
 
 interface VariableDescriptor {
   type?: string | string[];
@@ -18,10 +20,10 @@ interface VariableDescriptor {
 interface VariableEntry {
   name: string;
   type: string | string[];
-  initValue: any;
   group: string;
-  value: any;
   description: string;
+  initValue?: any;
+  value?: any;
 };
 
 export interface VariableMap {
@@ -54,52 +56,114 @@ export function get(variableMap: VariableMap, name: string): any {
     return getEntryValue(entry);
 }
 
-const setterValueMap: any = {
-  array: (entry: VariableEntry, value: any) => {
-    if (!Array.isArray(value))
-      throw new TypeError(`Attempting to set "${value}" to ${entry.name} as an array`);
-    entry.value = Array.from(value);
+const makeValueMap: any = {
+  array: (value: any) => {
+    return Array.isArray(value) ? Array.from(value) : undefined;
   },
-  boolean: (entry: VariableEntry, value: any) => {
-    if ( typeof value !== "boolean")
-      throw new TypeError(`Attempting to set "${value}" to ${entry.name} as a boolean`);
-    entry.value = value;
+  boolean: (value: any) => {
+    return (typeof value === "boolean") ? value : undefined;
   },
-  number: (entry: VariableEntry, value: any) => {
-    if ( typeof value !== "number")
-      throw new TypeError(`Attempting to set "${value}" to ${entry.name} as a number`);
-    entry.value = value;
+  number: (value: any) => {
+    return (typeof value === "number") ? value : undefined;
   },
-  string: (entry: VariableEntry, value: any) => {
-    if ( typeof value !== "string")
-      throw new TypeError(`Attempting to set "${value}" to ${entry.name} as a string`);
-    entry.value = value;
+  string: (value: any) => {
+    return (typeof value === "string") ? value : undefined;
   },
-  AbsolutePath: (entry: VariableEntry, value: any) => {
-    entry.value = AbsolutePath.create(value);
+  AbsolutePath: (value: any) => {
+    return AbsolutePath.create(value);
   },
-  FilePath: (entry: VariableEntry, value: any) => {
-    entry.value = FilePath.create(value);
+  FilePath: (value: any) => {
+    return FilePath.create(value);
   },
-  DirPath: (entry: VariableEntry, value: any) => {
-    entry.value = DirPath.create(value);
+  DirPath: (value: any) => {
+    return DirPath.create(value);
   },
-  object: (entry: VariableEntry, value: any) => {
-    entry.value = value;
-  },
-  enum: (entry: VariableEntry, value: any) => {
-    if (!entry.type.includes(value))
-      throw new TypeError(`Attempting to set "${value}" to ${entry.name} as a ${entry.type}`);
-    entry.value = value;
+  object: (value: any) => {
+    return value;
   },
 };
 
-export function setEntryValue(entry: VariableEntry, value: any): any {
-  const type = Array.isArray(entry.type) ? "enum" : entry.type;
-  const func = setterValueMap[type];
+const tojsonValueMap: any = {
+  array: (value: any) => {
+    return deepCopy(value);
+  },
+  boolean: (value: any) => {
+    return value;
+  },
+  number: (value: any) => {
+    return value;
+  },
+  string: (value: any) => {
+    return value;
+  },
+  AbsolutePath: (value: any) => {
+    return value.toJSON();
+  },
+  FilePath: (value: any) => {
+    return value.toJSON();
+  },
+  DirPath: (value: any) => {
+    return value.toJSON();
+  },
+  object: (value: any) => {
+    return deepCopy(value);
+  },
+};
+
+export function makeJSONValue(entry: VariableEntry, value: any): any {
+  if (Array.isArray(entry.type))
+    return value;
+  const func = tojsonValueMap[entry.type];
   if (!func)
-    throw new Error(`Unknown type "${type}" for ${entry.name}`);
-  func(entry, value);
+    throw new Error(`Unknown type "${entry.type}" for ${entry.name}`);
+  return func(value);
+}
+
+export function makeEntryValue(entry: VariableEntry, value: any): any {
+  let newValue: any;
+  if (Array.isArray(entry.type))
+    newValue = entry.type.includes(value) ? value : undefined;
+  else {
+    const func = makeValueMap[entry.type];
+    if (!func)
+      throw new Error(`Unknown type "${entry.type}" for ${entry.name}`);
+    newValue = func(value);
+  }
+  if (newValue === undefined)
+    throw new TypeError(`Attempting to set "${value}" to ${entry.name} as an ${entry.type}`);
+  return newValue;
+}
+
+export function copyEntryValue(entry: VariableEntry, transform: (entry: VariableEntry, value: any) => any) {
+  const result: VariableEntry = {
+    name: entry.name,
+    type: entry.type,
+    group: entry.group,
+    description: entry.description,
+  };
+  if (entry.initValue !== undefined)
+    result.initValue = transform(entry, entry.initValue);
+  if (entry.value !== undefined)
+    result.value = transform(entry, entry.value);
+  return result;
+}
+
+export function fromJSON(variableMap: VariableMap): VariableMap {
+  const result: VariableMap = {};
+  for (const [key, val] of Object.entries(variableMap))
+    result[key] = copyEntryValue(val, makeEntryValue);
+  return result;
+}
+
+export function toJSON(variableMap: VariableMap): VariableMap {
+  const result: VariableMap = {};
+  for (const [key, val] of Object.entries(variableMap))
+    result[key] = copyEntryValue(val, makeJSONValue);
+  return result;
+}
+
+export function setEntryValue(entry: VariableEntry, value: any): any {
+  entry.value = makeEntryValue(entry, value);
 }
 
 export function set(variableMap: VariableMap, name: string, value: any): void {
@@ -198,8 +262,11 @@ export function defineVariable(map: VariableMap, group: string, name: string, de
   }
 
   defineEntry.type = type;
+  if (defineEntry.initValue !== undefined) {
+    defineEntry.initValue = makeEntryValue(defineEntry, defineEntry.initValue);
+  }
   if (defineEntry.value !== undefined) {
-    setEntryValue(defineEntry, defineEntry.value);
+    defineEntry.value = makeEntryValue(defineEntry, defineEntry.value);
   }
 }
 

@@ -406,10 +406,10 @@ export class ProjectContext {
 
     const newVariableMap = ScopeHelper.cloneVariableMap(variableMap);
 
-    newVariableMap.SOURCE_DIR.setValue(resolvePath.toString());
-    newVariableMap.BINARY_DIR.setValue(BINARY_DIR);
-    newVariableMap.SCRIPT_FILE.value = undefined;
-    newVariableMap.SCRIPT_DIR.value = undefined;
+    ScopeHelper.set(newVariableMap, "SOURCE_DIR", resolvePath.toString());
+    ScopeHelper.set(newVariableMap, "BINARY_DIR", BINARY_DIR);
+    ScopeHelper.reset(newVariableMap, "SCRIPT_DIR");
+    ScopeHelper.reset(newVariableMap, "SCRIPT_FILE");
     
     return newVariableMap;
   }
@@ -440,8 +440,8 @@ export class ProjectContext {
       if (!scriptFile)
         throw new Error(`There are no files ${fileList.join(", ")} in "${ScopeHelper.get(variableMap, "SOURCE_DIR")}"`);
 
-      variableMap.SCRIPT_FILE.setValue(scriptFile);
-      variableMap.SCRIPT_DIR.setValue(ScopeHelper.get(variableMap, "SCRIPT_FILE").dirname());
+      ScopeHelper.set(variableMap, "SCRIPT_FILE", scriptFile);
+      ScopeHelper.set(variableMap, "SCRIPT_DIR", ScopeHelper.get(variableMap, "SCRIPT_FILE").dirname());
     }
 
     this.registerVariableMap(ScopeHelper.get(variableMap, "SCRIPT_FILE").toString(), variableMap);

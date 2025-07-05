@@ -22,8 +22,6 @@ interface VariableEntry {
   group: string;
   value: any;
   description: string;
-
-  setValue(this: VariableEntry, value: any): void;
 };
 
 export interface VariableMap {
@@ -50,14 +48,72 @@ export function getEntryValue(entry: VariableEntry): any {
   return (entry.value === undefined) ? entry.initValue : entry.value;
 }
 
-export function setEntryValue(entry: VariableEntry, value: any): any {
-  entry.setValue(value);
-}
-
 export function get(variableMap: VariableMap, name: string): any {
   const entry = variableMap[name];
   if (entry)
     return getEntryValue(entry);
+}
+
+const setterValueMap: any = {
+  array: (entry: VariableEntry, value: any) => {
+    if (!Array.isArray(value))
+      throw new TypeError(`Attempting to set "${value}" to ${entry.name} as an array`);
+    entry.value = Array.from(value);
+  },
+  boolean: (entry: VariableEntry, value: any) => {
+    if ( typeof value !== "boolean")
+      throw new TypeError(`Attempting to set "${value}" to ${entry.name} as a boolean`);
+    entry.value = value;
+  },
+  number: (entry: VariableEntry, value: any) => {
+    if ( typeof value !== "number")
+      throw new TypeError(`Attempting to set "${value}" to ${entry.name} as a number`);
+    entry.value = value;
+  },
+  string: (entry: VariableEntry, value: any) => {
+    if ( typeof value !== "string")
+      throw new TypeError(`Attempting to set "${value}" to ${entry.name} as a string`);
+    entry.value = value;
+  },
+  AbsolutePath: (entry: VariableEntry, value: any) => {
+    entry.value = AbsolutePath.create(value);
+  },
+  FilePath: (entry: VariableEntry, value: any) => {
+    entry.value = FilePath.create(value);
+  },
+  DirPath: (entry: VariableEntry, value: any) => {
+    entry.value = DirPath.create(value);
+  },
+  object: (entry: VariableEntry, value: any) => {
+    entry.value = value;
+  },
+  enum: (entry: VariableEntry, value: any) => {
+    if (!entry.type.includes(value))
+      throw new TypeError(`Attempting to set "${value}" to ${entry.name} as a ${entry.type}`);
+    entry.value = value;
+  },
+};
+
+export function setEntryValue(entry: VariableEntry, value: any): any {
+  const type = Array.isArray(entry.type) ? "enum" : entry.type;
+  const func = setterValueMap[type];
+  if (!func)
+    throw new Error(`Unknown type "${type}" for ${entry.name}`);
+  func(entry, value);
+}
+
+export function set(variableMap: VariableMap, name: string, value: any): void {
+  const entry = variableMap[name];
+  if (!entry)
+    throw new Error(`Variable "${name}" does not exists`);
+  setEntryValue(entry, value);
+}
+
+export function reset(variableMap: VariableMap, name: string): void {
+  const entry = variableMap[name];
+  if (!entry)
+    throw new Error(`Variable "${name}" does not exists`);
+  entry.value = undefined;
 }
 
 export function defineVariable(map: VariableMap, group: string, name: string, descriptor: VariableDescriptor) {
@@ -67,9 +123,6 @@ export function defineVariable(map: VariableMap, group: string, name: string, de
     defineEntry = {
       name,
       type: "", group, value: undefined,  initValue: undefined, description: "",
-      setValue: function(this: VariableEntry, value: any) {
-        this.value = value;
-      },
     };
     map[name] = defineEntry;
   }
@@ -109,56 +162,27 @@ export function defineVariable(map: VariableMap, group: string, name: string, de
     if (itemType !== "boolean" && itemType !== "number" && itemType !== "string")
       throw new Error(`Enum ${name} not support ${itemType} type`);
     isValidValue = (value: any) => enumList.includes(value);
-    defineEntry.setValue = function(this: VariableEntry, value: any) {
-      if (!isValidValue(value))
-        throw new TypeError(`Attempting to set "${value}" to ${this.name} as a ${enumList}`);
-      this.value = value;
-    }
-    type = "enum";
   }
   else if (type === "boolean") {
     isValidValue = (value: any) => typeof value === "boolean";
-    defineEntry.setValue = function(this: VariableEntry, value: any) {
-      if (!isValidValue(value))
-        throw new TypeError(`Attempting to set "${value}" to ${this.name} as a boolean`);
-      this.value = value;
-    }
   }
   else if (type === "number") {
     isValidValue = (value: any) => typeof value === "number";
-    defineEntry.setValue = function(this: VariableEntry, value: any) {
-      if (!isValidValue(value))
-        throw new TypeError(`Attempting to set "${value}" to ${this.name} as a number`);
-      this.value = value;
-    }
   }
   else if (type === "string") {
     isValidValue = (value: any) => typeof value === "string";
-    defineEntry.setValue = function(this: VariableEntry, value: any) {
-      if (!isValidValue(value))
-        throw new TypeError(`Attempting to set "${value}" to ${this.name} as a string`);
-      this.value = value;
-    }
   }
   else if (type === "array") {
-    defineEntry.setValue = function(this: VariableEntry, value: any) {
-      isValidValue = Array.isArray;
-      if (!isValidValue(value))
-        throw new TypeError(`Attempting to set "${value}" to ${this.name} as an array`);
-      this.value = Array.from(value);
-    }
+    isValidValue = Array.isArray;
   }
   else if (type === "AbsolutePath") {
     isValidValue = (value: any) => !!AbsolutePath.create(value);
-    defineEntry.setValue = function(this: VariableEntry, value: any) { this.value = AbsolutePath.create(value); }
   }
   else if (type === "DirPath") {
     isValidValue = (value: any) => !!DirPath.create(value);
-    defineEntry.setValue = function(this: VariableEntry, value: any) { this.value = DirPath.create(value); }
   }
   else if (type === "FilePath") {
     isValidValue = (value: any) => !!FilePath.create(value);
-    defineEntry.setValue = function(this: VariableEntry, value: any) { this.value = FilePath.create(value); }
   }
   else if (type !== "object" && type !== "enum") {
     throw new Error(`Variable "${name}" has wrong "${type}" type`);
@@ -175,7 +199,7 @@ export function defineVariable(map: VariableMap, group: string, name: string, de
 
   defineEntry.type = type;
   if (defineEntry.value !== undefined) {
-    defineEntry.setValue(defineEntry.value);
+    setEntryValue(defineEntry, defineEntry.value);
   }
 }
 
@@ -191,7 +215,7 @@ export function createProxy<T>(map: VariableMap, o?: any): T {
     set(target: VariableMap, key: string, value: any): boolean {
       const entry = target[key];
       if (entry)
-        entry.setValue(value);
+        setEntryValue(entry, value);
       else
         defineVariable(target, "", key, toDescriptor(value));
       return true;
@@ -292,7 +316,7 @@ export function mergeVariableMap(target: VariableMap, source: any): VariableMap 
       defineVariable(target, "", name, { value });
     else {
       let dest = getEntryValue(entry);
-      entry.setValue((dest && typeof dest === "object") ? mergeVariables(dest, value) : value);
+      setEntryValue(entry, (dest && typeof dest === "object") ? mergeVariables(dest, value) : value);
     }
   }
   return target;

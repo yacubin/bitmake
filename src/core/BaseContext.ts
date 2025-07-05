@@ -34,7 +34,7 @@ export class BaseContext implements IMakeObject {
   public setProperty(name: string, value: any): any {
     const entry = this[VARIABLE_MAP][name];
     if (entry)
-      entry.setValue(value);
+      ScopeHelper.setEntryValue(entry, value);
     else
       ScopeHelper.defineVariable(this[VARIABLE_MAP], "", name, {value});
     return true;

@@ -42,7 +42,7 @@ export class MakeContext extends BaseContext implements IMakeContext {
   public addCacheVariables(params: string | VariantMap): void {
     let variables = params;
     if (typeof params === "string") {
-      const filename = this[SCOPE].SOURCE_DIR.getValue().resolve(params).toString();
+      const filename = ScopeHelper.get(this[SCOPE], "SOURCE_DIR").resolve(params).toString();
       if (!fileExistsSync(filename))
         return;
       variables = requireSync(filename);
@@ -52,9 +52,9 @@ export class MakeContext extends BaseContext implements IMakeContext {
   }
 
   public addIncludeDirectories(...dirs: any[]) {
-    const sourceDir = this[SCOPE].SOURCE_DIR.getValue();
+    const sourceDir = ScopeHelper.get(this[SCOPE], "SOURCE_DIR");
     for (const iter of dirs.flat())
-      this[SCOPE].INCLUDES.getValue().push(sourceDir.resolve(iter));
+      ScopeHelper.get(this[SCOPE], "INCLUDES").push(sourceDir.resolve(iter));
   }
 
   public addSubdirectory(sourceDir: any, binaryDir: any) {

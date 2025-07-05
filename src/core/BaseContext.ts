@@ -29,8 +29,7 @@ export class BaseContext implements IMakeObject {
 
   // MakeObject
   public getProperty(name: string): any {
-    const entry = this[VARIABLE_MAP][name];
-    return entry ? entry.getValue() : undefined;
+    return ScopeHelper.get(this[VARIABLE_MAP], name);
   }
   public setProperty(name: string, value: any): any {
     const entry = this[VARIABLE_MAP][name];

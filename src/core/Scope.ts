@@ -23,7 +23,6 @@ interface VariableEntry {
   value: any;
   description: string;
 
-  getValue(this: VariableEntry): any;
   setValue(this: VariableEntry, value: any): void;
 };
 
@@ -45,6 +44,22 @@ function toDescriptor(value: any): VariableDescriptor {
   return value;
 }
 
+export function getEntryValue(entry: VariableEntry): any {
+  /*if (value === undefined)
+    throw new Error(`Value of ${name} cannot be obtained because it has not been established`);*/
+  return (entry.value === undefined) ? entry.initValue : entry.value;
+}
+
+export function setEntryValue(entry: VariableEntry, value: any): any {
+  entry.setValue(value);
+}
+
+export function get(variableMap: VariableMap, name: string): any {
+  const entry = variableMap[name];
+  if (entry)
+    return getEntryValue(entry);
+}
+
 export function defineVariable(map: VariableMap, group: string, name: string, descriptor: VariableDescriptor) {
   let defineEntry = map[name];
   let isValidValue = (value: any) => true;
@@ -52,11 +67,6 @@ export function defineVariable(map: VariableMap, group: string, name: string, de
     defineEntry = {
       name,
       type: "", group, value: undefined,  initValue: undefined, description: "",
-      getValue: function(this: VariableEntry) {
-        /*if (value === undefined)
-          throw new Error(`Value of ${name} cannot be obtained because it has not been established`);*/
-        return (this.value === undefined) ? this.initValue : this.value;
-      },
       setValue: function(this: VariableEntry, value: any) {
         this.value = value;
       },
@@ -150,8 +160,9 @@ export function defineVariable(map: VariableMap, group: string, name: string, de
     isValidValue = (value: any) => !!FilePath.create(value);
     defineEntry.setValue = function(this: VariableEntry, value: any) { this.value = FilePath.create(value); }
   }
-  else if (type !== "object")
+  else if (type !== "object" && type !== "enum") {
     throw new Error(`Variable "${name}" has wrong "${type}" type`);
+  }
 
   if (descriptor.value === undefined) {
     defineEntry.initValue = (type === "array") ? [] : undefined;
@@ -162,6 +173,7 @@ export function defineVariable(map: VariableMap, group: string, name: string, de
     defineEntry.initValue = (type === "array") ? Array.from(descriptor.value) : descriptor.value;
   }
 
+  defineEntry.type = type;
   if (defineEntry.value !== undefined) {
     defineEntry.setValue(defineEntry.value);
   }
@@ -173,7 +185,7 @@ export function createProxy<T>(map: VariableMap, o?: any): T {
     get(target: VariableMap, key: string, receiver: any) {
       const entry = target[key];
       if (entry)
-        return entry.getValue();
+        return getEntryValue(entry);
       return o[key];
     },
     set(target: VariableMap, key: string, value: any): boolean {
@@ -205,8 +217,8 @@ export function cloneVariableMap(map: VariableMap) {
       description: entry.description,
       value: entry.initValue,
     });
-    if (entry.getValue() !== undefined)
-      result[name].value = entry.getValue();
+    if (getEntryValue(entry) !== undefined)
+      result[name].value = getEntryValue(entry);
   }
   return result;
 }
@@ -233,7 +245,7 @@ export function getVariablesByGroup(map: VariableMap, group?: string) {
     result[name] = {
       type: entry.type,
       description: entry.description,
-      value: entry.getValue(),
+      value: getEntryValue(entry),
     };
   }
   return result;
@@ -242,7 +254,7 @@ export function getVariablesByGroup(map: VariableMap, group?: string) {
 export function createVariableValues(map: VariableMap): any {
   const result: any = {};
   for (const [ name, entry ] of Object.entries(map))
-    result[name] = entry.getValue();
+    result[name] = getEntryValue(entry);
   return result;
 }
 
@@ -279,7 +291,7 @@ export function mergeVariableMap(target: VariableMap, source: any): VariableMap 
     if (!entry)
       defineVariable(target, "", name, { value });
     else {
-      let dest = entry.getValue();
+      let dest = getEntryValue(entry);
       entry.setValue((dest && typeof dest === "object") ? mergeVariables(dest, value) : value);
     }
   }

@@ -8,7 +8,7 @@
  */
 
 import { ProjectContext } from "@/core/ProjectContext";
-import { VariableMap } from "@/core/Scope";
+import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { Worker } from "node:worker_threads";
 import { currentScriptURL } from "@/utils/Module";
 import { MemoryMessageSender } from "@/transport/MemoryTransport";
@@ -64,8 +64,8 @@ export class MakeServer {
   }
 
   public async start() {
-    const sourceDir = this._rootVariableMap.PROJECT_SOURCE_DIR.getValue();
-    const binaryDir = this._rootVariableMap.PROJECT_BINARY_DIR.getValue();
+    const sourceDir = ScopeHelper.get(this._rootVariableMap, "PROJECT_SOURCE_DIR");
+    const binaryDir = ScopeHelper.get(this._rootVariableMap, "PROJECT_BINARY_DIR");
 
     /*const jsonRpcServer = new JsonRpcServer;
     const variableMap = this._preparation.createVariableMapForSubdirectory(this._rootVariableMap, sourceDir, binaryDir);

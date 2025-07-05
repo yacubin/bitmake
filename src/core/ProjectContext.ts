@@ -232,15 +232,15 @@ export class ProjectContext {
     if (typeof script === "string")
       scriptObj = this.findScriptFunction(script);
     if (!scriptObj)
-      scriptObj = FilePath.create(variableMap.SOURCE_DIR.getValue().resolve(script));
+      scriptObj = FilePath.create(ScopeHelper.get(variableMap, "SOURCE_DIR").resolve(script));
 
     let inputFile = params.SCRIPT_INPUT;
     if (inputFile)
-      inputFile = FilePath.create(variableMap.SOURCE_DIR.getValue().resolve(inputFile));
+      inputFile = FilePath.create(ScopeHelper.get(variableMap, "SOURCE_DIR").resolve(inputFile));
 
     if (!params.SCRIPT_OUTPUT)
       throw new Error("CustomScript parameters required output entity");
-    const outputFile = FilePath.create(variableMap.SOURCE_DIR.getValue().resolve(params.SCRIPT_OUTPUT));
+    const outputFile = FilePath.create(ScopeHelper.get(variableMap, "SOURCE_DIR").resolve(params.SCRIPT_OUTPUT));
 
     const options: CustomScript.Options = {
       variableMap,
@@ -248,7 +248,7 @@ export class ProjectContext {
       script: scriptObj,
       output: outputFile,
       input: inputFile,
-      workDir: variableMap.BINARY_DIR.getValue(),
+      workDir: ScopeHelper.get(variableMap, "BINARY_DIR"),
     };
 
     const target = CustomScript.create(options);
@@ -276,8 +276,8 @@ export class ProjectContext {
   }
 
   public addSubdirectoryAlias(variableMap: VariableMap, src: any, dest: any) {
-    const srcPath = AbsolutePath.create(variableMap.SOURCE_DIR.getValue().resolve(src));
-    const destPath = (dest === null) ? null : AbsolutePath.create(variableMap.SOURCE_DIR.getValue().resolve(dest));
+    const srcPath = AbsolutePath.create(ScopeHelper.get(variableMap, "SOURCE_DIR").resolve(src));
+    const destPath = (dest === null) ? null : AbsolutePath.create(ScopeHelper.get(variableMap, "SOURCE_DIR").resolve(dest));
     const srcStr = srcPath.toString();
     if (this._subdirAlias.hasOwnProperty(srcStr))
       logger.warn(`Owerride "${srcStr}" subdirectory alias`);
@@ -373,7 +373,7 @@ export class ProjectContext {
   public executeScriptSync(variableMap: VariableMap, script: any, params: any) {
     const newVariableMap = ScopeHelper.cloneVariableMap(variableMap);
     params && ScopeHelper.extendVariableMapByValues(newVariableMap, "", params);
-    const scriptPath = newVariableMap.SOURCE_DIR.getValue().resolve(script);
+    const scriptPath = ScopeHelper.get(newVariableMap, "SOURCE_DIR").resolve(script);
     const func = requireSync(scriptPath.toString());
     const mk = ScriptContext.create(this, newVariableMap);
     func(mk);
@@ -389,14 +389,14 @@ export class ProjectContext {
       if (!AbsolutePath.isAbsolute(sourceDir))
         binaryDir = sourceDir;
       else {
-        const binaryDir1 = variableMap.PROJECT_BINARY_DIR.getValue().relative(sourceDir);
-        const binaryDir2 = variableMap.PROJECT_SOURCE_DIR.getValue().relative(sourceDir);
+        const binaryDir1 = ScopeHelper.get(variableMap, "PROJECT_BINARY_DIR").relative(sourceDir);
+        const binaryDir2 = ScopeHelper.get(variableMap, "PROJECT_SOURCE_DIR").relative(sourceDir);
         binaryDir = (binaryDir1.length > binaryDir2.length) ? binaryDir2 : binaryDir1;
       }
     }
 
-    const SOURCE_DIR = variableMap.SOURCE_DIR.getValue().resolve(sourceDir);
-    const BINARY_DIR = variableMap.BINARY_DIR.getValue().resolve(binaryDir);
+    const SOURCE_DIR = ScopeHelper.get(variableMap, "SOURCE_DIR").resolve(sourceDir);
+    const BINARY_DIR = ScopeHelper.get(variableMap, "BINARY_DIR").resolve(binaryDir);
 
     const resolvePath = this.resolveSubdirectory(SOURCE_DIR);
     if (!resolvePath) {
@@ -426,11 +426,11 @@ export class ProjectContext {
   }
 
   public async createMakeContext(variableMap: VariableMap): Promise<MakeContext> {
-    if (!variableMap.SCRIPT_FILE.getValue()) {
+    if (!ScopeHelper.get(variableMap, "SCRIPT_FILE")) {
       let scriptFile: AbsolutePath | undefined;
       const fileList = [ ".js", ".mjs" ].map(i => "MakeScript" + i);
       for (const filename of fileList) {
-        const iter = variableMap.SOURCE_DIR.getValue().join(filename);
+        const iter = ScopeHelper.get(variableMap, "SOURCE_DIR").join(filename);
         if (await fileExists(iter.toString())) {
           scriptFile = iter;
           break;
@@ -438,13 +438,13 @@ export class ProjectContext {
       }
 
       if (!scriptFile)
-        throw new Error(`There are no files ${fileList.join(", ")} in "${variableMap.SOURCE_DIR.getValue()}"`);
+        throw new Error(`There are no files ${fileList.join(", ")} in "${ScopeHelper.get(variableMap, "SOURCE_DIR")}"`);
 
       variableMap.SCRIPT_FILE.setValue(scriptFile);
-      variableMap.SCRIPT_DIR.setValue(variableMap.SCRIPT_FILE.getValue().dirname());
+      variableMap.SCRIPT_DIR.setValue(ScopeHelper.get(variableMap, "SCRIPT_FILE").dirname());
     }
 
-    this.registerVariableMap(variableMap.SCRIPT_FILE.getValue().toString(), variableMap);
+    this.registerVariableMap(ScopeHelper.get(variableMap, "SCRIPT_FILE").toString(), variableMap);
 
     return MakeContext.create(this, variableMap);
   }
@@ -455,8 +455,8 @@ export class ProjectContext {
       if (!variableMap)
         break;
       const mk = await this.createMakeContext(variableMap);
-      const importName = variableMap.SCRIPT_FILE.getValue().toString();
-      const cwd = variableMap.SOURCE_DIR.getValue().toString();
+      const importName = ScopeHelper.get(variableMap, "SCRIPT_FILE").toString();
+      const cwd = ScopeHelper.get(variableMap, "SOURCE_DIR").toString();
       const cwdSave = process.cwd();
       process.chdir(cwd);
     

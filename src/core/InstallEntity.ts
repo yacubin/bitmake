@@ -8,7 +8,7 @@
  */
 
 import { InterfaceTarget } from "@/core/Target";
-import { DirPath, FilePath, AbsolutePath } from "@/core/Path";
+import { DirPath, AbsolutePath } from "@/core/Path";
 import { SystemScope } from "@/core/SystemScope";
 
 const VALUE       = Symbol("VALUE");
@@ -38,7 +38,7 @@ export class InstallEntity {
   
     if (typeof value === "string" || value instanceof AbsolutePath) {
       value = scope.SOURCE_DIR.resolve(value.toString()) as AbsolutePath;
-      value = FilePath.create(value);
+      value = AbsolutePath.create(value);
       baseDir = baseDir || value.dirname();
     }
     else if (!(value instanceof InterfaceTarget)) {

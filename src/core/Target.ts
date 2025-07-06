@@ -12,7 +12,7 @@ import { SourceFile } from "@/core/SourceFile";
 import { SourceFileList } from "@/core/SourceFileList";
 import { InterfaceIncludes } from "@/core/InterfaceIncludes";
 import { InterfaceObjects } from "@/core/InterfaceObjects";
-import { AbsolutePath, FilePath } from "@/core/Path";
+import { AbsolutePath } from "@/core/Path";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
 import { TargetStruct, TargetType, LiveString } from "@/core/TargetStruct";
@@ -283,7 +283,7 @@ export class BaseTarget {
 
   public get targetFile(): LiveString {
     const targetFile = this[IMPL].targetFile;
-    return LiveString.create(() => FilePath.create(targetFile.file).toString());
+    return LiveString.create(() => targetFile.file ? targetFile.file.toString() : "");
   }
 
   public toJSON(): object {

@@ -15,7 +15,7 @@ import { PluginContext } from "@/core/PluginContext";
 import { ScopeHelper } from "@/core/Scope";
 import { ToolchainContext } from "@/core/ToolchainContext";
 import { getPathString, getURLString }  from "@/utils/FileSystem";
-import { AbsolutePath, DirPath, FilePath } from "@/core/Path";
+import { AbsolutePath, DirPath } from "@/core/Path";
 import { importModule }  from "@/utils/Module";
 import { determineCompiler }  from "@/core/DetermineCompiler";
 import { SettingsStorage } from "@/utils/SettingsStorage";
@@ -64,7 +64,7 @@ export default async function(config: any, environment: any, settings: SettingsS
   for (const plugin of (scope.MAKE_PLUGIN_LIST || [])) {
     const cwdSave = process.cwd();
 
-    scope.SCRIPT_FILE = FilePath.create(plugin);
+    scope.SCRIPT_FILE = AbsolutePath.create(plugin);
     scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
     scope.SOURCE_DIR = scope.SCRIPT_DIR;
 

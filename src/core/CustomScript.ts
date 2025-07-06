@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { FilePath, DirPath } from "@/core/Path";
+import { AbsolutePath, DirPath } from "@/core/Path";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 
 const SCOPE        = Symbol("SCOPE");
@@ -20,9 +20,9 @@ const WORK_DIR     = Symbol("WORK_DIR");
 export class CustomScript {
   private [SCOPE]: VariableMap;
   private [NAME]: string;
-  private [SCRIPT]: FilePath | Function;
-  private [INPUT]: FilePath | undefined;
-  private [OUTPUT]: FilePath;
+  private [SCRIPT]: AbsolutePath | Function;
+  private [INPUT]: AbsolutePath | undefined;
+  private [OUTPUT]: AbsolutePath;
   private [WORK_DIR]: DirPath;
 
   private constructor(options: CustomScript.Options) {
@@ -50,15 +50,15 @@ export class CustomScript {
     return this[SCRIPT];
   }
 
-  public get INPUT(): FilePath | undefined {
+  public get INPUT(): AbsolutePath | undefined {
     return this[INPUT];
   }
 
-  public get OUTPUT(): FilePath {
+  public get OUTPUT(): AbsolutePath {
     return this[OUTPUT];
   }
 
-  public get workDir(): FilePath {
+  public get workDir(): AbsolutePath {
     return this[WORK_DIR];
   }
 
@@ -82,9 +82,9 @@ export namespace CustomScript {
 export interface Options {
   variableMap: VariableMap,
   name?: string,
-  script: FilePath | Function,
-  input?: FilePath,
-  output: FilePath,
+  script: AbsolutePath | Function,
+  input?: AbsolutePath,
+  output: AbsolutePath,
   workDir: DirPath,
 };
 

@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { AbsolutePath, DirPath, FilePath } from "@/core/Path";
+import { AbsolutePath, DirPath } from "@/core/Path";
 import { deepCopy } from "@/utils/Primitives";
 
 interface VariableDescriptor {
@@ -72,7 +72,7 @@ const makeValueMap: any = {
     return AbsolutePath.create(value);
   },
   FilePath: (value: any) => {
-    return FilePath.create(value);
+    return AbsolutePath.create(value);
   },
   DirPath: (value: any) => {
     return DirPath.create(value);
@@ -207,8 +207,6 @@ export function defineVariable(map: VariableMap, group: string, name: string, de
     type = "AbsolutePath";
   else if (descriptor.value instanceof DirPath)
     type = "DirPath";
-  else if (descriptor.value instanceof FilePath)
-    type = "FilePath";
   else
     type = typeof descriptor.value;
 
@@ -238,14 +236,11 @@ export function defineVariable(map: VariableMap, group: string, name: string, de
   else if (type === "array") {
     isValidValue = Array.isArray;
   }
-  else if (type === "AbsolutePath") {
+  else if (type === "AbsolutePath" || type === "FilePath") {
     isValidValue = (value: any) => !!AbsolutePath.create(value);
   }
   else if (type === "DirPath") {
     isValidValue = (value: any) => !!DirPath.create(value);
-  }
-  else if (type === "FilePath") {
-    isValidValue = (value: any) => !!FilePath.create(value);
   }
   else if (type !== "object" && type !== "enum") {
     throw new Error(`Variable "${name}" has wrong "${type}" type`);

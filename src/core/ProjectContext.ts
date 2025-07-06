@@ -12,7 +12,7 @@ import url from "node:url";
 import { spawnSync } from "node:child_process";
 
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
-import { FilePath, DirPath, AbsolutePath } from "@/core/Path";
+import { DirPath, AbsolutePath } from "@/core/Path";
 import { Path } from "@/utils/Path";
 import { fileExists, fileExistsSync } from "@/utils/FileSystem";
 import { TargetCollection, TargetStructCollection } from "@/core/TargetCollection";
@@ -160,10 +160,10 @@ export class GoalWorkerImpl {
     })
   }
 
-  addScript(global: ProjectContext, variableMap: VariableMap, script: FilePath | Function): void {
+  addScript(global: ProjectContext, variableMap: VariableMap, script: AbsolutePath | Function): void {
     this.addCallback(async () => {
       let func: any = script;
-      if (script instanceof FilePath) {
+      if (script instanceof AbsolutePath) {
         const scriptUrl = url.pathToFileURL(func.toString());
         func = (await importModule(scriptUrl)).default;
       }
@@ -229,19 +229,19 @@ export class ProjectContext {
     if (!params)
       throw new Error("Argument with parameters is missing");
 
-    let scriptObj: Function | FilePath | undefined;
+    let scriptObj: Function | AbsolutePath | undefined;
     if (typeof script === "string")
       scriptObj = this.findScriptFunction(script);
     if (!scriptObj)
-      scriptObj = FilePath.create(ScopeHelper.get(variableMap, "SOURCE_DIR").resolve(script));
+      scriptObj = AbsolutePath.create(ScopeHelper.get(variableMap, "SOURCE_DIR").resolve(script));
 
     let inputFile = params.SCRIPT_INPUT;
     if (inputFile)
-      inputFile = FilePath.create(ScopeHelper.get(variableMap, "SOURCE_DIR").resolve(inputFile));
+      inputFile = AbsolutePath.create(ScopeHelper.get(variableMap, "SOURCE_DIR").resolve(inputFile));
 
     if (!params.SCRIPT_OUTPUT)
       throw new Error("CustomScript parameters required output entity");
-    const outputFile = FilePath.create(ScopeHelper.get(variableMap, "SOURCE_DIR").resolve(params.SCRIPT_OUTPUT));
+    const outputFile = AbsolutePath.create(ScopeHelper.get(variableMap, "SOURCE_DIR").resolve(params.SCRIPT_OUTPUT));
 
     const options: CustomScript.Options = {
       variableMap,
@@ -456,7 +456,7 @@ export class ProjectContext {
     const goalList = GoalCollection.create();
     for (const script of this[CUSTOM_SCRIPTS].ENTRIES) {   
       const depends = [];
-      if (script.SCRIPT instanceof FilePath)
+      if (script.SCRIPT instanceof AbsolutePath)
         depends.push(script.SCRIPT.toString());
       if (script.INPUT)
         depends.push(script.INPUT.toString());

@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { DirPath, FilePath, AbsolutePath } from "@/core/Path";
+import { DirPath, AbsolutePath } from "@/core/Path";
 import { InterfaceIncludes } from "@/core/InterfaceIncludes";
 import { InterfaceObjects } from "@/core/InterfaceObjects";
 import { InterfaceTarget } from "@/core/Target";
@@ -223,7 +223,7 @@ function makeTargetCommand(_command: any, _args: any[]): TargetCommand {
     command = _command;
   else if (_command instanceof LiveString)
     command = _command;
-  else if (_command instanceof FilePath)
+  else if (_command instanceof AbsolutePath)
     command = _command.toString();
   else
     throw new TypeError(`Wrong type ${_command} for command`);
@@ -234,7 +234,7 @@ function makeTargetCommand(_command: any, _args: any[]): TargetCommand {
       args.push(iter);
     else if (iter instanceof LiveString)
       args.push(iter);
-    else if (iter instanceof FilePath)
+    else if (iter instanceof AbsolutePath)
       args.push(iter.toString());
     else if (iter instanceof DirPath)
       args.push(iter.toString());

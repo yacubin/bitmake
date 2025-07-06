@@ -14,7 +14,7 @@ import path from "node:path";
 
 const PATH = Symbol("PATH");
 
-const _paths = new Map<string, DirPath | FilePath>();
+const _paths = new Map<string, DirPath>();
 
 export class AbsolutePath {
   private [PATH]: string;
@@ -80,7 +80,7 @@ export class AbsolutePath {
     throw new Error(`The '${value}' is not a AbsolutePath`);
   }
 
-  public static create(path: AbsolutePath | string): AbsolutePath | DirPath | FilePath {
+  public static create(path: AbsolutePath | string): AbsolutePath | DirPath {
     const result = _paths.get(path.toString());
     if (result)
       return result;
@@ -91,38 +91,6 @@ export class AbsolutePath {
     return Object.seal(new AbsolutePath(path));
   }
 };
-
-export class FilePath extends AbsolutePath {
-  private constructor(pathStr: string) {
-    super(pathStr);
-  }
-
-  public static ensureInstance(value: any): FilePath {
-    if (value instanceof FilePath)
-      return value;
-    throw new Error(`The '${value}' is not a FilePath`);
-  }
-  
-  public static create(path: any): FilePath {
-    if (path instanceof FilePath)
-      return path;
-
-    if (path instanceof AbsolutePath)
-      path = path.toString();
-
-    if (typeof path !== "string")
-      throw new Error(`The '${path}' is not a string`);
-
-    let filePath = _paths.get(path);
-    if (filePath)
-      return FilePath.ensureInstance(filePath);
-
-    filePath = Object.seal(new FilePath(path));
-    _paths.set(path, filePath);
-
-    return filePath;
-  }
-}
 
 export class DirPath extends AbsolutePath {
   private constructor(pathStr: string) {

@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { AbsolutePath, DirPath } from "@/core/Path";
+import { AbsolutePath } from "@/core/AbsolutePath";
 import { deepCopy } from "@/utils/Primitives";
 
 interface VariableDescriptor {
@@ -75,7 +75,7 @@ const makeValueMap: any = {
     return AbsolutePath.create(value);
   },
   DirPath: (value: any) => {
-    return DirPath.create(value);
+    return AbsolutePath.create(value);
   },
   object: (value: any) => {
     return value;
@@ -205,8 +205,6 @@ export function defineVariable(map: VariableMap, group: string, name: string, de
     type = "array";
   else if (descriptor.value instanceof AbsolutePath)
     type = "AbsolutePath";
-  else if (descriptor.value instanceof DirPath)
-    type = "DirPath";
   else
     type = typeof descriptor.value;
 
@@ -236,11 +234,8 @@ export function defineVariable(map: VariableMap, group: string, name: string, de
   else if (type === "array") {
     isValidValue = Array.isArray;
   }
-  else if (type === "AbsolutePath" || type === "FilePath") {
+  else if (type === "AbsolutePath" || type === "FilePath" || type === "DirPath") {
     isValidValue = (value: any) => !!AbsolutePath.create(value);
-  }
-  else if (type === "DirPath") {
-    isValidValue = (value: any) => !!DirPath.create(value);
   }
   else if (type !== "object" && type !== "enum") {
     throw new Error(`Variable "${name}" has wrong "${type}" type`);

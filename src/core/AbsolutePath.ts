@@ -14,8 +14,6 @@ import path from "node:path";
 
 const PATH = Symbol("PATH");
 
-const _paths = new Map<string, DirPath>();
-
 export class AbsolutePath {
   private [PATH]: string;
 
@@ -37,7 +35,7 @@ export class AbsolutePath {
   }
 
   public dirname() {
-    return DirPath.create(path.posix.dirname(this[PATH]));
+    return AbsolutePath.create(path.posix.dirname(this[PATH]));
   }
 
   public basename() {
@@ -80,46 +78,10 @@ export class AbsolutePath {
     throw new Error(`The '${value}' is not a AbsolutePath`);
   }
 
-  public static create(path: AbsolutePath | string): AbsolutePath | DirPath {
-    const result = _paths.get(path.toString());
-    if (result)
-      return result;
-
+  public static create(path: AbsolutePath | string): AbsolutePath {
     if (path instanceof AbsolutePath)
       return path;
 
     return Object.seal(new AbsolutePath(path));
-  }
-};
-
-export class DirPath extends AbsolutePath {
-  private constructor(pathStr: string) {
-    super(pathStr);
-  }
-
-  public static ensureInstance(value: any): DirPath {
-    if (value instanceof DirPath)
-      return value;
-    throw new Error(`The '${value}' is not a DirPath`);
-  }
-
-  public static create(path: any): DirPath {
-    if (path instanceof DirPath)
-      return path;
-
-    if (path instanceof AbsolutePath)
-      path = path.toString();
-
-    if (typeof path !== "string")
-      throw new Error(`The '${path}' is not a string`);
-
-    let dirPath = _paths.get(path);
-    if (dirPath)
-      return DirPath.ensureInstance(dirPath);
-
-    dirPath = Object.seal(new DirPath(path));
-    _paths.set(path, dirPath);
-
-    return dirPath;
   }
 };

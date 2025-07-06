@@ -7,22 +7,22 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { DirPath, AbsolutePath } from "@/core/Path";
+import { AbsolutePath } from "@/core/AbsolutePath";
 import { InterfaceIncludes } from "@/core/InterfaceIncludes";
 import { InterfaceObjects } from "@/core/InterfaceObjects";
 import { InterfaceTarget } from "@/core/Target";
 import { SourceFile } from "@/core/SourceFile";
 import { normalizeDefinitions } from "@/core/DefinitionHelper";
 
-export function normalizeIncludes(baseDir: DirPath, ...includes: any[]): Array<DirPath|InterfaceIncludes> {
+export function normalizeIncludes(baseDir: AbsolutePath, ...includes: any[]): Array<AbsolutePath|InterfaceIncludes> {
   const result = [];
   for (const iter of includes.flat()) {
     if (iter instanceof InterfaceIncludes)
       result.push(iter);
     else if (typeof iter === "string")
-      result.push(DirPath.create(baseDir.resolve(iter)));
+      result.push(AbsolutePath.create(baseDir.resolve(iter)));
     else if (iter instanceof AbsolutePath)
-      result.push(DirPath.create(iter));
+      result.push(AbsolutePath.create(iter));
     else
       throw new Error(`Not support instance ${iter}`);
   }
@@ -56,7 +56,7 @@ export class LiveString {
 };
 
 export class TargetFile {
-  private _fileDir?: DirPath
+  private _fileDir?: AbsolutePath
 
   private _initPrefix?: string;
   private _targetPrefix?: string;
@@ -177,11 +177,11 @@ export class TargetFile {
     return this.prefix + this.outputName + this.suffix;
   }
 
-  public get fileDir(): DirPath | undefined {
+  public get fileDir(): AbsolutePath | undefined {
     return this._fileDir;
   }
 
-  public set fileDir(value: DirPath) {
+  public set fileDir(value: AbsolutePath) {
     this._fileDir = value;
   }
 
@@ -236,7 +236,7 @@ function makeTargetCommand(_command: any, _args: any[]): TargetCommand {
       args.push(iter);
     else if (iter instanceof AbsolutePath)
       args.push(iter.toString());
-    else if (iter instanceof DirPath)
+    else if (iter instanceof AbsolutePath)
       args.push(iter.toString());
     else
       throw new TypeError(`Wrong type ${iter} for argument`);
@@ -302,7 +302,7 @@ export class TargetStruct {
   private _preBuildList = new Array<TargetCommand>;
   private _postBuildList = new Array<TargetCommand>;
   private _defines = new TargetItems<string>;
-  private _includes = new TargetItems<DirPath | InterfaceIncludes>;
+  private _includes = new TargetItems<AbsolutePath | InterfaceIncludes>;
   private _compileOptions = new TargetItems<string | string[]>;
   private _linkOptions = new TargetItems<string | string[]>;
   private _sources = new TargetItems<InterfaceObjects | SourceFile>;
@@ -410,20 +410,20 @@ export class TargetStruct {
     return this._defines.getPublicItems();
   }
 
-  public addInclude(origin: TargetItemOrigin, publicOnly: boolean, value: DirPath|InterfaceIncludes) {
+  public addInclude(origin: TargetItemOrigin, publicOnly: boolean, value: AbsolutePath|InterfaceIncludes) {
     this._includes.addItem(origin, publicOnly, value);
   }
 
-  public addIncludes(origin: TargetItemOrigin, publicOnly: boolean, baseDir: DirPath, ...includes: any[]) {
+  public addIncludes(origin: TargetItemOrigin, publicOnly: boolean, baseDir: AbsolutePath, ...includes: any[]) {
     for (const iter of normalizeIncludes(baseDir, ...includes))
       this.addInclude(origin, publicOnly, iter);
   }
 
-  public getIncludes(): Array<DirPath|InterfaceIncludes> {
+  public getIncludes(): Array<AbsolutePath|InterfaceIncludes> {
     return this._includes.getItems();
   }
 
-  public getPublicIncludes(): Array<DirPath|InterfaceIncludes> {
+  public getPublicIncludes(): Array<AbsolutePath|InterfaceIncludes> {
     return this._includes.getPublicItems();
   }
 

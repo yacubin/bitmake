@@ -12,7 +12,7 @@ import url from "node:url";
 import { spawnSync } from "node:child_process";
 
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
-import { DirPath, AbsolutePath } from "@/core/Path";
+import { AbsolutePath } from "@/core/AbsolutePath";
 import { Path } from "@/utils/Path";
 import { fileExists, fileExistsSync } from "@/utils/FileSystem";
 import { TargetCollection, TargetStructCollection } from "@/core/TargetCollection";
@@ -524,7 +524,7 @@ export class ProjectContext {
         args.push("-c", s.FILE.toString());
   
         const command = (target.TARGET_SCOPE as any)[s.LANGUAGE + "_COMPILER"].toString();
-        const output = DirPath.create(target.TARGET_SCOPE.BINARY_DIR.join(relativeObject));
+        const output = AbsolutePath.create(target.TARGET_SCOPE.BINARY_DIR.join(relativeObject));
         depends.push(output.toString());
 
         const worker = new GoalWorkerImpl;

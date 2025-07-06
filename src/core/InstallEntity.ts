@@ -8,7 +8,7 @@
  */
 
 import { InterfaceTarget } from "@/core/Target";
-import { DirPath, AbsolutePath } from "@/core/Path";
+import { AbsolutePath } from "@/core/AbsolutePath";
 import { SystemScope } from "@/core/SystemScope";
 
 const VALUE       = Symbol("VALUE");
@@ -17,8 +17,8 @@ const BASE_DIR    = Symbol("BASE_DIR");
 
 export class InstallEntity {
   private [VALUE]: AbsolutePath | InterfaceTarget;
-  private [DESTINATION]: DirPath;
-  private [BASE_DIR]: DirPath | null;
+  private [DESTINATION]: AbsolutePath;
+  private [BASE_DIR]: AbsolutePath | null;
 
   private constructor(scope: SystemScope, value: string | AbsolutePath | InterfaceTarget, params: string | any) {
     let destination: string | AbsolutePath | undefined;
@@ -46,8 +46,8 @@ export class InstallEntity {
     }
   
     this[VALUE] = value;
-    this[DESTINATION] = DirPath.create(scope.INSTALL_PREFIX.resolve(destination.toString()).toString());
-    this[BASE_DIR] = baseDir ? DirPath.create(baseDir.toString()) : null;
+    this[DESTINATION] = AbsolutePath.create(scope.INSTALL_PREFIX.resolve(destination.toString()).toString());
+    this[BASE_DIR] = baseDir ? AbsolutePath.create(baseDir.toString()) : null;
   }
   
   public static create(scope: any, value: string | AbsolutePath | InterfaceTarget, params: string | any) {

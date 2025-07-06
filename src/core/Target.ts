@@ -12,7 +12,7 @@ import { SourceFile } from "@/core/SourceFile";
 import { SourceFileList } from "@/core/SourceFileList";
 import { InterfaceIncludes } from "@/core/InterfaceIncludes";
 import { InterfaceObjects } from "@/core/InterfaceObjects";
-import { AbsolutePath } from "@/core/Path";
+import { AbsolutePath } from "@/core/AbsolutePath";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
 import { TargetStruct, TargetType, LiveString } from "@/core/TargetStruct";

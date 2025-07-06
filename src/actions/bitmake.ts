@@ -15,7 +15,7 @@ import { PluginContext } from "@/core/PluginContext";
 import { ScopeHelper } from "@/core/Scope";
 import { ToolchainContext } from "@/core/ToolchainContext";
 import { getPathString, getURLString }  from "@/utils/FileSystem";
-import { AbsolutePath, DirPath } from "@/core/Path";
+import { AbsolutePath } from "@/core/AbsolutePath";
 import { importModule }  from "@/utils/Module";
 import { determineCompiler }  from "@/core/DetermineCompiler";
 import { SettingsStorage } from "@/utils/SettingsStorage";
@@ -41,8 +41,8 @@ export default async function(config: any, environment: any, settings: SettingsS
   const sourceDir = getPathString(config.sourceDir);
   const binaryDir = getPathString(config.binaryDir);
 
-  scope.PROJECT_SOURCE_DIR = DirPath.create(sourceDir);
-  scope.PROJECT_BINARY_DIR = DirPath.create(binaryDir);
+  scope.PROJECT_SOURCE_DIR = AbsolutePath.create(sourceDir);
+  scope.PROJECT_BINARY_DIR = AbsolutePath.create(binaryDir);
 
   scope.PACKAGE_FILE = scope.PROJECT_SOURCE_DIR.join(PACKAGE_JSON);
   scope.CACHE_FILE = scope.PROJECT_BINARY_DIR.join(MAKE_CACHE);

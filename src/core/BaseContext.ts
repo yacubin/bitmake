@@ -12,7 +12,7 @@ import { findProgramSync } from "@/core/FindProgram";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { Logger } from "@/logger";
 import { SystemScope } from "@/core/SystemScope";
-import { AbsolutePath } from "@/core/Path";
+import { AbsolutePath } from "@/core/AbsolutePath";
 import { importModule } from "@/utils/Module";
 
 const logger = Logger.create(import.meta.url);

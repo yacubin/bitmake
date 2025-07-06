@@ -8,7 +8,7 @@
  */
 
 import { ensureBoolean } from "@/utils/StrictType";
-import { AbsolutePath } from "@/core/Path";
+import { AbsolutePath } from "@/core/AbsolutePath";
 
 const LANGUAGE            = Symbol("LANGUAGE");
 const HEADER_FILE_ONLY    = Symbol("HEADER_FILE_ONLY");

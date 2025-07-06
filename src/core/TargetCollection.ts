@@ -12,7 +12,7 @@ import { InterfaceTarget } from "@/core/Target";
 import { TargetStruct } from "@/core/TargetStruct";
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
 import { BaseTarget } from "./Target";
-import { DirPath } from "./Path";
+import { AbsolutePath } from "./AbsolutePath";
 
 const ENTRIES = Symbol("ENTRIES");
 
@@ -71,7 +71,7 @@ export class TargetCollection {
     this[ENTRIES][name] = target;
   }
 
-  private __getAllIncludes(includes: string[], targetSet: Set<string>, list: Array<DirPath | InterfaceIncludes> | Array<InterfaceTarget>) {
+  private __getAllIncludes(includes: string[], targetSet: Set<string>, list: Array<AbsolutePath | InterfaceIncludes> | Array<InterfaceTarget>) {
     for (const iter of list) {
       if (iter instanceof InterfaceIncludes || iter instanceof InterfaceTarget) {
         if (!targetSet.has(iter.targetName)) {
@@ -81,7 +81,7 @@ export class TargetCollection {
           this.__getAllIncludes(includes, targetSet, target.IMPL.getPublicLibraries());
         }
       }
-      else if (iter instanceof DirPath) {
+      else if (iter instanceof AbsolutePath) {
         if (!includes.includes(iter.toString()))
           includes.push(iter.toString());
       }
@@ -100,7 +100,7 @@ export class TargetCollection {
     return includes;
   }
 
-  private __getAllHeaders(headers: string[], targetSet: Set<string>, list: Array<DirPath | InterfaceIncludes> | Array<InterfaceTarget>) {
+  private __getAllHeaders(headers: string[], targetSet: Set<string>, list: Array<AbsolutePath | InterfaceIncludes> | Array<InterfaceTarget>) {
     for (const iter of list) {
       if (iter instanceof InterfaceIncludes || iter instanceof InterfaceTarget) {
         if (!targetSet.has(iter.targetName)) {

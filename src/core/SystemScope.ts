@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { DirPath, AbsolutePath } from "@/core/Path";
+import { AbsolutePath } from "@/core/AbsolutePath";
 
 export interface SystemScope {
   // Defines the target OS for the build, used in cross-compilation and native builds
@@ -29,10 +29,10 @@ export interface SystemScope {
   PROJECT_HOMEPAGE_URL: string;
 
   // Absolute path to the top-level source directory of the project
-  PROJECT_SOURCE_DIR: DirPath;
+  PROJECT_SOURCE_DIR: AbsolutePath;
 
   // Absolute path to the top-level build (binary) directory of the project
-  PROJECT_BINARY_DIR: DirPath;
+  PROJECT_BINARY_DIR: AbsolutePath;
 
   // Full path to the current MakeScript file being processed
   SCRIPT_FILE: AbsolutePath;
@@ -74,7 +74,7 @@ export interface SystemScope {
   HOST_SYSTEM_NAME: string;
 
   // Paths searched for header files
-  INCLUDES: Array<DirPath>;
+  INCLUDES: Array<AbsolutePath>;
 
   // Path to the assembler compiler detected
   ASM_COMPILER: string;

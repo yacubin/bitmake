@@ -36,7 +36,7 @@ function makeLogMethod(type: string, tagName: string, target: any, handler: Logg
     for (const iter of args)
       strList.push((typeof iter === "string") ? iter : JSON.stringify(iter));
     const message = strList.join(" ");
-    handler.call(target, truncate(message, 400));
+    handler.call(target, truncate(message, 320));
   };
 }
 
@@ -73,21 +73,6 @@ function entrySetEnable(entry: EntryLogger, enable: boolean) {
   }
 }
 
-function enableImpl(tagName: string) {
-  let entry = _loggerMap.get(tagName);
-  if (!entry) {
-    entry = createEntry(tagName, true);
-    _loggerMap.set(tagName, entry);
-  }
-  else  {
-    entrySetEnable(entry, true);
-  }
-}
-
-for (const iter of LOGGER_DEBUG) {
-  enableImpl(iter);
-}
-
 export namespace Logger {
 
 export function create(url: string): ILogger {
@@ -111,10 +96,23 @@ export function enableAll() {
 }
 
 export function enable(pattern: string) {
-  if (pattern === "*")
+  if (pattern === "*") {
     enableAll();
-  else
-    enableImpl(pattern);
+    return;
+  }
+
+  let entry = _loggerMap.get(pattern);
+  if (!entry) {
+    entry = createEntry(pattern, true);
+    _loggerMap.set(pattern, entry);
+  }
+  else  {
+    entrySetEnable(entry, true);
+  }
 }
 
 } // namespace Logger
+
+for (const iter of LOGGER_DEBUG) {
+  Logger.enable(iter);
+}

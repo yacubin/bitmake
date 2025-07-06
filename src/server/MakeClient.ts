@@ -14,6 +14,7 @@ import { JsonRpcServer } from "@/server/JsonRpcServer";
 import { MainNode } from "@/server/MainNode";
 import { currentScriptURL } from "@/utils/Module";
 import { MemoryMessageSender } from "@/server/MemoryTransport";
+import { WorkerSender } from "@/server/WorkerSender";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { JSONRPC_VERSION } from "@/server/Transport";
 import { WORKERNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
@@ -21,7 +22,6 @@ import { MAINNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
 import { MAINNODE_LOADJSON } from "@/server/RemoteMethods";
 import { MAINNODE_EXECUTESCRIPT } from "@/server/RemoteMethods";
 import { Logger } from "@/logger";
-import { resolve } from "node:path";
 
 const logger = Logger.create(import.meta.url);
 
@@ -43,7 +43,7 @@ export class MakeClient {
     this._worker.on("exit", code => this.onWorkerExit(code));
 
     const mainNode = new MainNode(project);
-    this._jsonRpcServer = new JsonRpcServer("#make-client-" + this._worker.threadId);
+    this._jsonRpcServer = new JsonRpcServer;
     this._jsonRpcServer.registerCallback(MAINNODE_EXECUTESCRIPT, params => mainNode.executeScript(params));
     this._jsonRpcServer.registerCallback(MAINNODE_LOADJSON, params => mainNode.loadJSON(params));
     this._jsonRpcServer.registerCallback(MAINNODE_STARTMAKESCRIPT, params => mainNode.startMakeScript(params));
@@ -66,10 +66,11 @@ export class MakeClient {
   private onWorkerMessage(message: any) {
     if (message instanceof SharedArrayBuffer) {
       const mt = new MemoryMessageSender(message)
-      this._jsonRpcServer.onMessage(mt, mt.readMessage());
+      this._jsonRpcServer.emitMessage(mt, mt.readMessage());
     }
     else {
-      logger.info(">>> Worker Message", message);
+      const sender = new WorkerSender(this._worker)
+      this._jsonRpcServer.emitMessage(sender, message);
     }
   }
 

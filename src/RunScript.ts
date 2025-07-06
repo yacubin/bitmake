@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { isMainThread, parentPort, workerData, threadId } from "node:worker_threads";
+import { isMainThread, parentPort, workerData } from "node:worker_threads";
 import { Args }  from "@/utils/Args";
 import commands from "@/commands";
 import { Logger } from "@/logger";
@@ -61,8 +61,8 @@ export function runWorkerScript() {
     throw new Error(`Worker not supported parentPort`);
   }
 
-  const sender = new MessagePortSender("#message-port-" + threadId, parentPort);
-  const looper = new WorkerLooper("#worker-looper-" + threadId, sender);
+  const sender = new MessagePortSender(parentPort);
+  const looper = new WorkerLooper(sender);
 
   parentPort.on("message", (message) => looper.emitMessage(sender, message));
 }

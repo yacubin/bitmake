@@ -7,21 +7,21 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { MessagePort } from "node:worker_threads";
+import { Worker } from "node:worker_threads";
 import { IMessageSender } from "@/server/Transport";
 import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
 
-export class MessagePortSender implements IMessageSender {
-  private _messagePort: MessagePort;
+export class WorkerSender implements IMessageSender {
+  private _worker: Worker;
 
-  public constructor(messagePort: MessagePort) {
-    this._messagePort = messagePort;
+  public constructor(worker: Worker) {
+    this._worker = worker;
   }
 
   public sendMessage(message: any): void {
-    logger.debug("<--", JSON.stringify(message));
-    this._messagePort.postMessage(message);
+    logger.debug("<--", message);
+    this._worker.postMessage(message);
   }
 };

@@ -12,6 +12,10 @@ import { importModule } from "@/utils/Module";
 import { ScopeHelper } from "@/core/Scope";
 import { ScriptContext } from "@/core/ScriptContext";
 import { ProjectContext } from "@/core/ProjectContext";
+import { MakeClient } from "@/server/MakeClient";
+import { Logger } from "@/logger";
+
+const logger = Logger.create(import.meta.url);
 
 export class MainNode {
   _project: ProjectContext;
@@ -46,8 +50,19 @@ export class MainNode {
   }
 
   public async startMakeScript(params: any): Promise<void> {
-    return new Promise((resolve, reject) => {
+    logger.debug("startMakeScript");
 
-    });
+    const variableMap = ScopeHelper.fromJSON(params);
+    
+    if (!await this._project.prepearScriptFile(variableMap))
+      return;
+
+    const client = new MakeClient(this._project);
+
+    const cwdSave = process.cwd();
+    const scriptDir = ScopeHelper.get(variableMap, "SCRIPT_DIR");
+    process.chdir(scriptDir.toString());
+    await client.startMakeScript(variableMap);
+    process.chdir(cwdSave);
   }
 };

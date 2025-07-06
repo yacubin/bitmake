@@ -37,7 +37,8 @@ export class MakeServer {
   private _rootVariableMap: VariableMap = {};
   private _project = ProjectContext.create();
   private _listeners: { [name: string]: Function[] };
-  private _clients = new Array<MakeClient>;;
+  private _clients = new Map<string, MakeClient>;
+  private _clientIdCounter = 1;
 
   public constructor() {
     this._listeners = {
@@ -54,25 +55,44 @@ export class MakeServer {
     return this._project;
   }
 
+  public createClient() {
+    const name = "mkc" + this._clientIdCounter++;
+    const client = new MakeClient(this._project);
+    this._clients.set(name, client);
+    return client;
+  }
+
+  public async startMakeScript(variableMap: VariableMap) {
+    const client = this.createClient();
+
+    const cwdSave = process.cwd();
+    const scriptDir = ScopeHelper.get(variableMap, "SCRIPT_DIR");
+    process.chdir(scriptDir.toString());
+    await client.startMakeScript(variableMap);
+    process.chdir(cwdSave);
+  }
+
   public async start() {
     const sourceDir = ScopeHelper.get(this._rootVariableMap, "PROJECT_SOURCE_DIR");
     const binaryDir = ScopeHelper.get(this._rootVariableMap, "PROJECT_BINARY_DIR");
 
-    /*const variableMap = createVariableMapForDirectory(this._rootVariableMap, sourceDir, binaryDir);
+    const variableMap = createVariableMapForDirectory(this._rootVariableMap, sourceDir, binaryDir);
+
     if (!await this._project.prepearScriptFile(variableMap))
       throw Error("Can't prepear ScriptFile");
 
-    const client = new MakeClient(this._project);
+    const client = this.createClient();
 
     const cwdSave = process.cwd();
     const scriptDir = ScopeHelper.get(this._rootVariableMap, "SCRIPT_DIR");
     process.chdir(scriptDir.toString());
-    this._clients.push(client);
     await client.startMakeScript(variableMap);
-    process.chdir(cwdSave);*/
+    process.chdir(cwdSave);
+  
+    this.onConfigureEnd();
 
-    this._project.addSubdirectory(this._rootVariableMap, sourceDir, binaryDir);
-    this._project.doSubdirectory().then(() => this.onConfigureEnd());
+    //this._project.addSubdirectory(this._rootVariableMap, sourceDir, binaryDir);
+    //this._project.doSubdirectory().then(() => this.onConfigureEnd());
   }
 
   private async onConfigureEnd() {

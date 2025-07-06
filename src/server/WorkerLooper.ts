@@ -19,8 +19,8 @@ const logger = Logger.create(import.meta.url);
 export class WorkerLooper implements IMessageEmitter {
   private _jsonrpcServer: JsonRpcServer;
 
-  public constructor(name: string, sender: IMessageSender) {
-    this._jsonrpcServer = new JsonRpcServer(name);
+  public constructor(sender: IMessageSender) {
+    this._jsonrpcServer = new JsonRpcServer;
 
     const buffer = new SharedArrayBuffer(0x8000);
     const transport = new MemoryTransport(sender, buffer);
@@ -30,6 +30,6 @@ export class WorkerLooper implements IMessageEmitter {
   }
 
   public emitMessage(sender: IMessageSender, message: any): void {
-    return this._jsonrpcServer.onMessage(sender, message);
+    return this._jsonrpcServer.emitMessage(sender, message);
   }
 };

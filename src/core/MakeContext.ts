@@ -64,7 +64,8 @@ export class MakeContext extends BaseContext implements IMakeContext {
   public addCustomScript(script: any, params: any): CustomScript {
     const newVariableMap = ScopeHelper.cloneVariableMap(this[SCOPE]);
     ScopeHelper.extendVariableMapByValues(newVariableMap, CUSTOM_VARIABLE_GROUP, params);
-    return this[GLOBAL].addCustomScript(newVariableMap, script, params);
+    ScopeHelper.set(newVariableMap, "SCRIPT_MODULE", script);
+    return this[GLOBAL].addCustomScript(newVariableMap);
   }
 
   public script(name: string): InterfaceScript {

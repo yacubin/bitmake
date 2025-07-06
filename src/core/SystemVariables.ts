@@ -44,6 +44,10 @@ export default {
     description: "Absolute path to the top-level build (binary) directory of the project",
     type: "DirPath",
   },
+  SCRIPT_MODULE: {
+    description: "Module name of the current MakeScript",
+    type: "string",
+  },
   SCRIPT_FILE: {
     description: "Full path to the current MakeScript file being processed",
     type: "FilePath",

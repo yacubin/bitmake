@@ -225,27 +225,28 @@ export class ProjectContext {
     return script;
   }
 
-  public addCustomScript(variableMap: VariableMap, script: any, params: any): CustomScript {
-    if (!params)
-      throw new Error("Argument with parameters is missing");
-
+  public addCustomScript(variableMap: VariableMap): CustomScript {
+    const script = ScopeHelper.get(variableMap, "SCRIPT_MODULE");
+    const sourceDir = ScopeHelper.get(variableMap, "SOURCE_DIR");
     let scriptObj: Function | AbsolutePath | undefined;
     if (typeof script === "string")
       scriptObj = this.findScriptFunction(script);
     if (!scriptObj)
-      scriptObj = AbsolutePath.create(ScopeHelper.get(variableMap, "SOURCE_DIR").resolve(script));
+      scriptObj = sourceDir.resolve(script) as AbsolutePath;
 
-    let inputFile = params.SCRIPT_INPUT;
+    let inputFile = ScopeHelper.get(variableMap, "SCRIPT_INPUT");
     if (inputFile)
-      inputFile = AbsolutePath.create(ScopeHelper.get(variableMap, "SOURCE_DIR").resolve(inputFile));
+      inputFile = sourceDir.resolve(inputFile) as AbsolutePath;
 
-    if (!params.SCRIPT_OUTPUT)
+    let outputFile = ScopeHelper.get(variableMap, "SCRIPT_OUTPUT");
+    if (!outputFile)
       throw new Error("CustomScript parameters required output entity");
-    const outputFile = AbsolutePath.create(ScopeHelper.get(variableMap, "SOURCE_DIR").resolve(params.SCRIPT_OUTPUT));
+
+    outputFile = sourceDir.resolve(outputFile) as AbsolutePath;
 
     const options: CustomScript.Options = {
       variableMap,
-      name: params.SCRIPT_NAME,
+      name: ScopeHelper.get(variableMap, "SCRIPT_NAME"),
       script: scriptObj,
       output: outputFile,
       input: inputFile,

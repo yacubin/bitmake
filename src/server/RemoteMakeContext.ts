@@ -16,6 +16,7 @@ import { JSONRPC_VERSION } from "@/server/Transport";
 import { MAINNODE_LOADJSON } from "@/server/RemoteMethods";
 import { MAINNODE_EXECUTESCRIPT } from "@/server/RemoteMethods";
 import { MAINNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
+import { MAINNODE_ADDCUSTOMSCRIPT } from "@/server/RemoteMethods";
 import { Logger } from "@/logger";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { CUSTOM_VARIABLE_GROUP } from "@/Constants";
@@ -83,7 +84,11 @@ export class RemoteMakeContext extends BaseContext {
   }
 
   public addCustomScript(script: any, params: any): CustomScript {
-    throw new Error("Not Implemented");
+    logger.debug("RemoteMakeContext.addCustomScript(", script, params, ")");
+    const newVariableMap = ScopeHelper.cloneVariableMap(this[SCOPE]);
+    ScopeHelper.extendVariableMapByValues(newVariableMap, CUSTOM_VARIABLE_GROUP, params);
+    ScopeHelper.set(newVariableMap, "SCRIPT_MODULE", script);
+    return this[REQUEST].requestSync(MAINNODE_ADDCUSTOMSCRIPT, ScopeHelper.toJSON(newVariableMap));
   }
 
   public script(name: string): InterfaceScript {

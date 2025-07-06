@@ -9,18 +9,12 @@
 
 import { Worker } from "node:worker_threads";
 
-import { ProjectContext } from "@/core/ProjectContext";
-import { JsonRpcServer } from "@/server/JsonRpcServer";
-import { MainNode } from "@/server/MainNode";
 import { currentScriptURL } from "@/utils/Module";
 import { MemoryMessageSender } from "@/server/MemoryTransport";
 import { WorkerSender } from "@/server/WorkerSender";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { JSONRPC_VERSION } from "@/server/Transport";
-import { WORKERNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
-import { MAINNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
-import { MAINNODE_LOADJSON } from "@/server/RemoteMethods";
-import { MAINNODE_EXECUTESCRIPT } from "@/server/RemoteMethods";
+import { JsonRpcServer } from "@/server/JsonRpcServer";
 import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
@@ -36,28 +30,23 @@ export class MakeClient {
   private _id = 1;
   private _waitResponseMap = new Map<number,ResponseEntry>();;
 
-  public constructor(project: ProjectContext) {
+  public constructor(jsonRpcServer: JsonRpcServer) {
+    this._jsonRpcServer = jsonRpcServer;
     this._worker = new Worker(currentScriptURL());
     this._worker.on("message", message => this.onWorkerMessage(message));
     this._worker.on("error", error => this.onWorkerError(error));
     this._worker.on("exit", code => this.onWorkerExit(code));
-
-    const mainNode = new MainNode(project);
-    this._jsonRpcServer = new JsonRpcServer;
-    this._jsonRpcServer.registerCallback(MAINNODE_EXECUTESCRIPT, params => mainNode.executeScript(params));
-    this._jsonRpcServer.registerCallback(MAINNODE_LOADJSON, params => mainNode.loadJSON(params));
-    this._jsonRpcServer.registerCallback(MAINNODE_STARTMAKESCRIPT, params => mainNode.startMakeScript(params));
   }
 
-  public async startMakeScript(variableMap: VariableMap): Promise<any> {
+  public async request(method: string, params: any): Promise<any> {
     const id = this._id++;
     const result = new Promise<any>((resolve, reject) => {
       this._waitResponseMap.set(id, { resolve, reject });
     });
     this._worker.postMessage({
       jsonrpc: JSONRPC_VERSION,
-      method: WORKERNODE_STARTMAKESCRIPT,
-      params: ScopeHelper.toJSON(variableMap),
+      method,
+      params,
       id,
     });
     return result;
@@ -68,9 +57,20 @@ export class MakeClient {
       const mt = new MemoryMessageSender(message)
       this._jsonRpcServer.emitMessage(mt, mt.readMessage());
     }
-    else {
-      const sender = new WorkerSender(this._worker)
+    else if (Object.hasOwn(message, "method")) {
+      const sender = new WorkerSender(this._worker);
       this._jsonRpcServer.emitMessage(sender, message);
+    }
+    else if (Object.hasOwn(message, "id")) {
+      const promise = this._waitResponseMap.get(message.id);
+      if (!promise)
+        throw new Error(`Unknown response "${message.id}" id`);
+      if (Object.hasOwn(message, "result"))
+        promise.resolve(message.result);
+      else if (Object.hasOwn(message, "error"))
+        promise.reject(message.error);
+      else
+        throw new Error(`Unknown message type of "${message}"`);
     }
   }
 

@@ -7,10 +7,20 @@
  * under the MIT License. See LICENSE file for details.
  */
 
+import fs from "node:fs";
+
 import { ProjectContext } from "@/core/ProjectContext";
 import { createVariableMapForDirectory } from "@/core/BaseContext";
+import { ScriptContext } from "@/core/ScriptContext";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { MakeClient } from "@/server/MakeClient";
+import { JsonRpcServer } from "@/server/JsonRpcServer";
+import { importModule } from "@/utils/Module";
+import { MAINNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
+import { MAINNODE_LOADJSON } from "@/server/RemoteMethods";
+import { MAINNODE_EXECUTESCRIPT } from "@/server/RemoteMethods";
+import { WORKERNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
+import { MAINNODE_ADDCUSTOMSCRIPT } from "@/server/RemoteMethods";
 import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
@@ -37,6 +47,7 @@ export class MakeServer {
   private _rootVariableMap: VariableMap = {};
   private _project = ProjectContext.create();
   private _listeners: { [name: string]: Function[] };
+  private _jsonRpcServer = new JsonRpcServer;
   private _clients = new Map<string, MakeClient>;
   private _clientIdCounter = 1;
 
@@ -45,6 +56,10 @@ export class MakeServer {
       [ CONFIGURE_EVENT ]: new Array<ConfigureListener>,
       [ BUILD_EVENT ]: new Array<BuildListener>,
     };
+    this._jsonRpcServer.registerCallback(MAINNODE_EXECUTESCRIPT, params => this.executeScript(params));
+    this._jsonRpcServer.registerCallback(MAINNODE_LOADJSON, params => this.loadJSON(params));
+    this._jsonRpcServer.registerCallback(MAINNODE_STARTMAKESCRIPT, params => this.startMakeScript(params));
+    this._jsonRpcServer.registerCallback(MAINNODE_ADDCUSTOMSCRIPT, params => this.addCustomScript(params));
   }
 
   public get rootVariableMap() {
@@ -57,42 +72,78 @@ export class MakeServer {
 
   public createClient() {
     const name = "mkc" + this._clientIdCounter++;
-    const client = new MakeClient(this._project);
+    const client = new MakeClient(this._jsonRpcServer);
     this._clients.set(name, client);
     return client;
   }
 
-  public async startMakeScript(variableMap: VariableMap) {
+  public async startMakeScript(params: any): Promise<void> {
+    logger.debug("MakeServer.startMakeScript");
+
+    const variableMap = ScopeHelper.fromJSON(params);
+    await this.runMakeScript(variableMap);
+  }
+
+  private async loadJSON(filename: string): Promise<any> {
+    logger.debug("MakeServer.loadJSON(", filename, ")");
+    if (filename.endsWith(".json")) {
+      const content = await fs.promises.readFile(filename, "utf8");
+      return JSON.parse(content);
+    }
+
+    const module = await importModule(filename);
+    if (!module.default)
+      throw new Error(`Script "${filename}" has not contain a default function`);
+
+    return module.default;
+  }
+
+  private async executeScript(params: any): Promise<void> {
+    logger.debug("MakeServer.executeScript");
+    const variableMap = ScopeHelper.fromJSON(params);
+    const scriptFile = ScopeHelper.get(variableMap, "SCRIPT_FILE");
+
+    const module = await importModule(scriptFile.toString());
+    if (!module.default)
+      throw new Error(`Script "${scriptFile}" has not contain a default function`);
+
+    const mk = ScriptContext.create(this._project, variableMap);
+    module.default(mk);
+  }
+
+  private addCustomScript(params: any) {
+    logger.debug("MakeServer.addCustomScript");
+    const variableMap = ScopeHelper.fromJSON(params);
+    return this._project.addCustomScript(variableMap);
+  }
+
+  public async runMakeScript(variableMap: VariableMap): Promise<boolean> {
+    if (!await this._project.prepearScriptFile(variableMap))
+      return false;
+
     const client = this.createClient();
 
     const cwdSave = process.cwd();
     const scriptDir = ScopeHelper.get(variableMap, "SCRIPT_DIR");
     process.chdir(scriptDir.toString());
-    await client.startMakeScript(variableMap);
+    await client.request(WORKERNODE_STARTMAKESCRIPT, ScopeHelper.toJSON(variableMap));
     process.chdir(cwdSave);
+
+    return true;
   }
 
   public async start() {
     const sourceDir = ScopeHelper.get(this._rootVariableMap, "PROJECT_SOURCE_DIR");
     const binaryDir = ScopeHelper.get(this._rootVariableMap, "PROJECT_BINARY_DIR");
 
-    const variableMap = createVariableMapForDirectory(this._rootVariableMap, sourceDir, binaryDir);
-
-    if (!await this._project.prepearScriptFile(variableMap))
+    /*const variableMap = createVariableMapForDirectory(this._rootVariableMap, sourceDir, binaryDir);
+    if (!await this.runMakeScript(variableMap))
       throw Error("Can't prepear ScriptFile");
 
-    const client = this.createClient();
+    this.onConfigureEnd();*/
 
-    const cwdSave = process.cwd();
-    const scriptDir = ScopeHelper.get(this._rootVariableMap, "SCRIPT_DIR");
-    process.chdir(scriptDir.toString());
-    await client.startMakeScript(variableMap);
-    process.chdir(cwdSave);
-  
-    this.onConfigureEnd();
-
-    //this._project.addSubdirectory(this._rootVariableMap, sourceDir, binaryDir);
-    //this._project.doSubdirectory().then(() => this.onConfigureEnd());
+    this._project.addSubdirectory(this._rootVariableMap, sourceDir, binaryDir);
+    this._project.doSubdirectory().then(() => this.onConfigureEnd());
   }
 
   private async onConfigureEnd() {

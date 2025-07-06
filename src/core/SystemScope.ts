@@ -34,6 +34,9 @@ export interface SystemScope {
   // Absolute path to the top-level build (binary) directory of the project
   PROJECT_BINARY_DIR: AbsolutePath;
 
+  // Module name of the current MakeScript
+  SCRIPT_MODULE: string;
+
   // Full path to the current MakeScript file being processed
   SCRIPT_FILE: AbsolutePath;
 

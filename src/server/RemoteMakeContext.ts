@@ -7,17 +7,16 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { IRequestSync } from "@/transport/Common";
+import { IRequestSync } from "@/server/Transport";
 import { InterfaceScript } from "@/core/InterfaceScript";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, InterfaceTarget } from "@/core/Target";
 import { CustomScript } from "@/core/CustomScript";
-import { BaseContext, createContext } from "@/core/BaseContext";
-import { JSONRPC_VERSION } from "@/transport/Common";
-import { MAINNODE_LOADJSON } from "@/worker/RemoteMethods";
-import { MAINNODE_EXECUTESCRIPT } from "@/worker/RemoteMethods";
+import { BaseContext, createContext, createVariableMapForDirectory } from "@/core/BaseContext";
+import { JSONRPC_VERSION } from "@/server/Transport";
+import { MAINNODE_LOADJSON } from "@/server/RemoteMethods";
+import { MAINNODE_EXECUTESCRIPT } from "@/server/RemoteMethods";
+import { MAINNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
 import { createLogger } from "@/logger";
-import { FILE_SCHEME } from "@/utils/UrlScheme";
-import { AbsolutePath } from "@/core/Path";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { CUSTOM_VARIABLE_GROUP } from "@/Constants";
 
@@ -78,8 +77,9 @@ export class RemoteMakeContext extends BaseContext {
       ScopeHelper.get(this[SCOPE], "INCLUDES").push(sourceDir.resolve(iter));
   }
 
-  public addSubdirectory(...params: any): any {
-    return this[REQUEST].requestSync("Configure.addSubdirectory", params);
+  public addSubdirectory(sourceDir: any, binaryDir: any) {
+    const newVariableMap = createVariableMapForDirectory(this[SCOPE], sourceDir, binaryDir);
+    return this[REQUEST].requestSync(MAINNODE_STARTMAKESCRIPT, ScopeHelper.toJSON(newVariableMap));
   }
 
   public addCustomScript(script: any, params: any): CustomScript {

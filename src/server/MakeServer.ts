@@ -12,16 +12,15 @@ import { createVariableMapForDirectory } from "@/core/BaseContext";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { Worker } from "node:worker_threads";
 import { currentScriptURL } from "@/utils/Module";
-import { MemoryMessageSender } from "@/transport/MemoryTransport";
-import { JSONRPC_VERSION } from "@/transport/Common";
-import { JsonRpcServer } from "@/transport/JsonRpcServer";
-import { MainNode } from "@/worker/MainNode";
-import { MAINNODE_LOADJSON } from "@/worker/RemoteMethods";
-import { MAINNODE_EXECUTESCRIPT } from "@/worker/RemoteMethods";
-import { WORKERNODE_EXECMAKESCRIPT } from "@/worker/RemoteMethods";
+import { MemoryMessageSender } from "@/server/MemoryTransport";
+import { JSONRPC_VERSION } from "@/server/Transport";
+import { JsonRpcServer } from "@/server/JsonRpcServer";
+import { MainNode } from "@/server/MainNode";
+import { MAINNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
+import { MAINNODE_LOADJSON } from "@/server/RemoteMethods";
+import { MAINNODE_EXECUTESCRIPT } from "@/server/RemoteMethods";
+import { WORKERNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
 import { createLogger } from "@/logger";
-import { AbsolutePath } from "@/core/Path";
-import { fileExists } from "@/utils/FileSystem";
 
 const logger = createLogger(import.meta.url);
 
@@ -74,16 +73,17 @@ export class MakeServer {
     const jsonRpcServer = new JsonRpcServer;
     const newVariableMap = createVariableMapForDirectory(variableMap, sourceDir, binaryDir);
     if (!await this._project.prepearScriptFile(newVariableMap))
-      throw Error("Can't prepear ScriptFile");
+      return;
 
     const mainNode = new MainNode(this._project);
     jsonRpcServer.registerCallback(MAINNODE_EXECUTESCRIPT, params => mainNode.executeScript(params));
     jsonRpcServer.registerCallback(MAINNODE_LOADJSON, params => mainNode.loadJSON(params));
+    jsonRpcServer.registerCallback(MAINNODE_STARTMAKESCRIPT, params => mainNode.startMakeScript(params));
 
     const worker = new Worker(currentScriptURL());
     worker.postMessage({
       jsonrpc: JSONRPC_VERSION,
-      method: WORKERNODE_EXECMAKESCRIPT,
+      method: WORKERNODE_STARTMAKESCRIPT,
       params: ScopeHelper.toJSON(newVariableMap),
       id: 2,
     });
@@ -116,8 +116,9 @@ export class MakeServer {
     const binaryDir = ScopeHelper.get(this._rootVariableMap, "PROJECT_BINARY_DIR");
 
     //const client = await this.createClient(this._rootVariableMap, sourceDir, binaryDir);
-    //if (client)
-    //  this._clients.push(client);
+    //if (!client)
+    //  throw Error("Can't prepear ScriptFile");
+    //this._clients.push(client);
 
     this._project.addSubdirectory(this._rootVariableMap, sourceDir, binaryDir);
     this._project.doSubdirectory().then(() => this.onConfigureEnd());

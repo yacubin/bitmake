@@ -7,8 +7,8 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { IRequestSync } from "@/transport/Common";
-import { RemoteMakeContext } from "@/core/RemoteMakeContext";
+import { IRequestSync } from "@/server/Transport";
+import { RemoteMakeContext } from "@/server/RemoteMakeContext";
 import { performContext } from "@/core/BaseContext";
 import { ScopeHelper } from "@/core/Scope";
 

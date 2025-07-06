@@ -8,7 +8,7 @@
  */
 
 import { MessagePort } from "node:worker_threads";
-import { IMessageSender } from "@/transport/Common";
+import { IMessageSender } from "@/server/Transport";
 import { createLogger } from "@/logger";
 
 const logger = createLogger(import.meta.url);

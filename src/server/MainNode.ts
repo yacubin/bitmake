@@ -44,4 +44,10 @@ export class MainNode {
     const mk = ScriptContext.create(this._project, variableMap);
     module.default(mk);
   }
+
+  public async startMakeScript(params: any): Promise<void> {
+    return new Promise((resolve, reject) => {
+
+    });
+  }
 };

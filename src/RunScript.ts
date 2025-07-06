@@ -11,8 +11,8 @@ import { isMainThread, parentPort, workerData } from "node:worker_threads";
 import { Args }  from "@/utils/Args";
 import commands from "@/commands";
 import { createLogger } from "@/logger";
-import { MessagePortSender } from "@/transport/MessagePortSender";
-import { WorkerLooper } from "@/worker/WorkerLooper";
+import { MessagePortSender } from "@/server/MessagePortSender";
+import { WorkerLooper } from "@/server/WorkerLooper";
 
 const logger = createLogger(import.meta.url);
 

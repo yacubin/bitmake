@@ -10,7 +10,7 @@
 import fs from "node:fs";
 
 import { Path } from "@/utils/Path";
-import { MakeServer } from "@/core/MakeServer";
+import { MakeServer } from "@/server/MakeServer";
 import { PluginContext } from "@/core/PluginContext";
 import { ScopeHelper } from "@/core/Scope";
 import { ToolchainContext } from "@/core/ToolchainContext";

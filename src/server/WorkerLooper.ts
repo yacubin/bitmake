@@ -7,11 +7,11 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { IMessageSender, IMessageEmitter } from "@/transport/Common";
-import { MemoryTransport } from "@/transport/MemoryTransport";
-import { JsonRpcServer } from "@/transport/JsonRpcServer";
-import { WorkerNode } from "@/worker/WorkerNode";
-import { WORKERNODE_EXECMAKESCRIPT } from "@/worker/RemoteMethods";
+import { IMessageSender, IMessageEmitter } from "@/server/Transport";
+import { MemoryTransport } from "@/server/MemoryTransport";
+import { JsonRpcServer } from "@/server/JsonRpcServer";
+import { WorkerNode } from "@/server/WorkerNode";
+import { WORKERNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
 import { createLogger } from "@/logger";
 
 const logger = createLogger(import.meta.url);
@@ -26,7 +26,7 @@ export class WorkerLooper implements IMessageEmitter {
     const transport = new MemoryTransport(sender, buffer);
 
     const workerNode = new WorkerNode(transport);
-    this._jsonrpcServer.registerCallback(WORKERNODE_EXECMAKESCRIPT, params => workerNode.execMakeScript(params));
+    this._jsonrpcServer.registerCallback(WORKERNODE_STARTMAKESCRIPT, params => workerNode.execMakeScript(params));
   }
 
   public emitMessage(sender: IMessageSender, message: any): void {

@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { IMessageSender, IRequestSync } from "@/transport/Common";
+import { IMessageSender, IRequestSync } from "@/server/Transport";
 import { createLogger } from "@/logger";
 
 const logger = createLogger(import.meta.url);

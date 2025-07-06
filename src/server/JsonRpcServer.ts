@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { JSONRPC_VERSION, IMessageSender, JsonRpcData, JsonRpcRequestHandler, IJsonRpcRequest, IJsonRpcResponse, JsonRpcCallback } from "@/transport/Common";
+import { JSONRPC_VERSION, IMessageSender, JsonRpcData, JsonRpcRequestHandler, IJsonRpcRequest, IJsonRpcResponse, JsonRpcCallback } from "@/server/Transport";
 import { createLogger } from "@/logger";
 
 const logger = createLogger(import.meta.url);

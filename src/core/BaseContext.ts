@@ -10,12 +10,12 @@
 import { IMakeObject } from "@/core/IMakeContext";
 import { findProgramSync } from "@/core/FindProgram";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
-import { createLogger } from "@/logger";
+import { Logger } from "@/logger";
 import { SystemScope } from "@/core/SystemScope";
 import { AbsolutePath } from "@/core/Path";
 import { importModule } from "@/utils/Module";
 
-const logger = createLogger(import.meta.url);
+const logger = Logger.create(import.meta.url);
 
 const VARIABLE_MAP = Symbol("VARIABLE_MAP");
 

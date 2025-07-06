@@ -13,9 +13,9 @@ import path from "node:path";
 import { getPathString } from "@/utils/FileSystem";
 import { SettingsStorage } from "@/utils/SettingsStorage";
 import { spawnAsync } from "@/utils/ChildProcess";
-import { createLogger } from "@/logger";
+import { Logger } from "@/logger";
 
-const logger = createLogger(import.meta.url);
+const logger = Logger.create(import.meta.url);
 
 export default async function(config: any, environment: any, settings: SettingsStorage) {
   if (!config.command)

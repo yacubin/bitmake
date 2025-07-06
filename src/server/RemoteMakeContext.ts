@@ -16,11 +16,11 @@ import { JSONRPC_VERSION } from "@/server/Transport";
 import { MAINNODE_LOADJSON } from "@/server/RemoteMethods";
 import { MAINNODE_EXECUTESCRIPT } from "@/server/RemoteMethods";
 import { MAINNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
-import { createLogger } from "@/logger";
+import { Logger } from "@/logger";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { CUSTOM_VARIABLE_GROUP } from "@/Constants";
 
-const logger = createLogger(import.meta.url);
+const logger = Logger.create(import.meta.url);
 
 const REQUEST = Symbol("REQUEST");
 const SCOPE = Symbol("SCOPE");

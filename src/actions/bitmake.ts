@@ -24,9 +24,9 @@ import { INSTALL_TARGET, PACKAGE_JSON, MAKE_CACHE } from "@/Constants";
 import { requireResolve } from "@/utils/Module";
 import { SystemScope } from "@/core/SystemScope";
 import SystemVariables from "@/core/SystemVariables";
-import { createLogger } from "@/logger";
+import { Logger } from "@/logger";
 
-const logger = createLogger(import.meta.url);
+const logger = Logger.create(import.meta.url);
 
 export default async function(config: any, environment: any, settings: SettingsStorage) {
   process.env = environment;

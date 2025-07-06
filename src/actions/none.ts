@@ -9,9 +9,9 @@
 
 
 import { SettingsStorage } from "@/utils/SettingsStorage";
-import { createLogger } from "@/logger";
+import { Logger } from "@/logger";
 
-const logger = createLogger(import.meta.url);
+const logger = Logger.create(import.meta.url);
 
 export default async function(config: any, environment: any, settings: SettingsStorage) {
   /* do nothing */

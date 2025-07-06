@@ -10,11 +10,11 @@
 import { isMainThread, parentPort, workerData, threadId } from "node:worker_threads";
 import { Args }  from "@/utils/Args";
 import commands from "@/commands";
-import { createLogger } from "@/logger";
+import { Logger } from "@/logger";
 import { MessagePortSender } from "@/server/MessagePortSender";
 import { WorkerLooper } from "@/server/WorkerLooper";
 
-const logger = createLogger(import.meta.url);
+const logger = Logger.create(import.meta.url);
 
 export async function runMainScript() {
   logger.info("Main thread started")
@@ -61,7 +61,7 @@ export function runWorkerScript() {
     throw new Error(`Worker not supported parentPort`);
   }
 
-  const sender = new MessagePortSender(parentPort);
+  const sender = new MessagePortSender("#message-port-" + threadId, parentPort);
   const looper = new WorkerLooper("#worker-looper-" + threadId, sender);
 
   parentPort.on("message", (message) => looper.emitMessage(sender, message));

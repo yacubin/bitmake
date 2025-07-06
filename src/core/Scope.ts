@@ -7,7 +7,6 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { ValueType } from "@/cmake/Constants";
 import { AbsolutePath, DirPath, FilePath } from "@/core/Path";
 import { deepCopy } from "@/utils/Primitives";
 

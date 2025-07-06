@@ -13,9 +13,9 @@ import fs from "node:fs";
 import { fileExists, fetchBuffer } from "@/utils/FileSystem";
 import { USER_CONFIG } from "@/Constants";
 import { CommandOptions } from "@/core/CommandOptions";
-import { createLogger } from "@/logger";
+import { Logger } from "@/logger";
 
-const logger = createLogger(import.meta.url);
+const logger = Logger.create(import.meta.url);
 
 export default async function(options: CommandOptions) {
   const preset = options.env.preset;

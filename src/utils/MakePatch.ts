@@ -2,9 +2,9 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { fileList } from "@/utils/FileSystem";
-import { createLogger } from "@/logger";
+import { Logger } from "@/logger";
 
-const logger = createLogger(import.meta.url);
+const logger = Logger.create(import.meta.url);
 
 export async function makePatch(srcDir: string, destDir: string) {
   logger.info(`Make patch ${srcDir} to ${destDir}`);

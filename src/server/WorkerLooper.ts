@@ -12,9 +12,9 @@ import { MemoryTransport } from "@/server/MemoryTransport";
 import { JsonRpcServer } from "@/server/JsonRpcServer";
 import { WorkerNode } from "@/server/WorkerNode";
 import { WORKERNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
-import { createLogger } from "@/logger";
+import { Logger } from "@/logger";
 
-const logger = createLogger(import.meta.url);
+const logger = Logger.create(import.meta.url);
 
 export class WorkerLooper implements IMessageEmitter {
   private _jsonrpcServer: JsonRpcServer;

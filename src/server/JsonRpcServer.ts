@@ -8,9 +8,9 @@
  */
 
 import { JSONRPC_VERSION, IMessageSender, JsonRpcData, JsonRpcRequestHandler, IJsonRpcRequest, IJsonRpcResponse, JsonRpcCallback } from "@/server/Transport";
-import { createLogger } from "@/logger";
+import { Logger } from "@/logger";
 
-const logger = createLogger(import.meta.url);
+const logger = Logger.create(import.meta.url);
 
 class JsonRpcRequest implements IJsonRpcRequest {
   private _params: any;

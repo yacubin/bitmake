@@ -20,14 +20,21 @@ import { WORKERNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
 import { MAINNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
 import { MAINNODE_LOADJSON } from "@/server/RemoteMethods";
 import { MAINNODE_EXECUTESCRIPT } from "@/server/RemoteMethods";
-import { createLogger } from "@/logger";
+import { Logger } from "@/logger";
+import { resolve } from "node:path";
 
-const logger = createLogger(import.meta.url);
+const logger = Logger.create(import.meta.url);
+
+interface ResponseEntry {
+  resolve: (value: any) => void;
+  reject: (reason?: any) => void;
+};
 
 export class MakeClient {
   private _jsonRpcServer: JsonRpcServer;
   private _worker: Worker;
   private _id = 1;
+  private _waitResponseMap = new Map<number,ResponseEntry>();;
 
   public constructor(project: ProjectContext) {
     this._worker = new Worker(currentScriptURL());
@@ -42,13 +49,18 @@ export class MakeClient {
     this._jsonRpcServer.registerCallback(MAINNODE_STARTMAKESCRIPT, params => mainNode.startMakeScript(params));
   }
 
-  public startMakeScript(variableMap: VariableMap) {
+  public async startMakeScript(variableMap: VariableMap): Promise<any> {
+    const id = this._id++;
+    const result = new Promise<any>((resolve, reject) => {
+      this._waitResponseMap.set(id, { resolve, reject });
+    });
     this._worker.postMessage({
       jsonrpc: JSONRPC_VERSION,
       method: WORKERNODE_STARTMAKESCRIPT,
       params: ScopeHelper.toJSON(variableMap),
-      id: this._id++,
+      id,
     });
+    return result;
   }
 
   private onWorkerMessage(message: any) {

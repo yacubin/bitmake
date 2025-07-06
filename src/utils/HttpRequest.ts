@@ -12,9 +12,9 @@ import fs from "node:fs";
 import http from "http";
 import https from "https";
 
-import { createLogger } from "@/logger";
+import { Logger } from "@/logger";
 
-const logger = createLogger(import.meta.url);
+const logger = Logger.create(import.meta.url);
 
 interface IResolveBuilder {
   append(data: Buffer): void;

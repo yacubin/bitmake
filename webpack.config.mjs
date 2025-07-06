@@ -26,20 +26,27 @@ export default async (env, argv) => {
   const mode = isDevelopment ? "development" : "production";
   const devtool = isDevelopment ? "inline-source-map" : undefined;
   const tsconfig = isDevelopment ? "tsconfig.dev.json" : "tsconfig.json";
+  const sourceDir = path.resolve(__dirname, "src");
 
   const pkg = await readJSON(path.join(__dirname, "package.json"));
   const globalVariables = {
-    PROJECT_NAME: JSON.stringify(pkg.name || ""),
-    PROJECT_VERSION: JSON.stringify(pkg.version || ""),
-    PROJECT_DESCRIPTION: JSON.stringify(pkg.description || ""),
-    PROJECT_HOMEPAGE_URL: JSON.stringify(pkg.homepage || ""),
+    PROJECT_NAME: pkg.name || "",
+    PROJECT_VERSION: pkg.version || "",
+    PROJECT_DESCRIPTION: pkg.description || "",
+    PROJECT_HOMEPAGE_URL: pkg.homepage || "",
+    HOST_SOURCE_URL: url.pathToFileURL(sourceDir),
+    LOGGER_DEBUG: [
+    ],
   };
+
+  for (const [key, val] of Object.entries(globalVariables))
+    globalVariables[key] = JSON.stringify(val);
 
   const outputPath = path.resolve(__dirname, "dist");
   const resolve = {
     extensions: [ ".ts", ".tsx", ".mjs", ".js" ],
     alias: {
-      "@": path.resolve(__dirname, "src"),
+      "@": sourceDir,
     },
   };
 

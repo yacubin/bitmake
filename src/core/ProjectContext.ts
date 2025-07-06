@@ -23,7 +23,7 @@ import { MakeContext } from "@/core/MakeContext";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget, InterfaceTarget } from "@/core/Target";
 import { SystemScope } from "@/core/SystemScope";
 import { importModule, requireSync } from "@/utils/Module";
-import { createLogger } from "@/logger";
+import { Logger } from "@/logger";
 import { InstallEntity } from "@/core/InstallEntity";
 import { CustomScript } from "@/core/CustomScript";
 import { ScriptContext } from "@/core/ScriptContext";
@@ -32,7 +32,7 @@ import { performContext, createVariableMapForDirectory } from "@/core/BaseContex
 
 import BuildinScripts from "@/core/BuildinScripts";
 
-const logger = createLogger(import.meta.url);
+const logger = Logger.create(import.meta.url);
 
 const TARGETS = Symbol("TARGETS");
 const CUSTOM_SCRIPTS = Symbol("CUSTOM_SCRIPTS");
@@ -648,7 +648,7 @@ export class ProjectContext {
       installPairs.forEach(i => void worker.addDependency(i.src));
       worker.addCallback(async () => {
         for (const {src, dest} of installPairs) {
-          logger.info("Installing: " + dest);
+          console.info("Installing: " + dest);
           await fs.promises.mkdir(Path.dirname(dest), { recursive: true });
           await fs.promises.cp(src.toString(), dest.toString(), { force: true });
         }

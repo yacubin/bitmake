@@ -9,9 +9,9 @@
 
 import { findProgram } from "@/core/FindProgram";
 import { SystemScope } from "@/core/SystemScope";
-import { createLogger } from "@/logger";
+import { Logger } from "@/logger";
 
-const logger = createLogger(import.meta.url);
+const logger = Logger.create(import.meta.url);
 
 export async function determineCompiler(scope: SystemScope) {
   const clangPath = await findProgram("clang");

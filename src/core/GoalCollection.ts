@@ -7,9 +7,9 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { createLogger } from "@/logger";
+import { Logger } from "@/logger";
 
-const logger = createLogger(import.meta.url);
+const logger = Logger.create(import.meta.url);
 
 const ENTRIES = Symbol("ENTRIES");
 

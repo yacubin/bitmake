@@ -8,9 +8,9 @@
  */
 
 import { IMessageSender, IRequestSync } from "@/server/Transport";
-import { createLogger } from "@/logger";
+import { Logger } from "@/logger";
 
-const logger = createLogger(import.meta.url);
+const logger = Logger.create(import.meta.url);
 
 export class MemoryMessageSender implements IMessageSender {
   private _buffer: SharedArrayBuffer;

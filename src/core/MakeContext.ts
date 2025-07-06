@@ -16,11 +16,11 @@ import { ProjectContext } from "@/core/ProjectContext";
 import { ScopeHelper, VariantMap, VariableMap } from "@/core/Scope";
 import { BaseContext, createContext } from "@/core/BaseContext";
 import { IMakeContext } from "@/core/IMakeContext";
-import { createLogger } from "@/logger";
+import { Logger } from "@/logger";
 import { requireSync } from "@/utils/Module";
 import { CUSTOM_VARIABLE_GROUP } from "@/Constants";
 
-const logger = createLogger(import.meta.url);
+const logger = Logger.create(import.meta.url);
 
 const GLOBAL = Symbol("GLOBAL");
 const SCOPE = Symbol("SCOPE");

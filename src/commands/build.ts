@@ -22,13 +22,13 @@ import { IMPORT_SCHEME } from "@/utils/UrlScheme";
 import { requireResolve } from "@/utils/Module";
 import { downloadFile } from "@/utils/HttpRequest";
 import { CommandOptions } from "@/core/CommandOptions";
-import { createLogger } from "@/logger";
+import { Logger } from "@/logger";
 import { fileExists } from "@/utils/FileSystem";
 import { importModule } from "@/utils/Module";
 
 import actions from "@/actions";
 
-const logger = createLogger(import.meta.url);
+const logger = Logger.create(import.meta.url);
 
 interface IGeneralConfig {
   workDir: string;

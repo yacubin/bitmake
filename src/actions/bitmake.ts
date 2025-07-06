@@ -31,9 +31,9 @@ const logger = createLogger(import.meta.url);
 export default async function(config: any, environment: any, settings: SettingsStorage) {
   process.env = environment;
 
-  const project = new MakeServer;
+  const server = new MakeServer;
 
-  const variableMap = project.rootVariableMap;
+  const variableMap = server.rootVariableMap;
   ScopeHelper.extendVariableMapByValues(variableMap, "", config.variables);
   ScopeHelper.defineVariablesInVariableMap(variableMap, "system", SystemVariables);
   const scope = ScopeHelper.createProxy(variableMap) as SystemScope;
@@ -80,7 +80,7 @@ export default async function(config: any, environment: any, settings: SettingsS
     if (!module.default)
       throw new Error(`Plugin ${scope.SCRIPT_FILE.basename()} not contain default export`);
 
-    const mk = PluginContext.create(project.preparation, variableMap);
+    const mk = PluginContext.create(server.project, variableMap);
     if (typeof module.default !== "function")
       throw new Error(`Plugin ${scope.SCRIPT_FILE.basename()} export has no function or class`);
     let result: any;
@@ -104,7 +104,7 @@ export default async function(config: any, environment: any, settings: SettingsS
     const toolchain = await importModule(toolchainUrl);
     if (!toolchain.default)
       throw new Error("Toolchain module has no default export");
-    const mk = ToolchainContext.create(project.preparation, variableMap);
+    const mk = ToolchainContext.create(server.project, variableMap);
     const result = toolchain.default(mk);
     if (result instanceof Promise)
       await result;
@@ -119,17 +119,17 @@ export default async function(config: any, environment: any, settings: SettingsS
     scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
   }
 
-  project.addEventListener("configure", async (event) => {
+  server.addEventListener("configure", async (event) => {
     logger.info("Configuring done");
 
     if (scope.GLOBAL_CONTEXT_JSON) {
       const filename = scope.GLOBAL_CONTEXT_JSON.toString();
-      const content = JSON.stringify(project.preparation, null, 2);
+      const content = JSON.stringify(server.project, null, 2);
       await fs.promises.mkdir(Path.dirname(filename), { recursive: true });
       await fs.promises.writeFile(filename, content, { encoding: "utf8" });
     }
 
-    const allGoalList = project.preparation.createGoals(scope);
+    const allGoalList = server.project.createGoals(scope);
     const goalList = allGoalList.getTargetList(INSTALL_TARGET);
 
     if (scope.TARGET_GOALS_JSON) {
@@ -153,9 +153,9 @@ export default async function(config: any, environment: any, settings: SettingsS
     finishResolve = resolve;
   });
 
-  project.addEventListener("build", (event) => finishResolve());
+  server.addEventListener("build", (event) => finishResolve());
 
-  project.start();
+  server.start();
 
   return result;
 }

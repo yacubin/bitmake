@@ -25,10 +25,12 @@ class JsonRpcRequest implements IJsonRpcRequest {
 }
 
 class JsonRpcResponse implements IJsonRpcResponse {
+  private _name: string;
   private _sender: IMessageSender;
   private _id: number;
 
-  public constructor(sender: IMessageSender, id: number) {
+  public constructor(name: string, sender: IMessageSender, id: number) {
+    this._name = name;
     this._sender = sender;
     this._id = id;
   }
@@ -39,7 +41,7 @@ class JsonRpcResponse implements IJsonRpcResponse {
       result: (result !== undefined) ? result : null,
       id: this._id,
     };
-    logger.debug("<--", JSON.stringify(message));
+    logger.debug(this._name, "<--", JSON.stringify(message));
     this._sender.sendMessage(message);
   }
 
@@ -53,15 +55,17 @@ class JsonRpcResponse implements IJsonRpcResponse {
       error,
       id: this._id,
     };
-    logger.debug("<--", JSON.stringify(msg));
+    logger.debug(this._name, "<--", JSON.stringify(msg));
     this._sender.sendMessage(msg);
   }
 };
 
 export class JsonRpcServer {
+  private _name: string;
   private _requestHandlers = new Map<string, JsonRpcRequestHandler>();
 
-  public constructor() {
+  public constructor(name: string) {
+    this._name = name;
   }
 
   public registerHandler(method: string, handler: JsonRpcRequestHandler): void {
@@ -81,7 +85,7 @@ export class JsonRpcServer {
 
   public onRequest(sender: IMessageSender, method: any, id: any, params: any): void {
     const handler = (typeof method === "string") ? this._requestHandlers.get(method) : undefined;
-    const response = new JsonRpcResponse(sender, id);
+    const response = new JsonRpcResponse(this._name, sender, id);
     if (handler) {
       handler(new JsonRpcRequest(params), response);
     }
@@ -124,7 +128,7 @@ export class JsonRpcServer {
   }
 
   public onMessage(sender: IMessageSender, message: any): void {
-    logger.debug("-->", JSON.stringify(message));
+    logger.debug(this._name, "-->", JSON.stringify(message));
     if (Array.isArray(message))
       message.forEach(msg => this.onMessageImpl(sender, msg));
     else

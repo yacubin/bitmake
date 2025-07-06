@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { isMainThread, parentPort, workerData } from "node:worker_threads";
+import { isMainThread, parentPort, workerData, threadId } from "node:worker_threads";
 import { Args }  from "@/utils/Args";
 import commands from "@/commands";
 import { createLogger } from "@/logger";
@@ -62,7 +62,7 @@ export function runWorkerScript() {
   }
 
   const sender = new MessagePortSender(parentPort);
-  const looper = new WorkerLooper(sender);
+  const looper = new WorkerLooper("#worker-looper-" + threadId, sender);
 
   parentPort.on("message", (message) => looper.emitMessage(sender, message));
 }

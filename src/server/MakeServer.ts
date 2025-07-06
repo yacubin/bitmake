@@ -10,16 +10,7 @@
 import { ProjectContext } from "@/core/ProjectContext";
 import { createVariableMapForDirectory } from "@/core/BaseContext";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
-import { Worker } from "node:worker_threads";
-import { currentScriptURL } from "@/utils/Module";
-import { MemoryMessageSender } from "@/server/MemoryTransport";
-import { JSONRPC_VERSION } from "@/server/Transport";
-import { JsonRpcServer } from "@/server/JsonRpcServer";
-import { MainNode } from "@/server/MainNode";
-import { MAINNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
-import { MAINNODE_LOADJSON } from "@/server/RemoteMethods";
-import { MAINNODE_EXECUTESCRIPT } from "@/server/RemoteMethods";
-import { WORKERNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
+import { MakeClient } from "@/server/MakeClient";
 import { createLogger } from "@/logger";
 
 const logger = createLogger(import.meta.url);
@@ -42,12 +33,6 @@ export interface MemorySender {
   sendMessage(message: any): void;
 };
 
-interface MakeClient {
-  jsonRpcServer: JsonRpcServer,
-  mainNode: MainNode,
-  worker: Worker,
-};
-
 export class MakeServer {
   private _rootVariableMap: VariableMap = {};
   private _project = ProjectContext.create();
@@ -65,63 +50,36 @@ export class MakeServer {
     return this._rootVariableMap;
   }
 
-  public get preparation() {
+  public get project() {
     return this._project;
   }
 
-  public async createClient(variableMap: VariableMap, sourceDir: any, binaryDir?: any): Promise<MakeClient | undefined> {
-    const jsonRpcServer = new JsonRpcServer;
+  public async createMakeClient(variableMap: VariableMap, sourceDir: any, binaryDir?: any): Promise<MakeClient | undefined> {
     const newVariableMap = createVariableMapForDirectory(variableMap, sourceDir, binaryDir);
     if (!await this._project.prepearScriptFile(newVariableMap))
       return;
 
-    const mainNode = new MainNode(this._project);
-    jsonRpcServer.registerCallback(MAINNODE_EXECUTESCRIPT, params => mainNode.executeScript(params));
-    jsonRpcServer.registerCallback(MAINNODE_LOADJSON, params => mainNode.loadJSON(params));
-    jsonRpcServer.registerCallback(MAINNODE_STARTMAKESCRIPT, params => mainNode.startMakeScript(params));
+    const client = new MakeClient(this._project);
 
-    const worker = new Worker(currentScriptURL());
-    worker.postMessage({
-      jsonrpc: JSONRPC_VERSION,
-      method: WORKERNODE_STARTMAKESCRIPT,
-      params: ScopeHelper.toJSON(newVariableMap),
-      id: 2,
-    });
-    worker.on("message", (message) => {
-      if (message instanceof SharedArrayBuffer) {
-        const mt = new MemoryMessageSender(message)
-        jsonRpcServer.onMessage(mt, mt.readMessage());
-      }
-      else {
-        logger.info(">>> Worker Message", message);
-      }
-    });
-    worker.on("error", (e) => {
-      if (e instanceof Error)
-        console.error(e.stack);
-      else
-        console.error(e);
-      process.exit(1);
-    });
-    worker.on("exit", (code: number) => {
-      if (code)
-        process.exit(code);
-    });
+    const cwdSave = process.cwd();
+    const scriptDir = ScopeHelper.get(this._rootVariableMap, "SCRIPT_DIR");
 
-    return { jsonRpcServer, mainNode, worker };
+    process.chdir(scriptDir.toString());
+    client.startMakeScript(newVariableMap);
+    return client;
   }
 
   public async start() {
     const sourceDir = ScopeHelper.get(this._rootVariableMap, "PROJECT_SOURCE_DIR");
     const binaryDir = ScopeHelper.get(this._rootVariableMap, "PROJECT_BINARY_DIR");
 
-    //const client = await this.createClient(this._rootVariableMap, sourceDir, binaryDir);
-    //if (!client)
-    //  throw Error("Can't prepear ScriptFile");
-    //this._clients.push(client);
+    const client = await this.createMakeClient(this._rootVariableMap, sourceDir, binaryDir);
+    if (!client)
+      throw Error("Can't prepear ScriptFile");
+    this._clients.push(client);
 
-    this._project.addSubdirectory(this._rootVariableMap, sourceDir, binaryDir);
-    this._project.doSubdirectory().then(() => this.onConfigureEnd());
+    //this._project.addSubdirectory(this._rootVariableMap, sourceDir, binaryDir);
+    //this._project.doSubdirectory().then(() => this.onConfigureEnd());
   }
 
   private async onConfigureEnd() {

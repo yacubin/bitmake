@@ -131,7 +131,7 @@ export class GoalWorkerImpl {
     if (this._message) {
       const relationOfLength = Math.round((++event.loaded / event.total) * 100);
       const percent = "[" + relationOfLength.toString().padStart(3, " ") + "%] ";
-      console.info(percent + this._message);
+      logger.notice(percent + this._message);
     }
   }
 
@@ -139,11 +139,11 @@ export class GoalWorkerImpl {
     this.addCallback(() => {
       const result = spawnSync(command, args, { cwd, encoding: "utf-8" });
       if (result.error || result.status) {
-        logger.info("cd " + cwd);
+        logger.notice("cd " + cwd);
         let cmd = args.join(" ");
         cmd = command + (cmd ? " " : "") + cmd;
-        logger.info(cmd);
-        logger.info("");
+        logger.notice(cmd);
+        logger.notice("");
     
         logger.error(result.stderr);
     
@@ -154,7 +154,7 @@ export class GoalWorkerImpl {
       }
       if (result.stdout) {
         for (const line of result.stdout.trim().split("\n")) {
-          logger.info(line);
+          logger.notice(line);
         }
       }
     })
@@ -649,7 +649,7 @@ export class ProjectContext {
       installPairs.forEach(i => void worker.addDependency(i.src));
       worker.addCallback(async () => {
         for (const {src, dest} of installPairs) {
-          console.info("Installing: " + dest);
+          logger.notice("Installing: " + dest);
           await fs.promises.mkdir(Path.dirname(dest), { recursive: true });
           await fs.promises.cp(src.toString(), dest.toString(), { force: true });
         }

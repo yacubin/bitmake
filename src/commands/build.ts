@@ -243,12 +243,12 @@ async function doExtractArchive(gconfig: IGeneralConfig, environment: any, confi
     throw new Error("Unknown extractDir");
 
   if (!await directoryExists(config.archiveDir)) {
-    console.log(`mkdir -p ${config.archiveDir}`);
+    logger.notice(`mkdir -p ${config.archiveDir}`);
     await fs.promises.mkdir(config.archiveDir, { recursive: true });
   }
 
   if (!await directoryExists(config.tempDir)) {
-    console.log(`mkdir -p ${config.tempDir}`);
+    logger.notice(`mkdir -p ${config.tempDir}`);
     await fs.promises.mkdir(config.tempDir, { recursive: true });
   }
 
@@ -284,7 +284,7 @@ async function doExtractArchive(gconfig: IGeneralConfig, environment: any, confi
     if (extractList.length === 1) {
       extractDir = Path.resolve(extractDir, extractList[0]);
       if (!await directoryExists(extractDir)) {
-        console.log(`rm -fr ${extractDir}`);
+        logger.notice(`rm -fr ${extractDir}`);
         await fs.promises.rm(extractDir, { recursive: true });
         throw new Error(`Support only directory for archive`);
       }
@@ -292,18 +292,18 @@ async function doExtractArchive(gconfig: IGeneralConfig, environment: any, confi
   
     if (await directoryExists(config.extractDir)) {
       // TODO: Marge extractDir with output
-      console.log(`rm -fr ${config.extractDir}`);
+      logger.notice(`rm -fr ${config.extractDir}`);
       await fs.promises.rm(config.extractDir, { recursive: true });
     }
     else {
       const parentDir = Path.dirname(config.extractDir);
       if (!await directoryExists(parentDir)) {
-        console.log(`mkdir -p ${parentDir}`);
+        logger.notice(`mkdir -p ${parentDir}`);
         await fs.promises.mkdir(parentDir, { recursive: true }); 
       }
     }
   
-    console.log(`mv ${extractDir} ${config.extractDir}`);
+    logger.notice(`mv ${extractDir} ${config.extractDir}`);
     await fs.promises.rename(extractDir, config.extractDir);
   
     extractFiles[arcFile] = extractDir;
@@ -355,7 +355,7 @@ async function doTargetBuild(gconfig: IGeneralConfig, environment: any, config: 
       await fs.promises.mkdir(config.binaryDir, { recursive: true });
     }
     if (actions[config.action]) {
-      config.description && console.log(config.description);
+      config.description && logger.notice(config.description);
       await actions[config.action](config, environment, settings);
     }
   }

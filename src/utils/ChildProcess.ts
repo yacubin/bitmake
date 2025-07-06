@@ -10,6 +10,9 @@
 import path from "node:path";
 import fs from "node:fs";
 import { spawn } from "node:child_process";
+import { Logger } from "@/logger";
+
+const logger = Logger.create(import.meta.url);
 
 type Result = {
   status: number;
@@ -31,7 +34,7 @@ export function spawnAsync(command: string, args: string[], options?: any): Prom
   }
   return new Promise((resolve, reject) => {
     if (fd || verbose) {
-      verbose && console.info([ path.basename(command), ...args ].join(" "));
+      verbose && logger.notice([ path.basename(command), ...args ].join(" "));
       fd && fs.writeSync(fd, JSON.stringify({command, args, options }, null, 2) + "\n");
     }
     const exec = spawn(command, args, options);

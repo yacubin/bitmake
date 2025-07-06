@@ -71,9 +71,9 @@ export function runScript() {
   if (isMainThread) {
     runMainScript().then(() => process.exit(0)).catch((e) => {
       if (e instanceof Error)
-        console.error(e.stack);
+        logger.fatal(e.stack);
       else
-        console.error(e);
+        logger.fatal(e);
       process.exit(1);
     });
   }

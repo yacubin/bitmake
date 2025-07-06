@@ -76,9 +76,9 @@ export class MakeClient {
 
   private onWorkerError(error: Error) {
     if (error instanceof Error)
-      console.error(error.stack);
+      logger.fatal(error.stack);
     else
-      console.error(error);
+      logger.fatal(error);
     process.exit(1);
   }
 

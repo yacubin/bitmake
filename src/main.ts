@@ -13,6 +13,9 @@
 import bitmake from "bitmake";
 
 import { Args }  from "@/utils/Args";
+import { Logger } from "@/logger";
+
+const logger = Logger.create(import.meta.url);
 
 async function runMainScript() {
   const options: any = {
@@ -53,8 +56,8 @@ async function runMainScript() {
 
 runMainScript().then(() => process.exit(0)).catch((e) => {
   if (e instanceof Error)
-    console.error(e.stack);
+    logger.fatal(e.stack);
   else
-    console.error(e);
+    logger.fatal(e);
   process.exit(1);
 });

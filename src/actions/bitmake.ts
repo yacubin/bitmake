@@ -21,6 +21,7 @@ import { determineCompiler }  from "@/core/DetermineCompiler";
 import { SettingsStorage } from "@/utils/SettingsStorage";
 import { IMPORT_SCHEME } from "@/utils/UrlScheme";
 import { INSTALL_TARGET, PACKAGE_JSON, MAKE_CACHE } from "@/Constants";
+import { SYSTEM_VARIABLE_GROUP } from "@/Constants";
 import { requireResolve } from "@/utils/Module";
 import { SystemScope } from "@/core/SystemScope";
 import SystemVariables from "@/core/SystemVariables";
@@ -35,7 +36,7 @@ export default async function(config: any, environment: any, settings: SettingsS
 
   const variableMap = server.rootVariableMap;
   ScopeHelper.extendVariableMapByValues(variableMap, "", config.variables);
-  ScopeHelper.defineVariablesInVariableMap(variableMap, "system", SystemVariables);
+  ScopeHelper.defineVariablesInVariableMap(variableMap, SYSTEM_VARIABLE_GROUP, SystemVariables);
   const scope = ScopeHelper.createProxy(variableMap) as SystemScope;
 
   const sourceDir = getPathString(config.sourceDir);

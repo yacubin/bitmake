@@ -309,16 +309,7 @@ export class ProjectContext {
       if (!Object.hasOwn(scope, name)) {
         const type = entry.type || typeof entry.value;
         const description = entry.description || "";
-        let value = Array.isArray(entry.value) ? [ ...entry.value ] : entry.value;
-        if (value === "${PROJECT_VERSION}")
-          value = scope.PROJECT_VERSION;
-        else if (value === "${PROJECT_DESCRIPTION}")
-          value = scope.PROJECT_DESCRIPTION;
-        else if (value === "${PROJECT_HOMEPAGE_URL}")
-          value = scope.PROJECT_HOMEPAGE_URL;
-        else if (entry.value === "${CMAKE_SYSTEM_PROCESSOR}")
-          value = scope.SYSTEM_PROCESSOR;
-  
+        let value = Array.isArray(entry.value) ? [ ...entry.value ] : entry.value;  
         const nameSymbol = Symbol(name);
         scope[nameSymbol] = ensureValueByType(type, value);
   
@@ -335,34 +326,30 @@ export class ProjectContext {
     }
   }
 
-  public addStaticLibrary(variableMap: VariableMap, name: string, ...sources: any[]): StaticLibrary {
+  public addStaticLibrary(variableMap: VariableMap, name: string): StaticLibrary {
     const impl = this[TARGET_COLLECTION].get(name);
     const target = StaticLibrary.create(impl, variableMap);
-    target.addSources(...sources);
     this[TARGETS].set(name, target);
     return target;
   }
 
-  public addObjectLibrary(variableMap: VariableMap, name: string, ...sources: any[]): ObjectLibrary {
+  public addObjectLibrary(variableMap: VariableMap, name: string): ObjectLibrary {
     const impl = this[TARGET_COLLECTION].get(name);
     const target = ObjectLibrary.create(impl, variableMap);
-    target.addSources(...sources);
     this[TARGETS].set(name, target);
     return target;
   }
 
-  public addSharedLibrary(variableMap: VariableMap, name: string, ...sources: any[]): SharedLibrary {
+  public addSharedLibrary(variableMap: VariableMap, name: string): SharedLibrary {
     const impl = this[TARGET_COLLECTION].get(name);
     const target = SharedLibrary.create(impl, variableMap);
-    target.addSources(...sources);
     this[TARGETS].set(name, target);
     return target;
   }
 
-  public addExecutable(variableMap: VariableMap, name: string, ...sources: any[]): Executable {
+  public addExecutable(variableMap: VariableMap, name: string): Executable {
     const impl = this[TARGET_COLLECTION].get(name);
     const target = Executable.create(impl, variableMap);
-    target.addSources(...sources);
     this[TARGETS].set(name, target);
     return target;
   }

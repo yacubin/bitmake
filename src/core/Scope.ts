@@ -331,10 +331,12 @@ export function getVariablesByGroup(map: VariableMap, group?: string) {
   return result;
 }
 
-export function createVariableValues(map: VariableMap): any {
+export function createVariableValues(map: VariableMap, group?: string): any {
   const result: any = {};
-  for (const [ name, entry ] of Object.entries(map))
-    result[name] = getEntryValue(entry);
+  for (const [ name, entry ] of Object.entries(map)) {
+    if (!group || group === entry.group)
+      result[name] = getEntryValue(entry);
+  }
   return result;
 }
 

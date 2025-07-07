@@ -16,6 +16,7 @@ import { AbsolutePath } from "@/core/AbsolutePath";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
 import { TargetStruct, TargetType, LiveString } from "@/core/TargetStruct";
+import { SYSTEM_VARIABLE_GROUP } from "@/Constants";
 
 const _languageExtensions = {
   ASM: [ ".asm", ".s" ],
@@ -86,8 +87,9 @@ export class InterfaceTarget {
   private [TARGET_SCOPE]: SystemScope;
 
   private constructor(impl: TargetStruct, variableMap: VariableMap) {
+    const variables = ScopeHelper.createVariableValues(variableMap, SYSTEM_VARIABLE_GROUP) as SystemScope;
     this[IMPL] = impl;
-    this[TARGET_SCOPE] = ScopeHelper.createVariableValues(variableMap) as SystemScope;
+    this[TARGET_SCOPE] = variables;
   }
 
   public static create(impl: TargetStruct, variableMap: VariableMap) {

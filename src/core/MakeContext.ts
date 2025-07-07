@@ -81,19 +81,27 @@ export class MakeContext extends BaseContext implements IMakeContext {
   }
 
   public addStaticLibrary(name: any, ...sources: any[]): StaticLibrary {
-    return this[GLOBAL].addStaticLibrary(this[SCOPE], name, ...sources);
+    const target = this[GLOBAL].addStaticLibrary(this[SCOPE], name);
+    target.addSources(...sources);
+    return target;
   }
 
   public addObjectLibrary(name: any, ...sources: any[]): ObjectLibrary {
-    return this[GLOBAL].addObjectLibrary(this[SCOPE], name, ...sources);
+    const target = this[GLOBAL].addObjectLibrary(this[SCOPE], name);
+    target.addSources(...sources);
+    return target;
   }
 
   public addSharedLibrary(name: any, ...sources: any[]): SharedLibrary {
-    return this[GLOBAL].addSharedLibrary(this[SCOPE], name, ...sources);
+    const target = this[GLOBAL].addSharedLibrary(this[SCOPE], name);
+    target.addSources(...sources);
+    return target;
   }
 
   public addExecutable(name: string, ...sources: any[]): Executable {
-    return this[GLOBAL].addExecutable(this[SCOPE], name, ...sources);
+    const target = this[GLOBAL].addExecutable(this[SCOPE], name);
+    target.addSources(...sources);
+    return target;
   }
 
   public target(name: string): InterfaceTarget {

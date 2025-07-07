@@ -10,17 +10,20 @@
 import fs from "node:fs";
 
 import { ProjectContext } from "@/core/ProjectContext";
-import { createVariableMapForDirectory } from "@/core/BaseContext";
 import { ScriptContext } from "@/core/ScriptContext";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { MakeClient } from "@/server/MakeClient";
 import { JsonRpcServer } from "@/server/JsonRpcServer";
 import { importModule } from "@/utils/Module";
+import { createVariableMapForDirectory } from "@/core/BaseContext";
 import { MAINNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
 import { MAINNODE_LOADJSON } from "@/server/RemoteMethods";
 import { MAINNODE_EXECUTESCRIPT } from "@/server/RemoteMethods";
 import { WORKERNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
 import { MAINNODE_ADDCUSTOMSCRIPT } from "@/server/RemoteMethods";
+import { MAINNODE_ADDSTATICLIBRARY } from "@/server/RemoteMethods";
+import { MAINNODE_ADDEXECUTABLE } from "@/server/RemoteMethods";
+import { MAINNODE_TARGETSOURCES } from "@/server/RemoteMethods";
 import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
@@ -60,6 +63,9 @@ export class MakeServer {
     this._jsonRpcServer.registerCallback(MAINNODE_LOADJSON, params => this.loadJSON(params));
     this._jsonRpcServer.registerCallback(MAINNODE_STARTMAKESCRIPT, params => this.startMakeScript(params));
     this._jsonRpcServer.registerCallback(MAINNODE_ADDCUSTOMSCRIPT, params => this.addCustomScript(params));
+    this._jsonRpcServer.registerCallback(MAINNODE_ADDSTATICLIBRARY, params => this.addStaticLibrary(params));
+    this._jsonRpcServer.registerCallback(MAINNODE_ADDEXECUTABLE, params => this.addExecutable(params));
+    this._jsonRpcServer.registerCallback(MAINNODE_TARGETSOURCES, params => this.targetSources(params));
   }
 
   public get rootVariableMap() {
@@ -115,6 +121,25 @@ export class MakeServer {
     logger.debug("MakeServer.addCustomScript");
     const variableMap = ScopeHelper.fromJSON(params);
     return this._project.addCustomScript(variableMap);
+  }
+
+  private addStaticLibrary(params: any) {
+    logger.debug("MakeServer.addStaticLibrary(", params.name, ")");
+    const variableMap = ScopeHelper.fromJSON(params.variableMap);
+    this._project.addStaticLibrary(variableMap, params.name);
+    return params.name;
+  }
+
+  private addExecutable(params: any) {
+    logger.debug("MakeServer.addExecutable(", params.name, ")");
+    const variableMap = ScopeHelper.fromJSON(params.variableMap);
+    this._project.addExecutable(variableMap, params.name);
+    return params.name;
+  }
+
+  private targetSources(params: any) {
+    logger.debug("MakeServer.targetSources(", params, ")");
+    throw new Error("Not Implemented");
   }
 
   public async runMakeScript(variableMap: VariableMap): Promise<boolean> {

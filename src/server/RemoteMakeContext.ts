@@ -7,16 +7,19 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { IRequestSync } from "@/server/Transport";
 import { InterfaceScript } from "@/core/InterfaceScript";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, InterfaceTarget } from "@/core/Target";
 import { CustomScript } from "@/core/CustomScript";
 import { BaseContext, createContext, createVariableMapForDirectory } from "@/core/BaseContext";
-import { JSONRPC_VERSION } from "@/server/Transport";
+import { JsonRpcRequestSync } from "@/server/JsonRpcRequestSync";
+import { RemoteExecutable } from "@/server/RemoteExecutable";
+import { RemoteStaticLibrary } from "@/server/RemoteStaticLibrary";
 import { MAINNODE_LOADJSON } from "@/server/RemoteMethods";
 import { MAINNODE_EXECUTESCRIPT } from "@/server/RemoteMethods";
 import { MAINNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
 import { MAINNODE_ADDCUSTOMSCRIPT } from "@/server/RemoteMethods";
+import { MAINNODE_ADDSTATICLIBRARY } from "@/server/RemoteMethods";
+import { MAINNODE_ADDEXECUTABLE } from "@/server/RemoteMethods";
 import { Logger } from "@/logger";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { CUSTOM_VARIABLE_GROUP } from "@/Constants";
@@ -26,37 +29,14 @@ const logger = Logger.create(import.meta.url);
 const REQUEST = Symbol("REQUEST");
 const SCOPE = Symbol("SCOPE");
 
-class JsonRpcRequest {
-  private _request: IRequestSync;
-  private _id: number;
-
-  public constructor(requestSync: IRequestSync) {
-    this._request = requestSync;
-    this._id = 1;
-  }
-
-  public requestSync(method: string, params: any): any {
-    const message = {
-      jsonrpc: JSONRPC_VERSION,
-      method,
-      params,
-      id: this._id++,
-    };
-    const response = this._request.requestSync(message);
-    if (response.error)
-      throw new Error(response.error.message, { cause: response.error.code });
-    return response.result;
-  }
-}
-
 export class RemoteMakeContext extends BaseContext {
   [SCOPE]: VariableMap;
-  [REQUEST]: JsonRpcRequest;
+  [REQUEST]: JsonRpcRequestSync;
 
-  public constructor(variableMap: VariableMap, requestSync: IRequestSync) {
+  public constructor(variableMap: VariableMap, requestSync: JsonRpcRequestSync) {
     super(variableMap);
     this[SCOPE] = variableMap;
-    this[REQUEST] = new JsonRpcRequest(requestSync);
+    this[REQUEST] = requestSync;
   }
 
   public getCacheVariables(...params: any): any {
@@ -99,8 +79,15 @@ export class RemoteMakeContext extends BaseContext {
     throw new Error("Not Implemented");
   }
 
-  public addStaticLibrary(name: any, ...sources: any[]): StaticLibrary {
-    throw new Error("Not Implemented");
+  public addStaticLibrary(name: any, ...sources: any[]): RemoteStaticLibrary {
+    logger.debug("RemoteMakeContext.addStaticLibrary(", name, ")");
+    const newVariableMap = ScopeHelper.cloneVariableMap(this[SCOPE]);
+    const uuid = this[REQUEST].requestSync(MAINNODE_ADDSTATICLIBRARY, {
+      name, variableMap: ScopeHelper.toJSON(this[SCOPE]),
+    });
+    const target = new RemoteStaticLibrary(newVariableMap, uuid, this[REQUEST]);
+    target.addSources(...sources);
+    return target;
   }
 
   public addObjectLibrary(name: any, ...sources: any[]): ObjectLibrary {
@@ -111,8 +98,15 @@ export class RemoteMakeContext extends BaseContext {
     throw new Error("Not Implemented");
   }
 
-  public addExecutable(name: string, ...sources: any[]): Executable {
-    throw new Error("Not Implemented");
+  public addExecutable(name: string, ...sources: any[]): RemoteExecutable {
+    logger.debug("RemoteMakeContext.addExecutable(", name, ")");
+    const newVariableMap = ScopeHelper.cloneVariableMap(this[SCOPE]);
+    const uuid = this[REQUEST].requestSync(MAINNODE_ADDEXECUTABLE, {
+      name, variableMap: ScopeHelper.toJSON(this[SCOPE]),
+    });
+    const target = new RemoteExecutable(newVariableMap, uuid, this[REQUEST]);
+    target.addSources(...sources);
+    return target;
   }
 
   public target(name: string): InterfaceTarget {
@@ -128,7 +122,7 @@ export class RemoteMakeContext extends BaseContext {
     return this[REQUEST].requestSync(MAINNODE_EXECUTESCRIPT, ScopeHelper.toJSON(newVariableMap));
   }
 
-  public static create(variableMap: VariableMap, requestSync: IRequestSync) {
+  public static create(variableMap: VariableMap, requestSync: JsonRpcRequestSync) {
     return createContext(new RemoteMakeContext(variableMap, requestSync));
   }
 };

@@ -8,15 +8,16 @@
  */
 
 import { IRequestSync } from "@/server/Transport";
+import { JsonRpcRequestSync } from "@/server/JsonRpcRequestSync";
 import { RemoteMakeContext } from "@/server/RemoteMakeContext";
 import { performContext } from "@/core/BaseContext";
 import { ScopeHelper } from "@/core/Scope";
 
 export class WorkerNode {
-  private _transport: IRequestSync;
+  private _transport: JsonRpcRequestSync;
 
   public constructor(requestSync: IRequestSync) {
-    this._transport = requestSync;
+    this._transport = new JsonRpcRequestSync(requestSync);
   }
 
   public async execMakeScript(params: any): Promise<void> {

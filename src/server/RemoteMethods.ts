@@ -13,3 +13,6 @@ export const MAINNODE_LOADJSON = "MainNode.loadJSON";
 export const MAINNODE_EXECUTESCRIPT = "MainNode.executeScript";
 export const MAINNODE_STARTMAKESCRIPT = "MainNode.startMakeScript";
 export const MAINNODE_ADDCUSTOMSCRIPT = "MainNode.addCustomScript";
+export const MAINNODE_ADDEXECUTABLE = "MainNode.addExecutable";
+export const MAINNODE_ADDSTATICLIBRARY = "MainNode.addStaticLibrary";
+export const MAINNODE_TARGETSOURCES = "MainNode.targetSources";

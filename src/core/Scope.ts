@@ -84,7 +84,14 @@ const makeValueMap: any = {
 
 const tojsonValueMap: any = {
   array: (value: any) => {
-    return deepCopy(value);
+    const result = [];
+    for (const iter of value) {
+      if (iter && typeof iter === "object")
+        result.push(typeof iter.toJSON === "function" ? iter.toJSON() : deepCopy(iter));
+      else
+        result.push(iter);
+    }
+    return result;
   },
   boolean: (value: any) => {
     return value;

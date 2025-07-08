@@ -19,10 +19,10 @@ const ENTRIES = Symbol("ENTRIES");
 export class TargetStructCollection {
   private [ENTRIES] = new Map<string, TargetStruct>;
 
-  constructor() {
+  public constructor() {
   }
 
-  get(name: string): TargetStruct {
+  public getOrCreate(name: string): TargetStruct {
     if (typeof name !== "string")
       throw new Error(`Target "${name}" is not string type`);
     if ([ ALL_TARGET, INSTALL_TARGET ].includes(name))
@@ -32,6 +32,13 @@ export class TargetStructCollection {
       result = new TargetStruct(name);
       this[ENTRIES].set(name, result);
     }
+    return result;
+  }
+
+  public get(name: string): TargetStruct {
+    const result = this[ENTRIES].get(name);
+    if (!result)
+      throw `Target "${name}" does not exist`;
     return result;
   }
 

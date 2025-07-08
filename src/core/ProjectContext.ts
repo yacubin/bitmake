@@ -28,6 +28,7 @@ import { InstallEntity } from "@/core/InstallEntity";
 import { CustomScript } from "@/core/CustomScript";
 import { ScriptContext } from "@/core/ScriptContext";
 import { ScopeHelper, VariableMap } from "./Scope";
+import { TargetStruct } from "./TargetStruct";
 import { performContext, createVariableMapForDirectory } from "@/core/BaseContext";
 
 import BuildinScripts from "@/core/BuildinScripts";
@@ -67,6 +68,24 @@ function ensureValueByType(type: any, value: any) {
   if (Array.isArray(type) ? type.includes(value) : typeof value === type)
     return value;
   throw new Error(`The '${value}' is not a ${type}`);
+}
+
+function getFile(target: TargetStruct): AbsolutePath {
+  if (!target.targetFile.file)
+    throw new Error(`Target "${target.name}" is not defined`);
+  return target.targetFile.file;
+}
+
+function getFileName(target: TargetStruct): string {
+  if (!target.targetFile.fileName)
+    throw new Error(`Target "${target.name}" is not defined`);
+  return target.targetFile.fileName;
+}
+
+function getFileDir(target: TargetStruct): AbsolutePath {
+  if (!target.targetFile.fileDir)
+    throw new Error(`Target "${target.name}" is not defined`);
+  return target.targetFile.fileDir;
 }
 
 type GoalHandler = () => Promise<void> | void;
@@ -327,35 +346,35 @@ export class ProjectContext {
   }
 
   public addStaticLibrary(variableMap: VariableMap, name: string): StaticLibrary {
-    const impl = this[TARGET_COLLECTION].get(name);
+    const impl = this[TARGET_COLLECTION].getOrCreate(name);
     const target = StaticLibrary.create(impl, variableMap);
     this[TARGETS].set(name, target);
     return target;
   }
 
   public addObjectLibrary(variableMap: VariableMap, name: string): ObjectLibrary {
-    const impl = this[TARGET_COLLECTION].get(name);
+    const impl = this[TARGET_COLLECTION].getOrCreate(name);
     const target = ObjectLibrary.create(impl, variableMap);
     this[TARGETS].set(name, target);
     return target;
   }
 
   public addSharedLibrary(variableMap: VariableMap, name: string): SharedLibrary {
-    const impl = this[TARGET_COLLECTION].get(name);
+    const impl = this[TARGET_COLLECTION].getOrCreate(name);
     const target = SharedLibrary.create(impl, variableMap);
     this[TARGETS].set(name, target);
     return target;
   }
 
   public addExecutable(variableMap: VariableMap, name: string): Executable {
-    const impl = this[TARGET_COLLECTION].get(name);
+    const impl = this[TARGET_COLLECTION].getOrCreate(name);
     const target = Executable.create(impl, variableMap);
     this[TARGETS].set(name, target);
     return target;
   }
 
   public getTarget(variableMap: VariableMap, name: string): InterfaceTarget {
-    const impl = this[TARGET_COLLECTION].get(name);
+    const impl = this[TARGET_COLLECTION].getOrCreate(name);
     return InterfaceTarget.create(impl, variableMap);
   }
 
@@ -618,9 +637,10 @@ export class ProjectContext {
         dest = iter.DESTINATION.join(rfile);
       }
       else if (iter.VALUE instanceof InterfaceTarget) {
-        const target = this[TARGETS].get(iter.VALUE.targetName);
-        src = target.FILE.toString();
-        dest = iter.DESTINATION.join(target.FILE_NAME);
+        const targetName = iter.VALUE.targetName;
+        const target = this[TARGET_COLLECTION].get(targetName);
+        src = getFile(target).toString();
+        dest = iter.DESTINATION.join(getFileName(target));
       }
       else {
         throw new Error(`Can not install ${iter.VALUE}`)

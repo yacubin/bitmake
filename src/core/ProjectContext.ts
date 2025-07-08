@@ -29,6 +29,7 @@ import { CustomScript } from "@/core/CustomScript";
 import { ScriptContext } from "@/core/ScriptContext";
 import { ScopeHelper, VariableMap } from "./Scope";
 import { TargetStruct } from "./TargetStruct";
+import { SourceFile } from "@/core/SourceFile";
 import { performContext, createVariableMapForDirectory } from "@/core/BaseContext";
 
 import BuildinScripts from "@/core/BuildinScripts";
@@ -476,6 +477,7 @@ export class ProjectContext {
       goalList.add(worker);
     }
 
+    const objectFiles = new Map<SourceFile, AbsolutePath>();
     for (const target of Object.values(this[TARGETS].ENTRIES)) {
       for (const it of target.IMPL.getSourceFiles()) {
         if (!it.LANGUAGE)
@@ -483,7 +485,8 @@ export class ProjectContext {
         const rfile1 = target.TARGET_SCOPE.BINARY_DIR.relative(it.FILE);
         const rfile2 =  target.TARGET_SCOPE.SOURCE_DIR.relative(it.FILE);
         const rfile = (rfile2.length < rfile1.length ? rfile2 : rfile1).replace("../", "__/");
-        it.OBJECT_FILE =  target.TARGET_SCOPE.BINARY_DIR.join("MakeFiles", target.targetName + ".dir",  rfile + ".obj");
+        const ofile =  target.TARGET_SCOPE.BINARY_DIR.join("MakeFiles", target.targetName + ".dir",  rfile + ".obj");
+        objectFiles.set(it, ofile);
       }
     }
 
@@ -493,8 +496,8 @@ export class ProjectContext {
       for (const s of target.IMPL.getInterfaceObjectsList()) {
         const t = this[TARGETS].get(s.targetName) as BaseTarget;
         for (const f of t.IMPL.getSourceFiles()) {
-          if (f.OBJECT_FILE)
-            depends.push(f.OBJECT_FILE.toString());
+          const o = objectFiles.get(f);
+          o && depends.push(o.toString());
         }
       }
   
@@ -502,16 +505,14 @@ export class ProjectContext {
       for (const s of target.IMPL.getSourceFiles()) {
         if (s.HEADER_FILE_ONLY)
           continue;
-        
-        if (!s.OBJECT_FILE_DIR)
-          throw new Error(`OBJECT_FILE_DIR is null`);
-        
-        if (!s.OBJECT_FILE)
+
+        const o = objectFiles.get(s);
+        if (!o)
           throw new Error(`OBJECT_FILE is null`);
 
-        fs.mkdirSync(s.OBJECT_FILE_DIR.toString(), { recursive: true });
+        fs.mkdirSync(o.dirname().toString(), { recursive: true });
   
-        const relativeObject = target.TARGET_SCOPE.BINARY_DIR.relative(s.OBJECT_FILE);
+        const relativeObject = target.TARGET_SCOPE.BINARY_DIR.relative(o);
         const relativeBinaryDir = scope.PROJECT_BINARY_DIR.relative(target.TARGET_SCOPE.BINARY_DIR);
         const msg = "\x1b[32m" + `Building ${s.LANGUAGE} object ${relativeBinaryDir}/${relativeObject}` + "\x1b[0m";
   

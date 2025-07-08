@@ -16,14 +16,12 @@ const DEFINES             = Symbol("DEFINES");
 const COMPILE_FLAGS       = Symbol("COMPILE_FLAGS");
 const FILE                = Symbol("FILE");
 const BASE_DIR            = Symbol("BASE_DIR");
-const OBJECT_FILE         = Symbol("OBJECT_FILE");
 
 export class SourceFile {
   private [LANGUAGE]: string;
   private [HEADER_FILE_ONLY]: boolean;
   private [FILE]: AbsolutePath;
   private [BASE_DIR]: AbsolutePath;
-  private [OBJECT_FILE]: AbsolutePath | null;
   private [DEFINES]: string[];
   private [COMPILE_FLAGS]: Array<string|string[]>;
 
@@ -32,7 +30,6 @@ export class SourceFile {
     this[BASE_DIR] = baseDir;
     this[LANGUAGE] = language;
     this[HEADER_FILE_ONLY] = !language;
-    this[OBJECT_FILE] = null;
     this[DEFINES] = [];
     this[COMPILE_FLAGS] = [ ...compileFlags ];
   }
@@ -73,22 +70,6 @@ export class SourceFile {
     return this[FILE].basename();
   }
 
-  public get OBJECT_FILE(): AbsolutePath | null {
-    return this[OBJECT_FILE];
-  }
-
-  public set OBJECT_FILE(value: AbsolutePath) {
-    this[OBJECT_FILE] = value;
-  }
-
-  public get OBJECT_FILE_DIR(): AbsolutePath | null {
-    return this[OBJECT_FILE] ? this[OBJECT_FILE].dirname() : null;
-  }
-
-  public get OBJECT_FILE_NAME(): string | null {
-    return this[OBJECT_FILE] ? this[OBJECT_FILE].basename() : null;
-  }
-
   public toJSON(): object {
     return {
       LANGUAGE: this[LANGUAGE],
@@ -99,9 +80,6 @@ export class SourceFile {
       FILE_DIR: this.FILE_DIR,
       FILE_NAME: this.FILE_NAME,
       BASE_DIR: this[BASE_DIR],
-      OBJECT_FILE: this[OBJECT_FILE],
-      OBJECT_FILE_DIR: this.OBJECT_FILE_DIR,
-      OBJECT_FILE_NAME: this.OBJECT_FILE_NAME,
     };
   }
 }

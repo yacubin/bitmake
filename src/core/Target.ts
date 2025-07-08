@@ -45,7 +45,7 @@ function makeLanguage(value: string) {
   throw new Error(`Language "${value}" is not supported`);
 }
 
-function createSources(scope: SystemScope, source: any): InterfaceObjects | SourceFile {
+function createSources(scope: SystemScope, source: InterfaceObjects | SourceFile | AbsolutePath | string): InterfaceObjects | SourceFile {
   if (source instanceof InterfaceObjects || source instanceof SourceFile)
     return source;
 

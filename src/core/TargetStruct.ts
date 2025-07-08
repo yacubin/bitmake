@@ -427,7 +427,7 @@ export class TargetStruct {
     return this._includes.getPublicItems();
   }
 
-  public addSource(origin: TargetItemOrigin, publicOnly: boolean, value: InterfaceObjects|SourceFile) {
+  public addSource(origin: TargetItemOrigin, publicOnly: boolean, value: InterfaceObjects | SourceFile) {
     this._sources.addItem(origin, publicOnly, value);
   }
 

@@ -8,7 +8,7 @@
  */
 
 import { InterfaceIncludes }from "@/core/InterfaceIncludes";
-import { InterfaceTarget } from "@/core/Target";
+import { UserIndirectTarget } from "@/core/Target";
 import { TargetStruct } from "@/core/TargetStruct";
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
 import { BaseTarget } from "./Target";
@@ -78,9 +78,9 @@ export class TargetCollection {
     this[ENTRIES][name] = target;
   }
 
-  private __getAllIncludes(includes: string[], targetSet: Set<string>, list: Array<AbsolutePath | InterfaceIncludes> | Array<InterfaceTarget>) {
+  private __getAllIncludes(includes: string[], targetSet: Set<string>, list: Array<AbsolutePath | InterfaceIncludes> | Array<UserIndirectTarget>) {
     for (const iter of list) {
-      if (iter instanceof InterfaceIncludes || iter instanceof InterfaceTarget) {
+      if (iter instanceof InterfaceIncludes || iter instanceof UserIndirectTarget) {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
           const target = this.get(iter.targetName);
@@ -107,9 +107,9 @@ export class TargetCollection {
     return includes;
   }
 
-  private __getAllHeaders(headers: string[], targetSet: Set<string>, list: Array<AbsolutePath | InterfaceIncludes> | Array<InterfaceTarget>) {
+  private __getAllHeaders(headers: string[], targetSet: Set<string>, list: Array<AbsolutePath | InterfaceIncludes> | Array<UserIndirectTarget>) {
     for (const iter of list) {
-      if (iter instanceof InterfaceIncludes || iter instanceof InterfaceTarget) {
+      if (iter instanceof InterfaceIncludes || iter instanceof UserIndirectTarget) {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
           const target = this.get(iter.targetName);
@@ -133,9 +133,9 @@ export class TargetCollection {
     return headers;
   }
 
-  private __getAllLibraries(libraries: string[], targetSet: Set<string>, list: Array<InterfaceTarget>) {
+  private __getAllLibraries(libraries: string[], targetSet: Set<string>, list: Array<UserIndirectTarget>) {
     for (const iter of list) {
-      console.assert(iter instanceof InterfaceTarget);
+      console.assert(iter instanceof UserIndirectTarget);
       if (!targetSet.has(iter.targetName)) {
         targetSet.add(iter.targetName);
         const target = this.get(iter.targetName);
@@ -153,9 +153,9 @@ export class TargetCollection {
     return libraries;
   }
 
-  private __getAllDefinitions(definitions: string[], targetSet: Set<string>, list: Array<string> | Array<InterfaceTarget>) {
+  private __getAllDefinitions(definitions: string[], targetSet: Set<string>, list: Array<string> | Array<UserIndirectTarget>) {
     for (const iter of list) {
-      if (iter instanceof InterfaceTarget) {
+      if (iter instanceof UserIndirectTarget) {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
           const target = this.get(iter.targetName);
@@ -182,9 +182,9 @@ export class TargetCollection {
     return definitions;
   }
 
-  private __getAllCompileOptions(options: Array<string|string[]>, targetSet: Set<string>, list: Array<string|string[]> | Array<InterfaceTarget>) {
+  private __getAllCompileOptions(options: Array<string|string[]>, targetSet: Set<string>, list: Array<string|string[]> | Array<UserIndirectTarget>) {
     for (const iter of list) {
-      if (iter instanceof InterfaceTarget) {
+      if (iter instanceof UserIndirectTarget) {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
           const target = this.get(iter.targetName);
@@ -215,9 +215,9 @@ export class TargetCollection {
     return options.flat();
   }
 
-  private __getLinkOptions(options: Array<string|string[]>, targetSet: Set<string>, list: Array<string|string[]> | Array<InterfaceTarget>) {
+  private __getLinkOptions(options: Array<string|string[]>, targetSet: Set<string>, list: Array<string|string[]> | Array<UserIndirectTarget>) {
     for (const iter of list) {
-      if (iter instanceof InterfaceTarget) {
+      if (iter instanceof UserIndirectTarget) {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
           const target = this.get(iter.targetName);

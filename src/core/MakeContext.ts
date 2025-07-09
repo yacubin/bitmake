@@ -10,7 +10,7 @@
 import { fileExistsSync } from "@/utils/FileSystem";
 import { InterfaceScript } from "@/core/InterfaceScript";
 import { InstallEntity } from "@/core/InstallEntity";
-import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget, InterfaceTarget } from "@/core/Target";
+import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget, UserIndirectTarget } from "@/core/Target";
 import { CustomScript } from "@/core/CustomScript";
 import { ProjectContext } from "@/core/ProjectContext";
 import { ScopeHelper, VariantMap, VariableMap } from "@/core/Scope";
@@ -104,7 +104,7 @@ export class MakeContext extends BaseContext implements IMakeContext {
     return target;
   }
 
-  public target(name: string): InterfaceTarget {
+  public target(name: string): UserIndirectTarget {
     return this[GLOBAL].getTarget(this[SCOPE], name);
   }
 

@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { InterfaceTarget } from "@/core/Target";
+import { UserIndirectTarget } from "@/core/Target";
 import { AbsolutePath } from "@/core/AbsolutePath";
 import { SystemScope } from "@/core/SystemScope";
 
@@ -16,11 +16,11 @@ const DESTINATION = Symbol("DESTINATION");
 const BASE_DIR    = Symbol("BASE_DIR");
 
 export class InstallEntity {
-  private [VALUE]: AbsolutePath | InterfaceTarget;
+  private [VALUE]: AbsolutePath | UserIndirectTarget;
   private [DESTINATION]: AbsolutePath;
   private [BASE_DIR]: AbsolutePath | null;
 
-  private constructor(scope: SystemScope, value: string | AbsolutePath | InterfaceTarget, params: string | any) {
+  private constructor(scope: SystemScope, value: string | AbsolutePath | UserIndirectTarget, params: string | any) {
     let destination: string | AbsolutePath | undefined;
     let baseDir;
     if (typeof params === "string")
@@ -41,7 +41,7 @@ export class InstallEntity {
       value = AbsolutePath.create(value);
       baseDir = baseDir || value.dirname();
     }
-    else if (!(value instanceof InterfaceTarget)) {
+    else if (!(value instanceof UserIndirectTarget)) {
       throw new Error(`Not supportet value of ${value}`);
     }
   
@@ -50,7 +50,7 @@ export class InstallEntity {
     this[BASE_DIR] = baseDir ? AbsolutePath.create(baseDir.toString()) : null;
   }
   
-  public static create(scope: any, value: string | AbsolutePath | InterfaceTarget, params: string | any) {
+  public static create(scope: any, value: string | AbsolutePath | UserIndirectTarget, params: string | any) {
     return Object.seal(new InstallEntity(scope, value, params));
   }
 

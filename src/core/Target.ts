@@ -82,7 +82,7 @@ function getSourceFiles(impl: TargetStruct, scope: SystemScope, ...sources: any[
 const IMPL                = Symbol("IMPL");
 const TARGET_SCOPE        = Symbol("TARGET_SCOPE");
 
-export class InterfaceTarget {
+export class UserIndirectTarget {
   private [IMPL]: TargetStruct;
   private [TARGET_SCOPE]: SystemScope;
 
@@ -93,13 +93,13 @@ export class InterfaceTarget {
   }
 
   public static create(impl: TargetStruct, variableMap: VariableMap) {
-    return Object.seal(new InterfaceTarget(impl, variableMap));
+    return Object.seal(new UserIndirectTarget(impl, variableMap));
   }
 
   public static ensureInstance(value: any) {
-    if (value instanceof InterfaceTarget)
+    if (value instanceof UserIndirectTarget)
       return value;
-    throw new Error(`The '${value}' is not a InterfaceTarget`);
+    throw new Error(`The '${value}' is not a UserIndirectTarget`);
   }
 
   public get targetName(): string {

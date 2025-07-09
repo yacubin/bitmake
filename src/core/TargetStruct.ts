@@ -10,7 +10,7 @@
 import { AbsolutePath } from "@/core/AbsolutePath";
 import { InterfaceIncludes } from "@/core/InterfaceIncludes";
 import { InterfaceObjects } from "@/core/InterfaceObjects";
-import { InterfaceTarget } from "@/core/Target";
+import { UserIndirectTarget } from "@/core/Target";
 import { SourceFile } from "@/core/SourceFile";
 import { normalizeDefinitions } from "@/core/DefinitionHelper";
 
@@ -306,7 +306,7 @@ export class TargetStruct {
   private _compileOptions = new TargetItems<string | string[]>;
   private _linkOptions = new TargetItems<string | string[]>;
   private _sources = new TargetItems<InterfaceObjects | SourceFile>;
-  private _libraries = new TargetItems<InterfaceTarget>;
+  private _libraries = new TargetItems<UserIndirectTarget>;
   private _positionIndependentCode = false;
 
   constructor(name: string) {
@@ -453,20 +453,20 @@ export class TargetStruct {
     return result;
   }
 
-  public addLibrary(origin: TargetItemOrigin, publicOnly: boolean, value: InterfaceTarget) {
-    this._libraries.addItem(origin, publicOnly, InterfaceTarget.ensureInstance(value));
+  public addLibrary(origin: TargetItemOrigin, publicOnly: boolean, value: UserIndirectTarget) {
+    this._libraries.addItem(origin, publicOnly, UserIndirectTarget.ensureInstance(value));
   }
 
-  public addLibraries(origin: TargetItemOrigin, publicOnly: boolean, ...libraries: InterfaceTarget[]) {
+  public addLibraries(origin: TargetItemOrigin, publicOnly: boolean, ...libraries: UserIndirectTarget[]) {
     for (const iter of libraries.flat())
       this.addLibrary(origin, publicOnly, iter);
   }
 
-  public getLibraries(): Array<InterfaceTarget> {
+  public getLibraries(): Array<UserIndirectTarget> {
     return this._libraries.getItems();
   }
 
-  public getPublicLibraries(): Array<InterfaceTarget> {
+  public getPublicLibraries(): Array<UserIndirectTarget> {
     return this._libraries.getPublicItems();
   }
 

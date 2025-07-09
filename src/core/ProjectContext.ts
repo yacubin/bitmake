@@ -20,7 +20,7 @@ import { ScriptCollection } from "@/core/ScriptCollection";
 import { GoalCollection } from "@/core/GoalCollection";
 import { InterfaceScript } from "@/core/InterfaceScript";
 import { MakeContext } from "@/core/MakeContext";
-import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget, InterfaceTarget } from "@/core/Target";
+import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget, UserIndirectTarget } from "@/core/Target";
 import { SystemScope } from "@/core/SystemScope";
 import { importModule, requireSync } from "@/utils/Module";
 import { Logger } from "@/logger";
@@ -374,9 +374,9 @@ export class ProjectContext {
     return target;
   }
 
-  public getTarget(variableMap: VariableMap, name: string): InterfaceTarget {
+  public getTarget(variableMap: VariableMap, name: string): UserIndirectTarget {
     const impl = this[TARGET_COLLECTION].getOrCreate(name);
-    return InterfaceTarget.create(impl, variableMap);
+    return UserIndirectTarget.create(impl, variableMap);
   }
 
   public executeScriptSync(variableMap: VariableMap, script: any, params: any) {
@@ -637,7 +637,7 @@ export class ProjectContext {
         const rfile = (iter.BASE_DIR as any).relative(iter.VALUE);
         dest = iter.DESTINATION.join(rfile);
       }
-      else if (iter.VALUE instanceof InterfaceTarget) {
+      else if (iter.VALUE instanceof UserIndirectTarget) {
         const targetName = iter.VALUE.targetName;
         const target = this[TARGET_COLLECTION].get(targetName);
         src = getFile(target).toString();

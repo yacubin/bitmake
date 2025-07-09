@@ -8,7 +8,7 @@
  */
 
 import { InterfaceScript } from "@/core/InterfaceScript";
-import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, InterfaceTarget } from "@/core/Target";
+import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, UserIndirectTarget } from "@/core/Target";
 import { CustomScript } from "@/core/CustomScript";
 import { BaseContext, createContext, createVariableMapForDirectory } from "@/core/BaseContext";
 import { JsonRpcRequestSync } from "@/server/JsonRpcRequestSync";
@@ -109,7 +109,7 @@ export class RemoteMakeContext extends BaseContext {
     return target;
   }
 
-  public target(name: string): InterfaceTarget {
+  public target(name: string): UserIndirectTarget {
     throw new Error("Not Implemented");
   }
 

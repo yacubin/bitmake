@@ -10,6 +10,7 @@
 import { IRequestSync } from "@/server/Transport";
 import { JsonRpcRequestSync } from "@/server/JsonRpcRequestSync";
 import { RemoteMakeContext } from "@/server/RemoteMakeContext";
+import { UserMakeContext } from "@/core/UserMakeContext";
 import { performContext } from "@/core/BaseContext";
 import { ScopeHelper } from "@/core/Scope";
 
@@ -23,7 +24,7 @@ export class WorkerNode {
   public async execMakeScript(params: any): Promise<void> {
     const variableMap = ScopeHelper.fromJSON(params);
 
-    const mk = RemoteMakeContext.create(variableMap, this._transport);
+    const mk = UserMakeContext.create(new RemoteMakeContext(variableMap, this._transport), variableMap);
     await performContext(mk);
   }
 };

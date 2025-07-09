@@ -19,7 +19,8 @@ import { TargetCollection, TargetStructCollection } from "@/core/TargetCollectio
 import { ScriptCollection } from "@/core/ScriptCollection";
 import { GoalCollection } from "@/core/GoalCollection";
 import { InterfaceScript } from "@/core/InterfaceScript";
-import { MakeContext } from "@/core/MakeContext";
+import { UserMakeContext } from "@/core/UserMakeContext";
+import { LocalMakeContext } from "@/core/LocalMakeContext";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget, UserIndirectTarget } from "@/core/Target";
 import { SystemScope } from "@/core/SystemScope";
 import { importModule, requireSync } from "@/utils/Module";
@@ -444,7 +445,7 @@ export class ProjectContext {
       if (!await this.prepearScriptFile(variableMap))
         continue;
 
-      const mk = MakeContext.create(this, variableMap);
+      const mk = UserMakeContext.create(new LocalMakeContext(variableMap, this), variableMap);
 
       const cwdSave = process.cwd();
       process.chdir(mk.SCRIPT_DIR.toString());

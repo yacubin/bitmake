@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { IMakeObject } from "@/core/IMakeContext";
+import { IMakeObject } from "@/core/IMakeObject";
 import { findProgramSync } from "@/core/FindProgram";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { Logger } from "@/logger";
@@ -19,7 +19,7 @@ const logger = Logger.create(import.meta.url);
 
 const VARIABLE_MAP = Symbol("VARIABLE_MAP");
 
-export class BaseContext implements IMakeObject {
+export abstract class BaseContext implements IMakeObject {
   [VARIABLE_MAP]: VariableMap;
 
   protected constructor(variableMap: VariableMap) {

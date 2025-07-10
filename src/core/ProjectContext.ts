@@ -349,35 +349,35 @@ export class ProjectContext {
 
   public addStaticLibrary(variableMap: VariableMap, name: string): StaticLibrary {
     const impl = this[TARGET_COLLECTION].getOrCreate(name);
-    const target = StaticLibrary.create(impl, variableMap);
+    const target = StaticLibrary.create(impl, variableMap, name);
     this[TARGETS].set(name, target);
     return target;
   }
 
   public addObjectLibrary(variableMap: VariableMap, name: string): ObjectLibrary {
     const impl = this[TARGET_COLLECTION].getOrCreate(name);
-    const target = ObjectLibrary.create(impl, variableMap);
+    const target = ObjectLibrary.create(impl, variableMap, name);
     this[TARGETS].set(name, target);
     return target;
   }
 
   public addSharedLibrary(variableMap: VariableMap, name: string): SharedLibrary {
     const impl = this[TARGET_COLLECTION].getOrCreate(name);
-    const target = SharedLibrary.create(impl, variableMap);
+    const target = SharedLibrary.create(impl, variableMap, name);
     this[TARGETS].set(name, target);
     return target;
   }
 
   public addExecutable(variableMap: VariableMap, name: string): Executable {
     const impl = this[TARGET_COLLECTION].getOrCreate(name);
-    const target = Executable.create(impl, variableMap);
+    const target = Executable.create(impl, variableMap, name);
     this[TARGETS].set(name, target);
     return target;
   }
 
   public getTarget(variableMap: VariableMap, name: string): UserIndirectTarget {
     const impl = this[TARGET_COLLECTION].getOrCreate(name);
-    return UserIndirectTarget.create(impl, variableMap);
+    return UserIndirectTarget.create(impl, variableMap, name);
   }
 
   public executeScriptSync(variableMap: VariableMap, script: any, params: any) {
@@ -437,6 +437,8 @@ export class ProjectContext {
   }
 
   public async doSubdirectory() {
+    const contextList = new Array<LocalMakeContext>();
+
     for (;;) {
       const variableMap = this._subdirList.shift();
       if (!variableMap)
@@ -445,12 +447,38 @@ export class ProjectContext {
       if (!await this.prepearScriptFile(variableMap))
         continue;
 
-      const mk = UserMakeContext.create(new LocalMakeContext(variableMap, this), variableMap);
+      const ctx = new LocalMakeContext(variableMap, this);
+      contextList.push(ctx);
+      const mk = UserMakeContext.create(ctx, variableMap);
 
       const cwdSave = process.cwd();
       process.chdir(mk.SCRIPT_DIR.toString());
       await performContext(mk);
       process.chdir(cwdSave);
+    }
+
+    for (const ctx of contextList) {
+      for (const [name, target] of ctx.targets) {
+        const impl = this[TARGET_COLLECTION].get(name);
+        impl.targetFile.setPrefix(target.prefix);
+        impl.targetFile.setOutputName(target.outputName);
+        impl.targetFile.setSuffix(target.suffix);
+        impl.setPositionIndependentCode(target.positionIndependentCode);
+      }
+    }
+
+    for (const ctx of contextList) {
+      for (const [name, target] of ctx.indirectTargets) {
+        const impl = this[TARGET_COLLECTION].get(name);
+        if (target.prefix !== undefined)
+          impl.targetFile.setPrefix(target.prefix);
+        if (target.outputName !== undefined)
+          impl.targetFile.setOutputName(target.outputName);
+        if (target.suffix !== undefined)
+          impl.targetFile.setSuffix(target.suffix);
+        if (target.positionIndependentCode !== undefined)
+          impl.setPositionIndependentCode(target.positionIndependentCode);
+      }
     }
   }
 

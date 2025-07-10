@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { IMakeContext } from "@/core/IMakeContext";
+import { IMakeContext } from "@/core/MakeInterfaces";
 import { fileExistsSync } from "@/utils/FileSystem";
 import { InterfaceScript } from "@/core/InterfaceScript";
 import { InstallEntity } from "@/core/InstallEntity";
@@ -25,10 +25,24 @@ const logger = Logger.create(import.meta.url);
 export class LocalMakeContext implements IMakeContext {
   private _scope: VariableMap;
   private _project: ProjectContext;
+  private _targets = new Map<string, BaseTarget>();
+  private _indirectTargets = new Map<string, UserIndirectTarget>();
 
   public constructor(scope: VariableMap, project: ProjectContext) {
     this._scope = scope;
     this._project = project;
+  }
+
+  public get targets() {
+    return this._targets;
+  }
+
+  public get indirectTargets() {
+    return this._indirectTargets;
+  }
+
+  public executeScript(script: any, params: any) {
+    this._project.executeScriptSync(this._scope, script, params);
   }
 
   public getCacheVariables(): any {
@@ -65,7 +79,9 @@ export class LocalMakeContext implements IMakeContext {
   }
 
   public target(name: string): UserIndirectTarget {
-    return this._project.getTarget(this._scope, name);
+    const target = this._project.getTarget(this._scope, name);
+    this._indirectTargets.set(name, target);
+    return target;
   }
 
   public script(name: string): InterfaceScript {
@@ -83,29 +99,29 @@ export class LocalMakeContext implements IMakeContext {
 
   public addObjectLibrary(name: any, ...sources: any[]): ObjectLibrary {
     const target = this._project.addObjectLibrary(this._scope, name);
+    this._targets.set(name, target);
     target.addSources(...sources);
     return target;
   }
 
   public addStaticLibrary(name: any, ...sources: any[]): StaticLibrary {
     const target = this._project.addStaticLibrary(this._scope, name);
+    this._targets.set(name, target);
     target.addSources(...sources);
     return target;
   }
 
   public addSharedLibrary(name: any, ...sources: any[]): SharedLibrary {
     const target = this._project.addSharedLibrary(this._scope, name);
+    this._targets.set(name, target);
     target.addSources(...sources);
     return target;
   }
 
   public addExecutable(name: string, ...sources: any[]): Executable {
     const target = this._project.addExecutable(this._scope, name);
+    this._targets.set(name, target);
     target.addSources(...sources);
     return target;
-  }
-
-  public executeScript(script: any, params: any) {
-    this._project.executeScriptSync(this._scope, script, params);
   }
 };

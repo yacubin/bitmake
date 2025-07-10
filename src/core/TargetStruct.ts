@@ -58,15 +58,9 @@ export class LiveString {
 export class TargetFile {
   private _fileDir?: AbsolutePath
 
-  private _initPrefix?: string;
-  private _targetPrefix?: string;
-  private _forcePrefix?: string;
-  private _initOutputName?: string;
-  private _targetOutputName?: string;
-  private _forceOutputName?: string;
-  private _initSuffix?: string;
-  private _targetSuffix?: string;
-  private _forceSuffix?: string;
+  private _prefix = "";
+  private _outputName = "";
+  private _suffix = "";
 
   private constructor() {
   }
@@ -75,100 +69,28 @@ export class TargetFile {
     return Object.seal(new TargetFile);
   }
 
-  public getInitOutputName() {
-    return this._initOutputName;
+  public get prefix(): string {
+    return this._prefix;
   }
 
-  public setInitOutputName(value: string) {
-    this._initOutputName = value;
+  public setPrefix(value: string) {
+    this._prefix = value;
   }
 
-  public getTargetOutputName() {
-    return this._targetOutputName;
+  public get outputName(): string {
+    return this._outputName;
   }
 
-  public setTargetOutputName(value: string) {
-    this._targetOutputName = value;
+  public setOutputName(value: string) {
+    this._outputName = value;
   }
 
-  public getForceOutputName() {
-    return this._forceOutputName;
+  public get suffix(): string {
+    return this._suffix;
   }
 
-  public setForceOutputName(value: string) {
-    this._forceOutputName = value;
-  }
-
-  public get outputName(): string | undefined {
-    if (this._forceOutputName !== undefined)
-      return this._forceOutputName;
-    if (this._targetOutputName !== undefined)
-      return this._targetOutputName;
-    return this._initOutputName;
-  }
-
-  public getInitPrefix() {
-    return this._initPrefix;
-  }
-
-  public setInitPrefix(value: string) {
-    this._initPrefix = value;
-  }
-
-  public getTargetPrefix() {
-    return this._targetPrefix;
-  }
-
-  public setTargetPrefix(value: string) {
-    this._targetPrefix = value;
-  }
-
-  public getForcePrefix() {
-    return this._forcePrefix;
-  }
-
-  public setForcePrefix(value: string) {
-    this._forcePrefix = value;
-  }
-
-  public get prefix(): string | undefined {
-    if (this._forcePrefix !== undefined)
-      return this._forcePrefix;
-    if (this._targetPrefix !== undefined)
-      return this._targetPrefix;
-    return this._initPrefix;
-  }
-
-  public getInitSuffix() {
-    return this._initSuffix;
-  }
-
-  public setInitSuffix(value: string) {
-    this._initSuffix = value;
-  }
-
-  public getTargetSuffix() {
-    return this._targetSuffix;
-  }
-
-  public setTargetSuffix(value: string) {
-    this._targetSuffix = value;
-  }
-
-  public getForceSuffix() {
-    return this._forceSuffix;
-  }
-
-  public setForceSuffix(value: string) {
-    this._forceSuffix = value;
-  }
-
-  public get suffix(): string | undefined {
-    if (this._forceSuffix !== undefined)
-      return this._forceSuffix;
-    if (this._targetSuffix != undefined)
-      return this._targetSuffix;
-    return this._initSuffix;
+  public setSuffix(value: string) {
+    this._suffix = value;
   }
 
   public get fileName(): string | undefined {
@@ -339,7 +261,7 @@ export class TargetStruct {
     return this._positionIndependentCode;
   }
 
-  public set positionIndependentCode(value: boolean) {
+  public setPositionIndependentCode(value: boolean) {
     this._positionIndependentCode = value;
   }
 

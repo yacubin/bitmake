@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { ensureString } from "@/utils/StrictType";
+import { IMakeTarget, IObjectLibrary, IStaticLibrary, ISharedLibrary, IExecutable } from "@/core/MakeInterfaces";
 import { SourceFile } from "@/core/SourceFile";
 import { SourceFileList } from "@/core/SourceFileList";
 import { InterfaceIncludes } from "@/core/InterfaceIncludes";
@@ -82,18 +82,24 @@ function getSourceFiles(impl: TargetStruct, scope: SystemScope, ...sources: any[
 const IMPL                = Symbol("IMPL");
 const TARGET_SCOPE        = Symbol("TARGET_SCOPE");
 
-export class UserIndirectTarget {
+export class UserIndirectTarget implements IMakeTarget {
   private [IMPL]: TargetStruct;
   private [TARGET_SCOPE]: SystemScope;
+  private _name: string;
+  private _prefix?: string;
+  private _outputName?: string;
+  private _suffix?: string;
+  private _positionIndependentCode?: boolean;
 
-  private constructor(impl: TargetStruct, variableMap: VariableMap) {
+  private constructor(impl: TargetStruct, variableMap: VariableMap, name: string) {
     const variables = ScopeHelper.createVariableValues(variableMap, SYSTEM_VARIABLE_GROUP) as SystemScope;
     this[IMPL] = impl;
     this[TARGET_SCOPE] = variables;
+    this._name = name;
   }
 
-  public static create(impl: TargetStruct, variableMap: VariableMap) {
-    return Object.seal(new UserIndirectTarget(impl, variableMap));
+  public static create(impl: TargetStruct, variableMap: VariableMap, name: string) {
+    return Object.seal(new UserIndirectTarget(impl, variableMap, name));
   }
 
   public static ensureInstance(value: any) {
@@ -103,7 +109,7 @@ export class UserIndirectTarget {
   }
 
   public get targetName(): string {
-    return this[IMPL].name;
+    return this._name;
   }
 
   public get includes(): InterfaceIncludes {
@@ -114,16 +120,28 @@ export class UserIndirectTarget {
     return InterfaceObjects.create(this.targetName);
   }
 
-  public setPrefix(prefix: any) {
-    this[IMPL].targetFile.setForcePrefix(ensureString(prefix));
+  public get prefix() {
+    return this._prefix;
   }
 
-  public setSuffix(suffix: any) {
-    this[IMPL].targetFile.setForceSuffix(ensureString(suffix));
+  public setPrefix(value: string) {
+    this._prefix = value;
   }
 
-  public setOutputName(outputName: any) {
-    this[IMPL].targetFile.setForceOutputName(ensureString(outputName));
+  public get outputName() {
+    return this._outputName;
+  }
+
+  public setOutputName(value: any) {
+    this._outputName = value;
+  }
+
+  public get suffix() {
+    return this._suffix;
+  }
+
+  public setSuffix(value: string) {
+    this._suffix = value;
   }
 
   public toJSON(): string {
@@ -175,28 +193,59 @@ export class UserIndirectTarget {
   public getSourceFiles(...sources: any[]): SourceFileList {
     return getSourceFiles(this[IMPL], this[TARGET_SCOPE], ...sources);
   }
+
+  public addLibraries(...libraries: any) {
+    new Error("Not Implemented");
+  }
+
+  public addPreBuild(command: any, args: any[]) {
+    new Error("Not Implemented");
+  }
+
+  public addPostBuild(command: any, args: any[]) {
+    new Error("Not Implemented");
+  }
+
+  public get positionIndependentCode() {
+    return this._positionIndependentCode;
+  }
+
+  public setPositionIndependentCode(value: boolean) {
+    this._positionIndependentCode = value;
+  }
+
+  public addPublicLibraries(...libraries: any[]) {
+    new Error("Not Implemented");
+  }
 };
 
-export class BaseTarget {
+export class BaseTarget implements IMakeTarget {
   private [IMPL]: TargetStruct;
   private [TARGET_SCOPE]: SystemScope;
 
-  protected constructor(impl: TargetStruct, variableMap: VariableMap) {
+  protected _name: string;
+  protected _prefix = "";
+  protected _outputName: string;
+  protected _suffix = "";
+  private _positionIndependentCode: boolean;
+
+  protected constructor(impl: TargetStruct, variableMap: VariableMap, name: string) {
     this[IMPL] = impl;
+    this._name = name;
+    this._outputName = name;
 
     const scope = ScopeHelper.createVariableValues(variableMap) as SystemScope;
     const targetFile = impl.targetFile;
     targetFile.fileDir = scope.BINARY_DIR;
-    targetFile.setInitOutputName(impl.name);
 
     this[IMPL].addIncludes("initialize", false, scope.SOURCE_DIR, ...scope.INCLUDES);
-    this[IMPL].positionIndependentCode = scope.POSITION_INDEPENDENT_CODE;
+    this._positionIndependentCode = scope.POSITION_INDEPENDENT_CODE;
 
     this[TARGET_SCOPE] = scope;
   }
 
   public get targetName() {
-    return this[IMPL].name;
+    return this._name;
   }
 
   public get includes(): InterfaceIncludes {
@@ -207,16 +256,28 @@ export class BaseTarget {
     return InterfaceObjects.create(this.targetName);
   }
 
-  public setPrefix(prefix: any) {
-    this[IMPL].targetFile.setTargetPrefix(ensureString(prefix));
+  public get prefix() {
+    return this._prefix;
   }
 
-  public setSuffix(suffix: any) {
-    this[IMPL].targetFile.setTargetSuffix(ensureString(suffix));
+  public setPrefix(value: string) {
+    this._prefix = value;
   }
 
-  public setOutputName(outputName: any) {
-    this[IMPL].targetFile.setTargetOutputName(ensureString(outputName));
+  public get suffix() {
+    return this._suffix;
+  }
+
+  public setSuffix(value: any) {
+    this._suffix = value;
+  }
+
+  public get outputName() {
+    return this._outputName;
+  }
+
+  public setOutputName(value: any) {
+    this._outputName = value;
   }
 
   public get TARGET_SCOPE() {
@@ -288,23 +349,12 @@ export class BaseTarget {
     return LiveString.create(() => targetFile.file ? targetFile.file.toString() : "");
   }
 
-  public toJSON(): object {
-    return {
-      NAME: this.targetName,
-      TARGET_SCOPE: this.TARGET_SCOPE,
-      FILE_DIR: this.FILE_DIR,
-      FILE: this.FILE,
-    }
-  }
-};
-
-export class BaseLibrary extends BaseTarget {
-  protected constructor(impl: TargetStruct, variableMap: VariableMap) {
-    super(impl, variableMap);
+  public get positionIndependentCode() {
+    return this._positionIndependentCode;
   }
 
   public setPositionIndependentCode(value: boolean) {
-    this[IMPL].positionIndependentCode = value;
+    this._positionIndependentCode = value;
   }
 
   public addPublicIncludes(...includes: any[]) {
@@ -326,60 +376,69 @@ export class BaseLibrary extends BaseTarget {
   public addPublicLinkOptions(...options: Array<string|string[]>) {
     this[IMPL].addLinkOptions("directly", true, ...options);
   }
+
+  public toJSON(): object {
+    return {
+      NAME: this.targetName,
+      TARGET_SCOPE: this.TARGET_SCOPE,
+      FILE_DIR: this.FILE_DIR,
+      FILE: this.FILE,
+    }
+  }
 };
 
-export class ObjectLibrary extends BaseLibrary {
-  private constructor(impl: TargetStruct, variableMap: VariableMap) {
-    super(impl, variableMap);
+export class ObjectLibrary extends BaseTarget implements IObjectLibrary {
+  private constructor(impl: TargetStruct, variableMap: VariableMap, name: string) {
+    super(impl, variableMap, name);
+    this._prefix = this[TARGET_SCOPE].OBJECT_LIBRARY_PREFIX;
+    this._suffix = this[TARGET_SCOPE].OBJECT_LIBRARY_SUFFIX;
     this[IMPL].type = TargetType.ObjectLibrary;
-    this[IMPL].targetFile.setInitPrefix(this[TARGET_SCOPE].OBJECT_LIBRARY_PREFIX);
-    this[IMPL].targetFile.setInitSuffix(this[TARGET_SCOPE].OBJECT_LIBRARY_SUFFIX);
     this[IMPL].addLinkOptions("initialize", true, ...this[TARGET_SCOPE].OBJECT_LINKER_FLAGS);
   }
 
-  public static create(impl: TargetStruct, variableMap: VariableMap) {
-    return Object.seal(new ObjectLibrary(impl, variableMap));
+  public static create(impl: TargetStruct, variableMap: VariableMap, name: string) {
+    return Object.seal(new ObjectLibrary(impl, variableMap, name));
   }
 };
 
-export class StaticLibrary extends BaseLibrary {
-  private constructor(impl: TargetStruct, variableMap: VariableMap) {
-    super(impl, variableMap);
+export class StaticLibrary extends BaseTarget implements IStaticLibrary {
+  private constructor(impl: TargetStruct, variableMap: VariableMap, name: string) {
+    super(impl, variableMap, name);
+    this._prefix = this[TARGET_SCOPE].STATIC_LIBRARY_PREFIX;
+    this._suffix = this[TARGET_SCOPE].STATIC_LIBRARY_SUFFIX;
     this[IMPL].type = TargetType.StaticLibrary;
-    this[IMPL].targetFile.setInitPrefix(this[TARGET_SCOPE].STATIC_LIBRARY_PREFIX);
-    this[IMPL].targetFile.setInitSuffix(this[TARGET_SCOPE].STATIC_LIBRARY_SUFFIX);
     this[IMPL].addLinkOptions("initialize", true, ...this[TARGET_SCOPE].STATIC_LINKER_FLAGS);
   }
 
-  public static create(impl: TargetStruct, variableMap: VariableMap) {
-    return Object.seal(new StaticLibrary(impl, variableMap));
+  public static create(impl: TargetStruct, variableMap: VariableMap, name: string) {
+    return Object.seal(new StaticLibrary(impl, variableMap, name));
   }
 };
 
-export class SharedLibrary extends BaseLibrary {
-  private constructor(impl: TargetStruct, variableMap: VariableMap) {
-    super(impl, variableMap);
+export class SharedLibrary extends BaseTarget implements ISharedLibrary {
+  private constructor(impl: TargetStruct, variableMap: VariableMap, name: string) {
+    super(impl, variableMap, name);
+    this._prefix = this[TARGET_SCOPE].SHARED_LIBRARY_PREFIX;
+    this._suffix = this[TARGET_SCOPE].SHARED_LIBRARY_SUFFIX;
     this[IMPL].type = TargetType.SharedLibrary;
-    this[IMPL].targetFile.setInitPrefix(this[TARGET_SCOPE].SHARED_LIBRARY_PREFIX);
-    this[IMPL].targetFile.setInitSuffix(this[TARGET_SCOPE].SHARED_LIBRARY_SUFFIX);
     this[IMPL].addLinkOptions("initialize", true, ...this[TARGET_SCOPE].SHARED_LINKER_FLAGS);
   }
 
-  public static create(impl: TargetStruct, variableMap: VariableMap) {
-    return Object.seal(new SharedLibrary(impl, variableMap));
+  public static create(impl: TargetStruct, variableMap: VariableMap, name: string) {
+    return Object.seal(new SharedLibrary(impl, variableMap, name));
   }
 }
 
-export class Executable extends BaseTarget {
-  private constructor(impl: TargetStruct, variableMap: VariableMap) {
-    super(impl, variableMap);
+export class Executable extends BaseTarget implements IExecutable {
+  private constructor(impl: TargetStruct, variableMap: VariableMap, name: string) {
+    super(impl, variableMap, name);
+    this._prefix = "";
+    this._suffix = this[TARGET_SCOPE].EXECUTABLE_SUFFIX;
     this[IMPL].type = TargetType.Executable;
-    this[IMPL].targetFile.setInitPrefix("");
-    this[IMPL].targetFile.setInitSuffix(this[TARGET_SCOPE].EXECUTABLE_SUFFIX);
     this[IMPL].addLinkOptions("initialize", true, ...this[TARGET_SCOPE].EXE_LINKER_FLAGS);
   }
 
-  public static create(impl: TargetStruct, variableMap: VariableMap) {
-    return Object.seal(new Executable(impl, variableMap));
+  public static create(impl: TargetStruct, variableMap: VariableMap, name: string) {
+    return Object.seal(new Executable(impl, variableMap, name));
   }
 };

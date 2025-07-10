@@ -7,9 +7,9 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { IMakeContext } from "@/core/IMakeContext";
+import { IMakeContext } from "@/core/MakeInterfaces";
 import { InterfaceScript } from "@/core/InterfaceScript";
-import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, UserIndirectTarget } from "@/core/Target";
+import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget, UserIndirectTarget } from "@/core/Target";
 import { CustomScript } from "@/core/CustomScript";
 import { createVariableMapForDirectory } from "@/core/BaseContext";
 import { JsonRpcRequestSync } from "@/server/JsonRpcRequestSync";
@@ -31,10 +31,24 @@ const logger = Logger.create(import.meta.url);
 export class RemoteMakeContext implements IMakeContext {
   private _scope: VariableMap;
   private _transport: JsonRpcRequestSync;
+  private _targets = new Map<string, BaseTarget>();
 
   public constructor(scope: VariableMap, transport: JsonRpcRequestSync) {
     this._scope = scope;
     this._transport = transport;
+  }
+
+  public get targets() {
+    return this._targets;
+  }
+
+  public executeScript(script: any, params: any): any {
+    const newVariableMap = ScopeHelper.cloneVariableMap(this._scope);
+    params && ScopeHelper.extendVariableMapByValues(newVariableMap, "", params);
+    const scriptFile = ScopeHelper.get(newVariableMap, "SOURCE_DIR").resolve(script);
+    ScopeHelper.set(newVariableMap, "SCRIPT_FILE", scriptFile);
+    ScopeHelper.set(newVariableMap, "SCRIPT_DIR", scriptFile.dirname());
+    return this._transport.requestSync(MAINNODE_EXECUTESCRIPT, ScopeHelper.toJSON(newVariableMap));
   }
 
   public getCacheVariables(): any {
@@ -92,6 +106,7 @@ export class RemoteMakeContext implements IMakeContext {
       name, variableMap: ScopeHelper.toJSON(this._scope),
     });
     const target = new RemoteStaticLibrary(newVariableMap, uuid, this._transport);
+    this._targets.set(name, target as any);
     target.addSources(...sources);
     return target as any;
   }
@@ -107,16 +122,8 @@ export class RemoteMakeContext implements IMakeContext {
       name, variableMap: ScopeHelper.toJSON(this._scope),
     });
     const target = new RemoteExecutable(newVariableMap, uuid, this._transport);
+    this._targets.set(name, target as any);
     target.addSources(...sources);
     return target as any;
-  }
-
-  public executeScript(script: any, params: any): any {
-    const newVariableMap = ScopeHelper.cloneVariableMap(this._scope);
-    params && ScopeHelper.extendVariableMapByValues(newVariableMap, "", params);
-    const scriptFile = ScopeHelper.get(newVariableMap, "SOURCE_DIR").resolve(script);
-    ScopeHelper.set(newVariableMap, "SCRIPT_FILE", scriptFile);
-    ScopeHelper.set(newVariableMap, "SCRIPT_DIR", scriptFile.dirname());
-    return this._transport.requestSync(MAINNODE_EXECUTESCRIPT, ScopeHelper.toJSON(newVariableMap));
   }
 };

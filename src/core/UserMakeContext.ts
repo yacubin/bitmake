@@ -7,9 +7,9 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { IMakeContext } from "@/core/IMakeContext";
+import { IMakeContext, IObjectLibrary, IStaticLibrary, ISharedLibrary, IExecutable } from "@/core/MakeInterfaces";
 import { InterfaceScript } from "@/core/InterfaceScript";
-import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, UserIndirectTarget } from "@/core/Target";
+import { UserIndirectTarget } from "@/core/Target";
 import { CustomScript } from "@/core/CustomScript";
 import { VariantMap, VariableMap } from "@/core/Scope";
 import { BaseContext, createContext } from "@/core/BaseContext";
@@ -63,19 +63,19 @@ export class UserMakeContext extends BaseContext implements IMakeContext {
     this[IMPL].install(value, params);
   }
 
-  public addObjectLibrary(name: any, ...sources: any[]): ObjectLibrary {
+  public addObjectLibrary(name: any, ...sources: any[]): IObjectLibrary {
     return this[IMPL].addObjectLibrary(name, ...sources);
   }
 
-  public addStaticLibrary(name: any, ...sources: any[]): StaticLibrary {
+  public addStaticLibrary(name: any, ...sources: any[]): IStaticLibrary {
     return this[IMPL].addStaticLibrary(name, ...sources);
   }
 
-  public addSharedLibrary(name: any, ...sources: any[]): SharedLibrary {
+  public addSharedLibrary(name: any, ...sources: any[]): ISharedLibrary {
     return this[IMPL].addSharedLibrary(name, ...sources);
   }
 
-  public addExecutable(name: any, ...sources: any[]): Executable {
+  public addExecutable(name: any, ...sources: any[]): IExecutable {
     return this[IMPL].addExecutable(name, ...sources);
   }
 

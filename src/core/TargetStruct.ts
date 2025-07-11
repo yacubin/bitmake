@@ -14,21 +14,6 @@ import { UserIndirectTarget } from "@/core/Target";
 import { SourceFile } from "@/core/SourceFile";
 import { normalizeDefinitions } from "@/core/DefinitionHelper";
 
-export function normalizeIncludes(baseDir: AbsolutePath, ...includes: any[]): Array<AbsolutePath|InterfaceIncludes> {
-  const result = [];
-  for (const iter of includes.flat()) {
-    if (iter instanceof InterfaceIncludes)
-      result.push(iter);
-    else if (typeof iter === "string")
-      result.push(AbsolutePath.create(baseDir.resolve(iter)));
-    else if (iter instanceof AbsolutePath)
-      result.push(AbsolutePath.create(iter));
-    else
-      throw new Error(`Not support instance ${iter}`);
-  }
-  return result;
-}
-
 export enum TargetType {
   Unknown = "Unknown",
   StaticLibrary = "StaticLibrary",
@@ -334,11 +319,6 @@ export class TargetStruct {
 
   public addInclude(origin: TargetItemOrigin, publicOnly: boolean, value: AbsolutePath|InterfaceIncludes) {
     this._includes.addItem(origin, publicOnly, value);
-  }
-
-  public addIncludes(origin: TargetItemOrigin, publicOnly: boolean, baseDir: AbsolutePath, ...includes: any[]) {
-    for (const iter of normalizeIncludes(baseDir, ...includes))
-      this.addInclude(origin, publicOnly, iter);
   }
 
   public getIncludes(): Array<AbsolutePath|InterfaceIncludes> {

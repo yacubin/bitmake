@@ -79,8 +79,12 @@ export class LocalMakeContext implements IMakeContext {
   }
 
   public target(name: string): UserIndirectTarget {
-    const target = this._project.getTarget(this._scope, name);
-    this._indirectTargets.set(name, target);
+    let target = this._indirectTargets.get(name);
+    if (!target) {
+      const impl = this._project.getTarget(name);
+      target = UserIndirectTarget.create(impl, this._scope, name)
+      this._indirectTargets.set(name, target);
+    }
     return target;
   }
 

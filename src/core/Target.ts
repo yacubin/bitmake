@@ -24,6 +24,21 @@ const _languageExtensions = {
   CXX: [".cpp", ".cc", ".cxx" ],
 };
 
+function normalizeIncludes(baseDir: AbsolutePath, ...includes: any[]): Array<AbsolutePath|InterfaceIncludes> {
+  const result = [];
+  for (const iter of includes.flat()) {
+    if (iter instanceof InterfaceIncludes)
+      result.push(iter);
+    else if (typeof iter === "string")
+      result.push(AbsolutePath.create(baseDir.resolve(iter)));
+    else if (iter instanceof AbsolutePath)
+      result.push(AbsolutePath.create(iter));
+    else
+      throw new Error(`Not support instance ${iter}`);
+  }
+  return result;
+}
+
 function isSupportLanguage(language: string) {
   return _languageExtensions.hasOwnProperty(language);
 }
@@ -82,6 +97,13 @@ function getSourceFiles(impl: TargetStruct, scope: SystemScope, ...sources: any[
 const IMPL                = Symbol("IMPL");
 const TARGET_SCOPE        = Symbol("TARGET_SCOPE");
 
+interface TargetValue<T> {
+  value: T;
+  publicOnly: boolean;
+};
+
+type TargetValueList<T> = Array<TargetValue<T>>;
+
 export class UserIndirectTarget implements IMakeTarget {
   private [IMPL]: TargetStruct;
   private [TARGET_SCOPE]: SystemScope;
@@ -90,12 +112,14 @@ export class UserIndirectTarget implements IMakeTarget {
   private _outputName?: string;
   private _suffix?: string;
   private _positionIndependentCode?: boolean;
+  private _includes: TargetValueList<AbsolutePath | InterfaceIncludes>;
 
   private constructor(impl: TargetStruct, variableMap: VariableMap, name: string) {
     const variables = ScopeHelper.createVariableValues(variableMap, SYSTEM_VARIABLE_GROUP) as SystemScope;
     this[IMPL] = impl;
     this[TARGET_SCOPE] = variables;
     this._name = name;
+    this._includes = [];
   }
 
   public static create(impl: TargetStruct, variableMap: VariableMap, name: string) {
@@ -158,12 +182,22 @@ export class UserIndirectTarget implements IMakeTarget {
     }
   }
 
-  public addIncludes(...includes: any): void {
-    this[IMPL].addIncludes("indirectly", false, this[TARGET_SCOPE].SOURCE_DIR, ...includes);
+  public getIncludes() {
+    return this._includes;
   }
 
-  public addPublicIncludes(...includes: Array<InterfaceIncludes|AbsolutePath|string>): void {
-    this[IMPL].addIncludes("indirectly", true, this[TARGET_SCOPE].SOURCE_DIR, ...includes);
+  public addIncludes(...includes: Array<InterfaceIncludes | AbsolutePath | string>): void {
+    this.addIncludesImpl(false, ...includes);
+  }
+
+  public addPublicIncludes(...includes: Array<InterfaceIncludes | AbsolutePath | string>): void {
+    this.addIncludesImpl(true, ...includes);
+  }
+
+  public addIncludesImpl(publicOnly: boolean, ...includes: Array<InterfaceIncludes | AbsolutePath | string>): void {
+    const baseDir = this[TARGET_SCOPE].SOURCE_DIR;
+    for (const value of normalizeIncludes(baseDir, ...includes))
+      this._includes.push({publicOnly, value});
   }
 
   public addDefinitions(...definitions: any): void {
@@ -227,7 +261,9 @@ export class BaseTarget implements IMakeTarget {
   protected _prefix = "";
   protected _outputName: string;
   protected _suffix = "";
+
   private _positionIndependentCode: boolean;
+  private _includes: TargetValueList<AbsolutePath | InterfaceIncludes> = [];
 
   protected constructor(impl: TargetStruct, variableMap: VariableMap, name: string) {
     this[IMPL] = impl;
@@ -238,10 +274,11 @@ export class BaseTarget implements IMakeTarget {
     const targetFile = impl.targetFile;
     targetFile.fileDir = scope.BINARY_DIR;
 
-    this[IMPL].addIncludes("initialize", false, scope.SOURCE_DIR, ...scope.INCLUDES);
     this._positionIndependentCode = scope.POSITION_INDEPENDENT_CODE;
 
     this[TARGET_SCOPE] = scope;
+
+    this.addIncludesImpl(false, ...scope.INCLUDES);
   }
 
   public get targetName() {
@@ -312,8 +349,22 @@ export class BaseTarget implements IMakeTarget {
     }
   }
 
-  public addIncludes(...includes: any) {
-    this[IMPL].addIncludes("directly", false, this[TARGET_SCOPE].SOURCE_DIR, ...includes);
+  public getIncludes() {
+    return this._includes;
+  }
+
+  public addIncludes(...includes: Array<InterfaceIncludes | AbsolutePath | string>): void {
+    this.addIncludesImpl(false, ...includes);
+  }
+
+  public addPublicIncludes(...includes: Array<InterfaceIncludes | AbsolutePath | string>): void {
+    this.addIncludesImpl(true, ...includes);
+  }
+
+  public addIncludesImpl(publicOnly: boolean, ...includes: Array<InterfaceIncludes | AbsolutePath | string>): void {
+    const baseDir = this[TARGET_SCOPE].SOURCE_DIR;
+    for (const value of normalizeIncludes(baseDir, ...includes))
+      this._includes.push({publicOnly, value});
   }
 
   public addLibraries(...libraries: any) {
@@ -355,10 +406,6 @@ export class BaseTarget implements IMakeTarget {
 
   public setPositionIndependentCode(value: boolean) {
     this._positionIndependentCode = value;
-  }
-
-  public addPublicIncludes(...includes: any[]) {
-    this[IMPL].addIncludes("directly", true, this[TARGET_SCOPE].SOURCE_DIR, ...includes);
   }
 
   public addPublicDefinitions(...definitions: any) {

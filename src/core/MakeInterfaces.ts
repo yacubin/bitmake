@@ -26,7 +26,7 @@ export interface IMakeTarget {
   setSuffix(suffix: string): void;
   setOutputName(outputName: string): void;
   addSources(...sources: Array<InterfaceObjects | SourceFile | AbsolutePath | string>): void;
-  addIncludes(...includes: any): void;
+  addIncludes(...includes: Array<InterfaceIncludes | AbsolutePath | string>): void;
   addLibraries(...libraries: any): void;
   addCompileOptions(...options: Array<string|string[]>): void;
   addLinkOptions(...options: Array<string|string[]>): void;
@@ -36,7 +36,7 @@ export interface IMakeTarget {
   addPostBuild(command: any, args: any[]): void;
 
   setPositionIndependentCode(value: boolean): void;
-  addPublicIncludes(...includes: any[]): void;
+  addPublicIncludes(...includes: Array<InterfaceIncludes | AbsolutePath | string>): void;
   addPublicDefinitions(...definitions: any): void;
   addPublicLibraries(...libraries: any[]): void;
   addPublicCompileOptions(...options: Array<string|string[]>): void;

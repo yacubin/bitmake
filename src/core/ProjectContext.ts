@@ -166,7 +166,7 @@ export class GoalWorkerImpl {
         logger.notice(cmd);
         logger.notice("");
     
-        logger.error(result.stderr);
+        logger.fatal(result.stderr);
     
         if (result.error)
             throw result.error;
@@ -375,9 +375,8 @@ export class ProjectContext {
     return target;
   }
 
-  public getTarget(variableMap: VariableMap, name: string): UserIndirectTarget {
-    const impl = this[TARGET_COLLECTION].getOrCreate(name);
-    return UserIndirectTarget.create(impl, variableMap, name);
+  public getTarget(name: string): TargetStruct {
+    return this[TARGET_COLLECTION].getOrCreate(name);
   }
 
   public executeScriptSync(variableMap: VariableMap, script: any, params: any) {
@@ -464,6 +463,8 @@ export class ProjectContext {
         impl.targetFile.setOutputName(target.outputName);
         impl.targetFile.setSuffix(target.suffix);
         impl.setPositionIndependentCode(target.positionIndependentCode);
+        for (const {publicOnly, value} of target.getIncludes())
+          impl.addInclude("directly", publicOnly, value);
       }
     }
 
@@ -478,6 +479,8 @@ export class ProjectContext {
           impl.targetFile.setSuffix(target.suffix);
         if (target.positionIndependentCode !== undefined)
           impl.setPositionIndependentCode(target.positionIndependentCode);
+        for (const {publicOnly, value} of target.getIncludes())
+          impl.addInclude("directly", publicOnly, value);
       }
     }
   }

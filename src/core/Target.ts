@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { IMakeTarget, IObjectLibrary, IStaticLibrary, ISharedLibrary, IExecutable } from "@/core/MakeInterfaces";
+import { ITargetFile, IMakeTarget, IObjectLibrary, IStaticLibrary, ISharedLibrary, IExecutable } from "@/core/MakeInterfaces";
 import { SourceFile } from "@/core/SourceFile";
 import { SourceFileList } from "@/core/SourceFileList";
 import { InterfaceIncludes } from "@/core/InterfaceIncludes";
@@ -15,7 +15,7 @@ import { InterfaceObjects } from "@/core/InterfaceObjects";
 import { AbsolutePath } from "@/core/AbsolutePath";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
-import { TargetStruct, TargetType, LiveString } from "@/core/TargetStruct";
+import { TargetStruct, TargetType, TargetCommand, LiveString } from "@/core/TargetStruct";
 import { SYSTEM_VARIABLE_GROUP } from "@/Constants";
 import { normalizeDefinitions } from "@/core/DefinitionHelper";
 
@@ -78,6 +78,58 @@ function createSources(scope: SystemScope, source: InterfaceObjects | SourceFile
   throw new Error(`Not support instance ${source}`);
 }
 
+interface JSONObject {
+  type: string;
+  [name: string]: boolean | number | string | object;
+};
+
+export class TargetFile implements ITargetFile {
+  _targetName: string;
+
+  constructor(targetName: string) {
+    this._targetName = targetName;
+  }
+
+  targetName(): string {
+    return this._targetName;
+  }
+
+  toJSON(): JSONObject {
+    return {
+      type: "TargetFile",
+      targetName: this._targetName,
+    }
+  }
+};
+
+function makeTargetCommand(_command: any, _args: any[]): TargetCommand {
+  let command: string | LiveString;
+  if (typeof _command === "string")
+    command = _command;
+  else if (_command instanceof LiveString)
+    command = _command;
+  else if (_command instanceof AbsolutePath)
+    command = _command.toString();
+  else
+    throw new TypeError(`Wrong type ${_command} for command`);
+
+  const args = new Array<string | LiveString>;
+  for (const iter of _args) {
+    if (typeof iter === "string")
+      args.push(iter);
+    else if (iter instanceof LiveString)
+      args.push(iter);
+    else if (iter instanceof AbsolutePath)
+      args.push(iter.toString());
+    else if (iter instanceof AbsolutePath)
+      args.push(iter.toString());
+    else
+      throw new TypeError(`Wrong type ${iter} for argument`);
+  }
+
+  return { command, args };
+}
+
 const IMPL                = Symbol("IMPL");
 const TARGET_SCOPE        = Symbol("TARGET_SCOPE");
 
@@ -99,6 +151,8 @@ abstract class AbstractTarget {
   private _linkOptions: TargetValueList<string | string[]>;
   private _libraries: TargetValueList<UserIndirectTarget>;
   private _sources: TargetValueList<InterfaceObjects | SourceFile>;
+  private _preBuildList: TargetCommand[];
+  private _postBuildList: TargetCommand[];
 
   constructor(impl: TargetStruct, variableMap: VariableMap, name: string) {
     const variables = ScopeHelper.createVariableValues(variableMap, SYSTEM_VARIABLE_GROUP) as SystemScope;
@@ -111,6 +165,8 @@ abstract class AbstractTarget {
     this._linkOptions = [];
     this._libraries = [];
     this._sources = [];
+    this._preBuildList = [];
+    this._postBuildList = [];
   }
 
   public get targetName() {
@@ -238,6 +294,22 @@ abstract class AbstractTarget {
       this._sources.push({publicOnly: false, value: createSources(this[TARGET_SCOPE], it)});
     }
   }
+
+  public get preBuildList() {
+    return this._preBuildList;
+  }
+
+  public addPreBuild(command: any, args: any[]) {
+    this._preBuildList.push(makeTargetCommand(command, args));
+  }
+
+  public get postBuildList() {
+    return this._postBuildList;
+  }
+
+  public addPostBuild(command: any, args: any[]) {
+    this._postBuildList.push(makeTargetCommand(command, args));
+  }
 };
 
 export class UserIndirectTarget extends AbstractTarget implements IMakeTarget { // PostTarget
@@ -292,28 +364,20 @@ export class UserIndirectTarget extends AbstractTarget implements IMakeTarget { 
     this._suffix = value;
   }
 
-  public toJSON(): string {
-    return this.toString();
-  }
-
-  public toString(): string {
-    return "${" + this.targetName + "}";
-  }
-
-  public addPreBuild(command: any, args: any[]) {
-    new Error("Not Implemented");
-  }
-
-  public addPostBuild(command: any, args: any[]) {
-    new Error("Not Implemented");
-  }
-
   public get positionIndependentCode() {
     return this._positionIndependentCode;
   }
 
   public setPositionIndependentCode(value: boolean) {
     this._positionIndependentCode = value;
+  }
+
+  public toJSON(): string {
+    return this.toString();
+  }
+
+  public toString(): string {
+    return "${" + this.targetName + "}";
   }
 };
 
@@ -392,14 +456,6 @@ export class BaseTarget extends AbstractTarget implements IMakeTarget {
 
   public get IMPL(): TargetStruct {
     return this[IMPL];
-  }
-
-  public addPreBuild(command: any, args: any[]) {
-    this[IMPL].addPreBuild(command, args);
-  }
-
-  public addPostBuild(command: any, args: any[]) {
-    this[IMPL].addPostBuild(command, args);
   }
 
   public get targetFile(): LiveString {

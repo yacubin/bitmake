@@ -39,6 +39,11 @@ export class LiveString {
   }
 };
 
+export interface TargetCommand {
+  command: string | LiveString;
+  args: Array<string | LiveString>;
+};
+
 export class TargetFile {
   private _fileDir?: AbsolutePath
 
@@ -117,39 +122,6 @@ export class TargetFile {
     }
   }
 };
-
-export interface TargetCommand {
-  command: string | LiveString;
-  args: Array<string | LiveString>;
-};
-
-function makeTargetCommand(_command: any, _args: any[]): TargetCommand {
-  let command: string | LiveString;
-  if (typeof _command === "string")
-    command = _command;
-  else if (_command instanceof LiveString)
-    command = _command;
-  else if (_command instanceof AbsolutePath)
-    command = _command.toString();
-  else
-    throw new TypeError(`Wrong type ${_command} for command`);
-
-  const args = new Array<string | LiveString>;
-  for (const iter of _args) {
-    if (typeof iter === "string")
-      args.push(iter);
-    else if (iter instanceof LiveString)
-      args.push(iter);
-    else if (iter instanceof AbsolutePath)
-      args.push(iter.toString());
-    else if (iter instanceof AbsolutePath)
-      args.push(iter.toString());
-    else
-      throw new TypeError(`Wrong type ${iter} for argument`);
-  }
-
-  return { command, args };
-}
 
 type TargetItemOrigin = "initialize" | "indirectly" | "directly";
 
@@ -249,12 +221,12 @@ export class TargetStruct {
     this._positionIndependentCode = value;
   }
 
-  public addPreBuild(command: any, args: any[]) {
-    this._preBuildList.push(makeTargetCommand(command, args));
+  public addPreBuild(tc: TargetCommand) {
+    this._preBuildList.push(tc);
   }
 
-  public addPostBuild(command: any, args: any[]) {
-    this._postBuildList.push(makeTargetCommand(command, args));
+  public addPostBuild(tc: TargetCommand) {
+    this._postBuildList.push(tc);
   }
 
   public get preBuildList() {

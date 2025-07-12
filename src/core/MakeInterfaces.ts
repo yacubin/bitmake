@@ -17,6 +17,10 @@ import { InterfaceObjects } from "@/core/InterfaceObjects";
 import { SourceFileList } from "@/core/SourceFileList";
 import { SourceFile } from "@/core/SourceFile";
 
+export interface ITargetFile {
+  targetName(): string;
+};
+
 export interface IMakeTarget {
   get targetName(): string;
   get includes(): InterfaceIncludes;

@@ -475,6 +475,10 @@ export class ProjectContext {
           impl.addLibrary("directly", publicOnly, value);
         for (const {publicOnly, value} of target.getSources())
           impl.addSource("directly", publicOnly, value);
+        for (const iter of target.preBuildList)
+          impl.addPreBuild(iter);
+        for (const iter of target.postBuildList)
+          impl.addPostBuild(iter);
       }
     }
 
@@ -501,6 +505,10 @@ export class ProjectContext {
           impl.addLibrary("directly", publicOnly, value);
         for (const {publicOnly, value} of target.getSources())
           impl.addSource("directly", publicOnly, value);
+        for (const iter of target.preBuildList)
+          impl.addPreBuild(iter);
+        for (const iter of target.postBuildList)
+          impl.addPostBuild(iter);
       }
     }
   }

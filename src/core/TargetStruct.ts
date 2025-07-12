@@ -269,11 +269,6 @@ export class TargetStruct {
     this._compileOptions.addItem(origin, publicOnly, value);
   }
 
-  public addCompileOptions(origin: TargetItemOrigin, publicOnly: boolean, ...options: Array<string|string[]>) {
-    for (const iter of options.flat())
-      this.addCompileOption(origin, publicOnly, iter);
-  }
-
   public getCompileOptions(): Array<string|string[]> {
     return this._compileOptions.getItems();
   }

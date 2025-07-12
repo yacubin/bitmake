@@ -25,7 +25,7 @@ const _languageExtensions = {
   CXX: [".cpp", ".cc", ".cxx" ],
 };
 
-function normalizeIncludes(baseDir: AbsolutePath, ...includes: any[]): Array<AbsolutePath|InterfaceIncludes> {
+function normalizeIncludes(baseDir: AbsolutePath, ...includes: any[]): Array<AbsolutePath | InterfaceIncludes> {
   const result = [];
   for (const iter of includes.flat()) {
     if (iter instanceof InterfaceIncludes)
@@ -115,6 +115,7 @@ export class UserIndirectTarget implements IMakeTarget {
   private _positionIndependentCode?: boolean;
   private _includes: TargetValueList<AbsolutePath | InterfaceIncludes>;
   private _definitions: TargetValueList<string>;
+  private _compileOptions: TargetValueList<string | string[]>;
 
   private constructor(impl: TargetStruct, variableMap: VariableMap, name: string) {
     const variables = ScopeHelper.createVariableValues(variableMap, SYSTEM_VARIABLE_GROUP) as SystemScope;
@@ -123,6 +124,7 @@ export class UserIndirectTarget implements IMakeTarget {
     this._name = name;
     this._includes = [];
     this._definitions = [];
+    this._compileOptions = [];
   }
 
   public static create(impl: TargetStruct, variableMap: VariableMap, name: string) {
@@ -220,12 +222,21 @@ export class UserIndirectTarget implements IMakeTarget {
       this._definitions.push({publicOnly, value});
   }
 
-  public addCompileOptions(...options: Array<string|string[]>): void {
-    this[IMPL].addCompileOptions("indirectly", false, ...options);
+  public getCompileOptions() {
+    return this._compileOptions;
   }
 
-  public addPublicCompileOptions(...options: string[]): void {
-    this[IMPL].addCompileOptions("indirectly", true, ...options);
+  public addCompileOptions(...options: Array<string | string[]>): void {
+    this.addCompileOptionsImpl(false, ...options);
+  }
+
+  public addPublicCompileOptions(...options: Array<string | string[]>): void {
+    this.addCompileOptionsImpl(true, ...options);
+  }
+
+  public addCompileOptionsImpl(publicOnly: boolean, ...options: Array<string | string[]>): void {
+    for (const value of options.flat())
+      this._compileOptions.push({publicOnly, value});
   }
 
   public addLinkOptions(...options: Array<string|string[]>): void {
@@ -277,6 +288,7 @@ export class BaseTarget implements IMakeTarget {
   private _positionIndependentCode: boolean;
   private _includes: TargetValueList<AbsolutePath | InterfaceIncludes> = [];
   private _definitions: TargetValueList<string> = [];
+  private _compileOptions: TargetValueList<string | string[]> = [];
 
   protected constructor(impl: TargetStruct, variableMap: VariableMap, name: string) {
     this[IMPL] = impl;
@@ -401,8 +413,21 @@ export class BaseTarget implements IMakeTarget {
     this[IMPL].addLibraries("directly", false, ...libraries);
   }
 
-  public addCompileOptions(...options: Array<string|string[]>) {
-    this[IMPL].addCompileOptions("directly", false, ...options);
+  public getCompileOptions() {
+    return this._compileOptions;
+  }
+
+  public addCompileOptions(...options: Array<string | string[]>): void {
+    this.addCompileOptionsImpl(false, ...options);
+  }
+
+  public addPublicCompileOptions(...options: Array<string | string[]>): void {
+    this.addCompileOptionsImpl(true, ...options);
+  }
+
+  public addCompileOptionsImpl(publicOnly: boolean, ...options: Array<string | string[]>): void {
+    for (const value of options.flat())
+      this._compileOptions.push({publicOnly, value});
   }
 
   public addLinkOptions(...options: Array<string|string[]>) {
@@ -436,10 +461,6 @@ export class BaseTarget implements IMakeTarget {
 
   public addPublicLibraries(...libraries: any[]) {
     this[IMPL].addLibraries("directly", true, ...libraries);
-  }
-
-  public addPublicCompileOptions(...options: Array<string|string[]>) {
-    this[IMPL].addCompileOptions("directly", true, ...options);
   }
 
   public addPublicLinkOptions(...options: Array<string|string[]>) {

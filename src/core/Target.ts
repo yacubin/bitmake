@@ -105,19 +105,15 @@ interface TargetValue<T> {
 
 type TargetValueList<T> = Array<TargetValue<T>>;
 
-export class UserIndirectTarget implements IMakeTarget {
-  private [IMPL]: TargetStruct;
-  private [TARGET_SCOPE]: SystemScope;
-  private _name: string;
-  private _prefix?: string;
-  private _outputName?: string;
-  private _suffix?: string;
-  private _positionIndependentCode?: boolean;
+abstract class AbstractTarget {
+  protected [IMPL]: TargetStruct;
+  protected [TARGET_SCOPE]: SystemScope;
+  protected _name: string;
   private _includes: TargetValueList<AbsolutePath | InterfaceIncludes>;
   private _definitions: TargetValueList<string>;
   private _compileOptions: TargetValueList<string | string[]>;
 
-  private constructor(impl: TargetStruct, variableMap: VariableMap, name: string) {
+  constructor(impl: TargetStruct, variableMap: VariableMap, name: string) {
     const variables = ScopeHelper.createVariableValues(variableMap, SYSTEM_VARIABLE_GROUP) as SystemScope;
     this[IMPL] = impl;
     this[TARGET_SCOPE] = variables;
@@ -125,6 +121,69 @@ export class UserIndirectTarget implements IMakeTarget {
     this._includes = [];
     this._definitions = [];
     this._compileOptions = [];
+  }
+
+  public getIncludes() {
+    return this._includes;
+  }
+
+  public addIncludes(...includes: Array<InterfaceIncludes | AbsolutePath | string>): void {
+    this.addIncludesImpl(false, ...includes);
+  }
+
+  public addPublicIncludes(...includes: Array<InterfaceIncludes | AbsolutePath | string>): void {
+    this.addIncludesImpl(true, ...includes);
+  }
+
+  public addIncludesImpl(publicOnly: boolean, ...includes: Array<InterfaceIncludes | AbsolutePath | string>): void {
+    const baseDir = this[TARGET_SCOPE].SOURCE_DIR;
+    for (const value of normalizeIncludes(baseDir, ...includes))
+      this._includes.push({publicOnly, value});
+  }
+
+  public getDefinitions() {
+    return this._definitions;
+  }
+
+  public addDefinitions(...definitions: any): void {
+    this.addDefinitionsImpl(false, ...definitions);
+  }
+
+  public addPublicDefinitions(...definitions: any): void {
+    this.addDefinitionsImpl(true, ...definitions);
+  }
+
+  public addDefinitionsImpl(publicOnly: boolean, ...definitions: Array<string | object>): void {
+    for (const value of normalizeDefinitions(...definitions))
+      this._definitions.push({publicOnly, value});
+  }
+
+  public getCompileOptions() {
+    return this._compileOptions;
+  }
+
+  public addCompileOptions(...options: Array<string | string[]>): void {
+    this.addCompileOptionsImpl(false, ...options);
+  }
+
+  public addPublicCompileOptions(...options: Array<string | string[]>): void {
+    this.addCompileOptionsImpl(true, ...options);
+  }
+
+  public addCompileOptionsImpl(publicOnly: boolean, ...options: Array<string | string[]>): void {
+    for (const value of options.flat())
+      this._compileOptions.push({publicOnly, value});
+  }
+};
+
+export class UserIndirectTarget extends AbstractTarget implements IMakeTarget {
+  private _prefix?: string;
+  private _outputName?: string;
+  private _suffix?: string;
+  private _positionIndependentCode?: boolean;
+
+  private constructor(impl: TargetStruct, variableMap: VariableMap, name: string) {
+    super(impl, variableMap, name);
   }
 
   public static create(impl: TargetStruct, variableMap: VariableMap, name: string) {
@@ -187,58 +246,6 @@ export class UserIndirectTarget implements IMakeTarget {
     }
   }
 
-  public getIncludes() {
-    return this._includes;
-  }
-
-  public addIncludes(...includes: Array<InterfaceIncludes | AbsolutePath | string>): void {
-    this.addIncludesImpl(false, ...includes);
-  }
-
-  public addPublicIncludes(...includes: Array<InterfaceIncludes | AbsolutePath | string>): void {
-    this.addIncludesImpl(true, ...includes);
-  }
-
-  public addIncludesImpl(publicOnly: boolean, ...includes: Array<InterfaceIncludes | AbsolutePath | string>): void {
-    const baseDir = this[TARGET_SCOPE].SOURCE_DIR;
-    for (const value of normalizeIncludes(baseDir, ...includes))
-      this._includes.push({publicOnly, value});
-  }
-
-  public getDefinitions() {
-    return this._definitions;
-  }
-
-  public addDefinitions(...definitions: any): void {
-    this.addDefinitionsImpl(false, ...definitions);
-  }
-
-  public addPublicDefinitions(...definitions: any): void {
-    this.addDefinitionsImpl(true, ...definitions);
-  }
-
-  public addDefinitionsImpl(publicOnly: boolean, ...definitions: Array<string | object>): void {
-    for (const value of normalizeDefinitions(...definitions))
-      this._definitions.push({publicOnly, value});
-  }
-
-  public getCompileOptions() {
-    return this._compileOptions;
-  }
-
-  public addCompileOptions(...options: Array<string | string[]>): void {
-    this.addCompileOptionsImpl(false, ...options);
-  }
-
-  public addPublicCompileOptions(...options: Array<string | string[]>): void {
-    this.addCompileOptionsImpl(true, ...options);
-  }
-
-  public addCompileOptionsImpl(publicOnly: boolean, ...options: Array<string | string[]>): void {
-    for (const value of options.flat())
-      this._compileOptions.push({publicOnly, value});
-  }
-
   public addLinkOptions(...options: Array<string|string[]>): void {
     this[IMPL].addLinkOptions("indirectly", false, ...options);
   }
@@ -276,34 +283,24 @@ export class UserIndirectTarget implements IMakeTarget {
   }
 };
 
-export class BaseTarget implements IMakeTarget {
-  private [IMPL]: TargetStruct;
-  private [TARGET_SCOPE]: SystemScope;
-
-  protected _name: string;
+export class BaseTarget extends AbstractTarget implements IMakeTarget {
   protected _prefix = "";
   protected _outputName: string;
   protected _suffix = "";
-
   private _positionIndependentCode: boolean;
-  private _includes: TargetValueList<AbsolutePath | InterfaceIncludes> = [];
-  private _definitions: TargetValueList<string> = [];
-  private _compileOptions: TargetValueList<string | string[]> = [];
 
   protected constructor(impl: TargetStruct, variableMap: VariableMap, name: string) {
-    this[IMPL] = impl;
+    super(impl, variableMap, name);
+
     this._name = name;
     this._outputName = name;
 
-    const scope = ScopeHelper.createVariableValues(variableMap) as SystemScope;
     const targetFile = impl.targetFile;
-    targetFile.fileDir = scope.BINARY_DIR;
+    targetFile.fileDir = this[TARGET_SCOPE].BINARY_DIR;
 
-    this._positionIndependentCode = scope.POSITION_INDEPENDENT_CODE;
+    this._positionIndependentCode = this[TARGET_SCOPE].POSITION_INDEPENDENT_CODE;
 
-    this[TARGET_SCOPE] = scope;
-
-    this.addIncludesImpl(false, ...scope.INCLUDES);
+    this.addIncludesImpl(false, ...this[TARGET_SCOPE].INCLUDES);
   }
 
   public get targetName() {
@@ -374,60 +371,8 @@ export class BaseTarget implements IMakeTarget {
     }
   }
 
-  public getIncludes() {
-    return this._includes;
-  }
-
-  public addIncludes(...includes: Array<InterfaceIncludes | AbsolutePath | string>): void {
-    this.addIncludesImpl(false, ...includes);
-  }
-
-  public addPublicIncludes(...includes: Array<InterfaceIncludes | AbsolutePath | string>): void {
-    this.addIncludesImpl(true, ...includes);
-  }
-
-  public addIncludesImpl(publicOnly: boolean, ...includes: Array<InterfaceIncludes | AbsolutePath | string>): void {
-    const baseDir = this[TARGET_SCOPE].SOURCE_DIR;
-    for (const value of normalizeIncludes(baseDir, ...includes))
-      this._includes.push({publicOnly, value});
-  }
-
-  public getDefinitions() {
-    return this._definitions;
-  }
-
-  public addDefinitions(...definitions: any): void {
-    this.addDefinitionsImpl(false, ...definitions);
-  }
-
-  public addPublicDefinitions(...definitions: any): void {
-    this.addDefinitionsImpl(true, ...definitions);
-  }
-
-  public addDefinitionsImpl(publicOnly: boolean, ...definitions: Array<string | object>): void {
-    for (const value of normalizeDefinitions(...definitions))
-      this._definitions.push({publicOnly, value});
-  }
-
   public addLibraries(...libraries: any) {
     this[IMPL].addLibraries("directly", false, ...libraries);
-  }
-
-  public getCompileOptions() {
-    return this._compileOptions;
-  }
-
-  public addCompileOptions(...options: Array<string | string[]>): void {
-    this.addCompileOptionsImpl(false, ...options);
-  }
-
-  public addPublicCompileOptions(...options: Array<string | string[]>): void {
-    this.addCompileOptionsImpl(true, ...options);
-  }
-
-  public addCompileOptionsImpl(publicOnly: boolean, ...options: Array<string | string[]>): void {
-    for (const value of options.flat())
-      this._compileOptions.push({publicOnly, value});
   }
 
   public addLinkOptions(...options: Array<string|string[]>) {

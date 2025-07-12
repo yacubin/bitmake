@@ -473,6 +473,8 @@ export class ProjectContext {
           impl.addLinkOption("directly", publicOnly, value);
         for (const {publicOnly, value} of target.getLibraries())
           impl.addLibrary("directly", publicOnly, value);
+        for (const {publicOnly, value} of target.getSources())
+          impl.addSource("directly", publicOnly, value);
       }
     }
 
@@ -497,6 +499,8 @@ export class ProjectContext {
           impl.addLinkOption("directly", publicOnly, value);
         for (const {publicOnly, value} of target.getLibraries())
           impl.addLibrary("directly", publicOnly, value);
+        for (const {publicOnly, value} of target.getSources())
+          impl.addSource("directly", publicOnly, value);
       }
     }
   }

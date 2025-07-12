@@ -317,11 +317,6 @@ export class TargetStruct {
     this._sources.addItem(origin, publicOnly, value);
   }
 
-  public addSources(origin: TargetItemOrigin, ...sources: any[]) {
-    for (const iter of sources.flat())
-      this.addSource(origin, false, iter);
-  }
-
   public getSourceFiles(): SourceFile[] {
     return this._sources.items.map(i => i.value).filter(i => i instanceof SourceFile);
   }

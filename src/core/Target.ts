@@ -78,23 +78,6 @@ function createSources(scope: SystemScope, source: InterfaceObjects | SourceFile
   throw new Error(`Not support instance ${source}`);
 }
 
-function getSourceFiles(impl: TargetStruct, scope: SystemScope, ...sources: any[]): SourceFileList {
-  const result = [];
-  const sourceFiles = impl.getSourceFiles();
-  for (const it of sources.flat()) {
-    const filename = scope.SOURCE_DIR.resolve(it).toString();
-    const src = sourceFiles.find(i => i.FILE.toString() === filename);
-    if (!src)
-      throw new Error(`Cannot find "${it}"`);
-    result.push(src);
-  }
-
-  if (result.length)
-    return SourceFileList.create(scope, result);
-
-  return SourceFileList.create(scope, sourceFiles);
-}
-
 const IMPL                = Symbol("IMPL");
 const TARGET_SCOPE        = Symbol("TARGET_SCOPE");
 
@@ -115,6 +98,7 @@ abstract class AbstractTarget {
   private _compileOptions: TargetValueList<string | string[]>;
   private _linkOptions: TargetValueList<string | string[]>;
   private _libraries: TargetValueList<UserIndirectTarget>;
+  private _sources: TargetValueList<InterfaceObjects | SourceFile>;
 
   constructor(impl: TargetStruct, variableMap: VariableMap, name: string) {
     const variables = ScopeHelper.createVariableValues(variableMap, SYSTEM_VARIABLE_GROUP) as SystemScope;
@@ -126,6 +110,7 @@ abstract class AbstractTarget {
     this._compileOptions = [];
     this._linkOptions = [];
     this._libraries = [];
+    this._sources = [];
   }
 
   public get targetName() {
@@ -217,6 +202,42 @@ abstract class AbstractTarget {
     for (const value of libraries.flat())
       this._libraries.push({publicOnly, value});
   }
+
+  public getSources() {
+    return this._sources;
+  }
+
+  public getSourceFileList(): SourceFile[] {
+    return this._sources.map(i => i.value).filter(i => i instanceof SourceFile);
+  }
+
+  public getInterfaceObjectsList(): InterfaceObjects[] {
+    return this._sources.map(i => i.value).filter(i => i instanceof InterfaceObjects);
+  }
+
+  public getSourceFiles(...sources: any[]): SourceFileList {
+    const result = [];
+    const scope = this[TARGET_SCOPE];
+    const sourceFiles = this.getSourceFileList();
+    for (const it of sources.flat()) {
+      const filename = scope.SOURCE_DIR.resolve(it).toString();
+      const src = sourceFiles.find(i => i.FILE.toString() === filename);
+      if (!src)
+        throw new Error(`Cannot find "${it}"`);
+      result.push(src);
+    }
+
+    if (result.length)
+      return SourceFileList.create(scope, result);
+
+    return SourceFileList.create(scope, sourceFiles);
+  }
+
+  public addSources(...sources: Array<InterfaceObjects | SourceFile | AbsolutePath | string>) {
+    for (let it of sources.flat()) {
+      this._sources.push({publicOnly: false, value: createSources(this[TARGET_SCOPE], it)});
+    }
+  }
 };
 
 export class UserIndirectTarget extends AbstractTarget implements IMakeTarget { // PostTarget
@@ -277,16 +298,6 @@ export class UserIndirectTarget extends AbstractTarget implements IMakeTarget { 
 
   public toString(): string {
     return "${" + this.targetName + "}";
-  }
-
-  public addSources(...sources: Array<InterfaceObjects | SourceFile | AbsolutePath | string>): void {
-    for (let it of sources.flat()) {
-      this[IMPL].addSource("indirectly", false, createSources(this[TARGET_SCOPE], it));
-    }
-  }
-
-  public getSourceFiles(...sources: any[]): SourceFileList {
-    return getSourceFiles(this[IMPL], this[TARGET_SCOPE], ...sources);
   }
 
   public addPreBuild(command: any, args: any[]) {
@@ -381,16 +392,6 @@ export class BaseTarget extends AbstractTarget implements IMakeTarget {
 
   public get IMPL(): TargetStruct {
     return this[IMPL];
-  }
-
-  public addSources(...sources: Array<InterfaceObjects | SourceFile | AbsolutePath | string>) {
-    for (let it of sources.flat()) {
-      this[IMPL].addSource("directly", false, createSources(this[TARGET_SCOPE], it));
-    }
-  }
-
-  public getSourceFiles(...sources: any[]): SourceFileList {
-    return getSourceFiles(this[IMPL], this[TARGET_SCOPE], ...sources);
   }
 
   public addPreBuild(command: any, args: any[]) {

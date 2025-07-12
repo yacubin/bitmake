@@ -465,6 +465,8 @@ export class ProjectContext {
         impl.setPositionIndependentCode(target.positionIndependentCode);
         for (const {publicOnly, value} of target.getIncludes())
           impl.addInclude("directly", publicOnly, value);
+        for (const {publicOnly, value} of target.getDefinitions())
+          impl.addDefinition("directly", publicOnly, value);
       }
     }
 
@@ -481,6 +483,8 @@ export class ProjectContext {
           impl.setPositionIndependentCode(target.positionIndependentCode);
         for (const {publicOnly, value} of target.getIncludes())
           impl.addInclude("directly", publicOnly, value);
+        for (const {publicOnly, value} of target.getDefinitions())
+          impl.addDefinition("directly", publicOnly, value);
       }
     }
   }

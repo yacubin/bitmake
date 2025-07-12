@@ -12,7 +12,6 @@ import { InterfaceIncludes } from "@/core/InterfaceIncludes";
 import { InterfaceObjects } from "@/core/InterfaceObjects";
 import { UserIndirectTarget } from "@/core/Target";
 import { SourceFile } from "@/core/SourceFile";
-import { normalizeDefinitions } from "@/core/DefinitionHelper";
 
 export enum TargetType {
   Unknown = "Unknown",
@@ -302,11 +301,6 @@ export class TargetStruct {
 
   public addDefinition(origin: TargetItemOrigin, publicOnly: boolean, value: string) {
     this._defines.addItem(origin, publicOnly, value);
-  }
-
-  public addDefinitions(origin: TargetItemOrigin, publicOnly: boolean, ...definitions: any) {
-    for (const iter of normalizeDefinitions(...definitions))
-      this.addDefinition(origin, publicOnly, iter);
   }
 
   public getDefinitions(): Array<string> {

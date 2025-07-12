@@ -17,6 +17,7 @@ import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
 import { TargetStruct, TargetType, LiveString } from "@/core/TargetStruct";
 import { SYSTEM_VARIABLE_GROUP } from "@/Constants";
+import { normalizeDefinitions } from "@/core/DefinitionHelper";
 
 const _languageExtensions = {
   ASM: [ ".asm", ".s" ],
@@ -113,6 +114,7 @@ export class UserIndirectTarget implements IMakeTarget {
   private _suffix?: string;
   private _positionIndependentCode?: boolean;
   private _includes: TargetValueList<AbsolutePath | InterfaceIncludes>;
+  private _definitions: TargetValueList<string>;
 
   private constructor(impl: TargetStruct, variableMap: VariableMap, name: string) {
     const variables = ScopeHelper.createVariableValues(variableMap, SYSTEM_VARIABLE_GROUP) as SystemScope;
@@ -120,6 +122,7 @@ export class UserIndirectTarget implements IMakeTarget {
     this[TARGET_SCOPE] = variables;
     this._name = name;
     this._includes = [];
+    this._definitions = [];
   }
 
   public static create(impl: TargetStruct, variableMap: VariableMap, name: string) {
@@ -200,12 +203,21 @@ export class UserIndirectTarget implements IMakeTarget {
       this._includes.push({publicOnly, value});
   }
 
+  public getDefinitions() {
+    return this._definitions;
+  }
+
   public addDefinitions(...definitions: any): void {
-    this[IMPL].addDefinitions("indirectly", false, ...definitions);
+    this.addDefinitionsImpl(false, ...definitions);
   }
 
   public addPublicDefinitions(...definitions: any): void {
-    this[IMPL].addDefinitions("indirectly", true, ...definitions);
+    this.addDefinitionsImpl(true, ...definitions);
+  }
+
+  public addDefinitionsImpl(publicOnly: boolean, ...definitions: Array<string | object>): void {
+    for (const value of normalizeDefinitions(...definitions))
+      this._definitions.push({publicOnly, value});
   }
 
   public addCompileOptions(...options: Array<string|string[]>): void {
@@ -264,6 +276,7 @@ export class BaseTarget implements IMakeTarget {
 
   private _positionIndependentCode: boolean;
   private _includes: TargetValueList<AbsolutePath | InterfaceIncludes> = [];
+  private _definitions: TargetValueList<string> = [];
 
   protected constructor(impl: TargetStruct, variableMap: VariableMap, name: string) {
     this[IMPL] = impl;
@@ -367,6 +380,23 @@ export class BaseTarget implements IMakeTarget {
       this._includes.push({publicOnly, value});
   }
 
+  public getDefinitions() {
+    return this._definitions;
+  }
+
+  public addDefinitions(...definitions: any): void {
+    this.addDefinitionsImpl(false, ...definitions);
+  }
+
+  public addPublicDefinitions(...definitions: any): void {
+    this.addDefinitionsImpl(true, ...definitions);
+  }
+
+  public addDefinitionsImpl(publicOnly: boolean, ...definitions: Array<string | object>): void {
+    for (const value of normalizeDefinitions(...definitions))
+      this._definitions.push({publicOnly, value});
+  }
+
   public addLibraries(...libraries: any) {
     this[IMPL].addLibraries("directly", false, ...libraries);
   }
@@ -381,10 +411,6 @@ export class BaseTarget implements IMakeTarget {
 
   public getSourceFiles(...sources: any[]): SourceFileList {
     return getSourceFiles(this[IMPL], this[TARGET_SCOPE], ...sources);
-  }
-
-  public addDefinitions(...definitions: any[]) {
-    this[IMPL].addDefinitions("directly", false, ...definitions);
   }
 
   public addPreBuild(command: any, args: any[]) {
@@ -406,10 +432,6 @@ export class BaseTarget implements IMakeTarget {
 
   public setPositionIndependentCode(value: boolean) {
     this._positionIndependentCode = value;
-  }
-
-  public addPublicDefinitions(...definitions: any) {
-    this[IMPL].addDefinitions("directly", true, ...definitions);
   }
 
   public addPublicLibraries(...libraries: any[]) {

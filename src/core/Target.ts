@@ -112,6 +112,7 @@ abstract class AbstractTarget {
   private _includes: TargetValueList<AbsolutePath | InterfaceIncludes>;
   private _definitions: TargetValueList<string>;
   private _compileOptions: TargetValueList<string | string[]>;
+  private _linkOptions: TargetValueList<string | string[]>;
 
   constructor(impl: TargetStruct, variableMap: VariableMap, name: string) {
     const variables = ScopeHelper.createVariableValues(variableMap, SYSTEM_VARIABLE_GROUP) as SystemScope;
@@ -121,6 +122,7 @@ abstract class AbstractTarget {
     this._includes = [];
     this._definitions = [];
     this._compileOptions = [];
+    this._linkOptions = [];
   }
 
   public getIncludes() {
@@ -174,9 +176,26 @@ abstract class AbstractTarget {
     for (const value of options.flat())
       this._compileOptions.push({publicOnly, value});
   }
+
+  public getLinkOptions() {
+    return this._linkOptions;
+  }
+
+  public addLinkOptions(...options: Array<string | string[]>) {
+    this.addLinkOptionsImpl(false, ...options);
+  }
+
+  public addPublicLinkOptions(...options: Array<string | string[]>) {
+    this.addLinkOptionsImpl(true, ...options);
+  }
+
+  public addLinkOptionsImpl(publicOnly: boolean, ...options: Array<string | string[]>) {
+    for (const value of options.flat())
+      this._linkOptions.push({publicOnly, value});
+  }
 };
 
-export class UserIndirectTarget extends AbstractTarget implements IMakeTarget {
+export class UserIndirectTarget extends AbstractTarget implements IMakeTarget { // PostTarget
   private _prefix?: string;
   private _outputName?: string;
   private _suffix?: string;
@@ -244,14 +263,6 @@ export class UserIndirectTarget extends AbstractTarget implements IMakeTarget {
     for (let it of sources.flat()) {
       this[IMPL].addSource("indirectly", false, createSources(this[TARGET_SCOPE], it));
     }
-  }
-
-  public addLinkOptions(...options: Array<string|string[]>): void {
-    this[IMPL].addLinkOptions("indirectly", false, ...options);
-  }
-
-  public addPublicLinkOptions(...options: string[]): void {
-    this[IMPL].addLinkOptions("indirectly", true, ...options);
   }
 
   public getSourceFiles(...sources: any[]): SourceFileList {
@@ -375,10 +386,6 @@ export class BaseTarget extends AbstractTarget implements IMakeTarget {
     this[IMPL].addLibraries("directly", false, ...libraries);
   }
 
-  public addLinkOptions(...options: Array<string|string[]>) {
-    this[IMPL].addLinkOptions("directly", false, ...options);
-  }
-
   public getSourceFiles(...sources: any[]): SourceFileList {
     return getSourceFiles(this[IMPL], this[TARGET_SCOPE], ...sources);
   }
@@ -408,10 +415,6 @@ export class BaseTarget extends AbstractTarget implements IMakeTarget {
     this[IMPL].addLibraries("directly", true, ...libraries);
   }
 
-  public addPublicLinkOptions(...options: Array<string|string[]>) {
-    this[IMPL].addLinkOptions("directly", true, ...options);
-  }
-
   public toJSON(): object {
     return {
       NAME: this.targetName,
@@ -428,7 +431,7 @@ export class ObjectLibrary extends BaseTarget implements IObjectLibrary {
     this._prefix = this[TARGET_SCOPE].OBJECT_LIBRARY_PREFIX;
     this._suffix = this[TARGET_SCOPE].OBJECT_LIBRARY_SUFFIX;
     this[IMPL].type = TargetType.ObjectLibrary;
-    this[IMPL].addLinkOptions("initialize", true, ...this[TARGET_SCOPE].OBJECT_LINKER_FLAGS);
+    this.addLinkOptionsImpl(false, ...this[TARGET_SCOPE].OBJECT_LINKER_FLAGS);
   }
 
   public static create(impl: TargetStruct, variableMap: VariableMap, name: string) {
@@ -442,7 +445,7 @@ export class StaticLibrary extends BaseTarget implements IStaticLibrary {
     this._prefix = this[TARGET_SCOPE].STATIC_LIBRARY_PREFIX;
     this._suffix = this[TARGET_SCOPE].STATIC_LIBRARY_SUFFIX;
     this[IMPL].type = TargetType.StaticLibrary;
-    this[IMPL].addLinkOptions("initialize", true, ...this[TARGET_SCOPE].STATIC_LINKER_FLAGS);
+    this.addLinkOptionsImpl(false, ...this[TARGET_SCOPE].STATIC_LINKER_FLAGS);
   }
 
   public static create(impl: TargetStruct, variableMap: VariableMap, name: string) {
@@ -456,7 +459,7 @@ export class SharedLibrary extends BaseTarget implements ISharedLibrary {
     this._prefix = this[TARGET_SCOPE].SHARED_LIBRARY_PREFIX;
     this._suffix = this[TARGET_SCOPE].SHARED_LIBRARY_SUFFIX;
     this[IMPL].type = TargetType.SharedLibrary;
-    this[IMPL].addLinkOptions("initialize", true, ...this[TARGET_SCOPE].SHARED_LINKER_FLAGS);
+    this.addLinkOptionsImpl(false, ...this[TARGET_SCOPE].SHARED_LINKER_FLAGS);
   }
 
   public static create(impl: TargetStruct, variableMap: VariableMap, name: string) {
@@ -470,7 +473,7 @@ export class Executable extends BaseTarget implements IExecutable {
     this._prefix = "";
     this._suffix = this[TARGET_SCOPE].EXECUTABLE_SUFFIX;
     this[IMPL].type = TargetType.Executable;
-    this[IMPL].addLinkOptions("initialize", true, ...this[TARGET_SCOPE].EXE_LINKER_FLAGS);
+    this.addLinkOptionsImpl(false, ...this[TARGET_SCOPE].EXE_LINKER_FLAGS);
   }
 
   public static create(impl: TargetStruct, variableMap: VariableMap, name: string) {

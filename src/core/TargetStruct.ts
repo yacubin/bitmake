@@ -281,11 +281,6 @@ export class TargetStruct {
     return this._linkOptions.addItem(origin, publicOnly, value);
   }
 
-  public addLinkOptions(origin: TargetItemOrigin, publicOnly: boolean, ...options: Array<string|string[]>) {
-    for (const iter of options.flat())
-      this.addLinkOption(origin, publicOnly, iter);
-  }
-
   public getLinkOptions(): Array<string|string[]> {
     return this._linkOptions.getItems();
   }

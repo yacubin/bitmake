@@ -469,6 +469,8 @@ export class ProjectContext {
           impl.addDefinition("directly", publicOnly, value);
         for (const {publicOnly, value} of target.getCompileOptions())
           impl.addCompileOption("directly", publicOnly, value);
+        for (const {publicOnly, value} of target.getLinkOptions())
+          impl.addLinkOption("directly", publicOnly, value);
       }
     }
 
@@ -489,6 +491,8 @@ export class ProjectContext {
           impl.addDefinition("directly", publicOnly, value);
         for (const {publicOnly, value} of target.getCompileOptions())
           impl.addCompileOption("directly", publicOnly, value);
+        for (const {publicOnly, value} of target.getLinkOptions())
+          impl.addLinkOption("directly", publicOnly, value);
       }
     }
   }

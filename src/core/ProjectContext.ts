@@ -29,7 +29,8 @@ import { InstallEntity } from "@/core/InstallEntity";
 import { CustomScript } from "@/core/CustomScript";
 import { ScriptContext } from "@/core/ScriptContext";
 import { ScopeHelper, VariableMap } from "./Scope";
-import { TargetStruct } from "./TargetStruct";
+import { TargetFile } from "@/core/TargetFile";
+import { TargetStruct, TargetCommand } from "./TargetStruct";
 import { SourceFile } from "@/core/SourceFile";
 import { performContext, createVariableMapForDirectory } from "@/core/BaseContext";
 
@@ -91,6 +92,30 @@ function getFileDir(target: TargetStruct): AbsolutePath {
 }
 
 type GoalHandler = () => Promise<void> | void;
+
+interface ExecStruct {
+  command: string;
+  args: string[];
+};
+
+function resolveInstance(project: ProjectContext, o: string | AbsolutePath | TargetFile): string {
+  if (typeof o === "string")
+    return o;
+
+  if (o instanceof AbsolutePath)
+    return o.toString();
+
+  if (o instanceof TargetFile)
+    return project.TARGETS.get(o.targetName).FILE.toString();
+
+  throw new Error(`Unable to resolve object ${o}`);
+}
+
+function resolveTargetCommand(project: ProjectContext, tcmd: TargetCommand): ExecStruct {
+  const command = resolveInstance(project, tcmd.command);
+  const args = tcmd.args.map(i => resolveInstance(project, i));
+  return {command, args};
+}
 
 export class GoalWorkerImpl {
   private _message: string | undefined;
@@ -464,17 +489,17 @@ export class ProjectContext {
         impl.targetFile.setSuffix(target.suffix);
         impl.setPositionIndependentCode(target.positionIndependentCode);
         for (const {publicOnly, value} of target.getIncludes())
-          impl.addInclude("directly", publicOnly, value);
+          impl.addInclude(publicOnly, value);
         for (const {publicOnly, value} of target.getDefinitions())
-          impl.addDefinition("directly", publicOnly, value);
+          impl.addDefinition(publicOnly, value);
         for (const {publicOnly, value} of target.getCompileOptions())
-          impl.addCompileOption("directly", publicOnly, value);
+          impl.addCompileOption(publicOnly, value);
         for (const {publicOnly, value} of target.getLinkOptions())
-          impl.addLinkOption("directly", publicOnly, value);
+          impl.addLinkOption(publicOnly, value);
         for (const {publicOnly, value} of target.getLibraries())
-          impl.addLibrary("directly", publicOnly, value);
+          impl.addLibrary(publicOnly, value);
         for (const {publicOnly, value} of target.getSources())
-          impl.addSource("directly", publicOnly, value);
+          impl.addSource(publicOnly, value);
         for (const iter of target.preBuildList)
           impl.addPreBuild(iter);
         for (const iter of target.postBuildList)
@@ -494,17 +519,17 @@ export class ProjectContext {
         if (target.positionIndependentCode !== undefined)
           impl.setPositionIndependentCode(target.positionIndependentCode);
         for (const {publicOnly, value} of target.getIncludes())
-          impl.addInclude("directly", publicOnly, value);
+          impl.addInclude(publicOnly, value);
         for (const {publicOnly, value} of target.getDefinitions())
-          impl.addDefinition("directly", publicOnly, value);
+          impl.addDefinition(publicOnly, value);
         for (const {publicOnly, value} of target.getCompileOptions())
-          impl.addCompileOption("directly", publicOnly, value);
+          impl.addCompileOption(publicOnly, value);
         for (const {publicOnly, value} of target.getLinkOptions())
-          impl.addLinkOption("directly", publicOnly, value);
+          impl.addLinkOption(publicOnly, value);
         for (const {publicOnly, value} of target.getLibraries())
-          impl.addLibrary("directly", publicOnly, value);
+          impl.addLibrary(publicOnly, value);
         for (const {publicOnly, value} of target.getSources())
-          impl.addSource("directly", publicOnly, value);
+          impl.addSource(publicOnly, value);
         for (const iter of target.preBuildList)
           impl.addPreBuild(iter);
         for (const iter of target.postBuildList)
@@ -553,7 +578,7 @@ export class ProjectContext {
     for (const [name, target] of Object.entries(this[TARGETS].ENTRIES)) {
       const targetImpl = target.IMPL;
       const depends = [];
-      for (const s of target.IMPL.getInterfaceObjectsList()) {
+      for (const s of target.IMPL.getTargetObjectsList()) {
         const t = this[TARGETS].get(s.targetName) as BaseTarget;
         for (const f of t.IMPL.getSourceFiles()) {
           const o = objectFiles.get(f);
@@ -606,7 +631,8 @@ export class ProjectContext {
 
       const generalGoal = new GoalWorkerImpl;
       for (const params of target.IMPL.preBuildList) {
-        generalGoal.addExec(params.command.toString(), params.args.map(i => i.toString()), target.TARGET_SCOPE.BINARY_DIR.toString());
+        const execStruct = resolveTargetCommand(this, params);
+        generalGoal.addExec(execStruct.command, execStruct.args, target.TARGET_SCOPE.BINARY_DIR.toString());
       }
 
       const linkOptions = this[TARGETS].allLinkOptionsOf(target);
@@ -671,7 +697,8 @@ export class ProjectContext {
       }
 
       for (const params of target.IMPL.postBuildList) {
-        generalGoal.addExec(params.command.toString(), params.args.map(i => i.toString()), target.TARGET_SCOPE.BINARY_DIR.toString());
+        const execStruct = resolveTargetCommand(this, params);
+        generalGoal.addExec(execStruct.command, execStruct.args, target.TARGET_SCOPE.BINARY_DIR.toString());
       }
       
       goalList.add(generalGoal);

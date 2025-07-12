@@ -8,8 +8,9 @@
  */
 
 import { AbsolutePath } from "@/core/AbsolutePath";
-import { InterfaceIncludes } from "@/core/InterfaceIncludes";
-import { InterfaceObjects } from "@/core/InterfaceObjects";
+import { TargetFile } from "@/core/TargetFile";
+import { TargetIncludes } from "@/core/TargetIncludes";
+import { TargetObjects } from "@/core/TargetObjects";
 import { UserIndirectTarget } from "@/core/Target";
 import { SourceFile } from "@/core/SourceFile";
 
@@ -21,30 +22,12 @@ export enum TargetType {
   Executable = "Executable",
 };
 
-const FUNC = Symbol("FUNC");
-
-export class LiveString {
-  private [FUNC]: () => string;
-
-  private constructor(func: () => string) {
-    this[FUNC] = func;
-  }
-
-  public static create(func: () => string) {
-    return Object.seal(new LiveString(func));
-  }
-
-  toString(): string {
-    return this[FUNC]();
-  }
-};
-
 export interface TargetCommand {
-  command: string | LiveString;
-  args: Array<string | LiveString>;
+  command: string | AbsolutePath | TargetFile;
+  args: Array<string | AbsolutePath | TargetFile>;
 };
 
-export class TargetFile {
+export class TargetFileStruct {
   private _fileDir?: AbsolutePath
 
   private _prefix = "";
@@ -54,8 +37,8 @@ export class TargetFile {
   private constructor() {
   }
 
-  public static create(): TargetFile {
-    return Object.seal(new TargetFile);
+  public static create(): TargetFileStruct {
+    return Object.seal(new TargetFileStruct);
   }
 
   public get prefix(): string {
@@ -123,10 +106,7 @@ export class TargetFile {
   }
 };
 
-type TargetItemOrigin = "initialize" | "indirectly" | "directly";
-
 interface TargetItem<T> {
-  origin: TargetItemOrigin;
   value: T;
   publicOnly: boolean;
 };
@@ -134,34 +114,16 @@ interface TargetItem<T> {
 class TargetItems<T> {
   private _items = new Array<TargetItem<T>>();
 
-  public addItem(origin: TargetItemOrigin, publicOnly: boolean, value: T) {
-    this._items.push({ origin, publicOnly, value });
+  public addItem(publicOnly: boolean, value: T) {
+    this._items.push({ publicOnly, value });
   }
 
   public getItems(): Array<T> {
-    const firstList = new Array<T>();
-    const lastList = new Array<T>();
-    for (const iter of this._items) {
-      if (iter.origin !== "indirectly")
-        firstList.push(iter.value);
-      else
-        lastList.push(iter.value);
-    }
-    return firstList.concat(lastList);
+    return this._items.map( i => i.value);
   }
 
   public getPublicItems(): Array<T> {
-    const firstList = new Array<T>();
-    const lastList = new Array<T>();
-    for (const iter of this._items) {
-      if (!iter.publicOnly)
-        continue;
-      if (iter.origin !== "indirectly")
-        firstList.push(iter.value);
-      else
-        lastList.push(iter.value);
-    }
-    return firstList.concat(lastList);
+    return this._items.filter(i => i.publicOnly).map( i => i.value);
   }
 
   get items() {
@@ -176,21 +138,21 @@ class TargetItems<T> {
 export class TargetStruct {
   private _name: string;
   private _type: TargetType;
-  private _targetFile: TargetFile;
+  private _targetFile: TargetFileStruct;
   private _preBuildList = new Array<TargetCommand>;
   private _postBuildList = new Array<TargetCommand>;
   private _defines = new TargetItems<string>;
-  private _includes = new TargetItems<AbsolutePath | InterfaceIncludes>;
+  private _includes = new TargetItems<AbsolutePath | TargetIncludes>;
   private _compileOptions = new TargetItems<string | string[]>;
   private _linkOptions = new TargetItems<string | string[]>;
-  private _sources = new TargetItems<InterfaceObjects | SourceFile>;
+  private _sources = new TargetItems<TargetObjects | SourceFile>;
   private _libraries = new TargetItems<UserIndirectTarget>;
   private _positionIndependentCode = false;
 
   constructor(name: string) {
     this._name = name;
     this._type = TargetType.Unknown;
-    this._targetFile = TargetFile.create();
+    this._targetFile = TargetFileStruct.create();
   }
 
   public get name() {
@@ -237,8 +199,8 @@ export class TargetStruct {
     return this._postBuildList;
   }
 
-  public addCompileOption(origin: TargetItemOrigin, publicOnly: boolean, value: string | string[]) {
-    this._compileOptions.addItem(origin, publicOnly, value);
+  public addCompileOption(publicOnly: boolean, value: string | string[]) {
+    this._compileOptions.addItem(publicOnly, value);
   }
 
   public getCompileOptions(): Array<string|string[]> {
@@ -249,8 +211,8 @@ export class TargetStruct {
     return this._compileOptions.getPublicItems();
   }
 
-  public addLinkOption(origin: TargetItemOrigin, publicOnly: boolean, value: string | string[]) {
-    return this._linkOptions.addItem(origin, publicOnly, value);
+  public addLinkOption(publicOnly: boolean, value: string | string[]) {
+    return this._linkOptions.addItem(publicOnly, value);
   }
 
   public getLinkOptions(): Array<string|string[]> {
@@ -261,8 +223,8 @@ export class TargetStruct {
     return this._linkOptions.getPublicItems();
   }
 
-  public addDefinition(origin: TargetItemOrigin, publicOnly: boolean, value: string) {
-    this._defines.addItem(origin, publicOnly, value);
+  public addDefinition(publicOnly: boolean, value: string) {
+    this._defines.addItem(publicOnly, value);
   }
 
   public getDefinitions(): Array<string> {
@@ -273,28 +235,28 @@ export class TargetStruct {
     return this._defines.getPublicItems();
   }
 
-  public addInclude(origin: TargetItemOrigin, publicOnly: boolean, value: AbsolutePath|InterfaceIncludes) {
-    this._includes.addItem(origin, publicOnly, value);
+  public addInclude(publicOnly: boolean, value: AbsolutePath | TargetIncludes) {
+    this._includes.addItem(publicOnly, value);
   }
 
-  public getIncludes(): Array<AbsolutePath|InterfaceIncludes> {
+  public getIncludes(): Array<AbsolutePath | TargetIncludes> {
     return this._includes.getItems();
   }
 
-  public getPublicIncludes(): Array<AbsolutePath|InterfaceIncludes> {
+  public getPublicIncludes(): Array<AbsolutePath | TargetIncludes> {
     return this._includes.getPublicItems();
   }
 
-  public addSource(origin: TargetItemOrigin, publicOnly: boolean, value: InterfaceObjects | SourceFile) {
-    this._sources.addItem(origin, publicOnly, value);
+  public addSource(publicOnly: boolean, value: TargetObjects | SourceFile) {
+    this._sources.addItem(publicOnly, value);
   }
 
   public getSourceFiles(): SourceFile[] {
     return this._sources.items.map(i => i.value).filter(i => i instanceof SourceFile);
   }
 
-  public getInterfaceObjectsList(): InterfaceObjects[] {
-    return this._sources.items.map(i => i.value).filter(i => i instanceof InterfaceObjects);
+  public getTargetObjectsList(): TargetObjects[] {
+    return this._sources.items.map(i => i.value).filter(i => i instanceof TargetObjects);
   }
 
   public getHeaders(): SourceFile[] {
@@ -306,8 +268,8 @@ export class TargetStruct {
     return result;
   }
 
-  public addLibrary(origin: TargetItemOrigin, publicOnly: boolean, value: UserIndirectTarget) {
-    this._libraries.addItem(origin, publicOnly, UserIndirectTarget.ensureInstance(value));
+  public addLibrary(publicOnly: boolean, value: UserIndirectTarget) {
+    this._libraries.addItem(publicOnly, UserIndirectTarget.ensureInstance(value));
   }
 
   public getLibraries(): Array<UserIndirectTarget> {

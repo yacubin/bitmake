@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { InterfaceIncludes }from "@/core/InterfaceIncludes";
+import { TargetIncludes }from "@/core/TargetIncludes";
 import { UserIndirectTarget } from "@/core/Target";
 import { TargetStruct } from "@/core/TargetStruct";
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
@@ -78,9 +78,9 @@ export class TargetCollection {
     this[ENTRIES][name] = target;
   }
 
-  private __getAllIncludes(includes: string[], targetSet: Set<string>, list: Array<AbsolutePath | InterfaceIncludes> | Array<UserIndirectTarget>) {
+  private __getAllIncludes(includes: string[], targetSet: Set<string>, list: Array<AbsolutePath | TargetIncludes> | Array<UserIndirectTarget>) {
     for (const iter of list) {
-      if (iter instanceof InterfaceIncludes || iter instanceof UserIndirectTarget) {
+      if (iter instanceof TargetIncludes || iter instanceof UserIndirectTarget) {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
           const target = this.get(iter.targetName);
@@ -107,9 +107,9 @@ export class TargetCollection {
     return includes;
   }
 
-  private __getAllHeaders(headers: string[], targetSet: Set<string>, list: Array<AbsolutePath | InterfaceIncludes> | Array<UserIndirectTarget>) {
+  private __getAllHeaders(headers: string[], targetSet: Set<string>, list: Array<AbsolutePath | TargetIncludes> | Array<UserIndirectTarget>) {
     for (const iter of list) {
-      if (iter instanceof InterfaceIncludes || iter instanceof UserIndirectTarget) {
+      if (iter instanceof TargetIncludes || iter instanceof UserIndirectTarget) {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
           const target = this.get(iter.targetName);

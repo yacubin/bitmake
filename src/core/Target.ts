@@ -7,15 +7,16 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { ITargetFile, IMakeTarget, IObjectLibrary, IStaticLibrary, ISharedLibrary, IExecutable } from "@/core/MakeInterfaces";
+import { IMakeTarget, IObjectLibrary, IStaticLibrary, ISharedLibrary, IExecutable } from "@/core/MakeInterfaces";
 import { SourceFile } from "@/core/SourceFile";
 import { SourceFileList } from "@/core/SourceFileList";
-import { InterfaceIncludes } from "@/core/InterfaceIncludes";
-import { InterfaceObjects } from "@/core/InterfaceObjects";
+import { TargetFile } from "@/core/TargetFile";
+import { TargetIncludes } from "@/core/TargetIncludes";
+import { TargetObjects } from "@/core/TargetObjects";
 import { AbsolutePath } from "@/core/AbsolutePath";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
-import { TargetStruct, TargetType, TargetCommand, LiveString } from "@/core/TargetStruct";
+import { TargetStruct, TargetType, TargetCommand } from "@/core/TargetStruct";
 import { SYSTEM_VARIABLE_GROUP } from "@/Constants";
 import { normalizeDefinitions } from "@/core/DefinitionHelper";
 
@@ -25,10 +26,10 @@ const _languageExtensions = {
   CXX: [".cpp", ".cc", ".cxx" ],
 };
 
-function normalizeIncludes(baseDir: AbsolutePath, ...includes: any[]): Array<AbsolutePath | InterfaceIncludes> {
+function normalizeIncludes(baseDir: AbsolutePath, ...includes: any[]): Array<AbsolutePath | TargetIncludes> {
   const result = [];
   for (const iter of includes.flat()) {
-    if (iter instanceof InterfaceIncludes)
+    if (iter instanceof TargetIncludes)
       result.push(iter);
     else if (typeof iter === "string")
       result.push(AbsolutePath.create(baseDir.resolve(iter)));
@@ -61,8 +62,8 @@ function makeLanguage(value: string) {
   throw new Error(`Language "${value}" is not supported`);
 }
 
-function createSources(scope: SystemScope, source: InterfaceObjects | SourceFile | AbsolutePath | string): InterfaceObjects | SourceFile {
-  if (source instanceof InterfaceObjects || source instanceof SourceFile)
+function createSources(scope: SystemScope, source: TargetObjects | SourceFile | AbsolutePath | string): TargetObjects | SourceFile {
+  if (source instanceof TargetObjects || source instanceof SourceFile)
     return source;
 
   if (typeof source === "string" || AbsolutePath.isAbsolute(source)) {
@@ -78,51 +79,25 @@ function createSources(scope: SystemScope, source: InterfaceObjects | SourceFile
   throw new Error(`Not support instance ${source}`);
 }
 
-interface JSONObject {
-  type: string;
-  [name: string]: boolean | number | string | object;
-};
-
-export class TargetFile implements ITargetFile {
-  _targetName: string;
-
-  constructor(targetName: string) {
-    this._targetName = targetName;
-  }
-
-  targetName(): string {
-    return this._targetName;
-  }
-
-  toJSON(): JSONObject {
-    return {
-      type: "TargetFile",
-      targetName: this._targetName,
-    }
-  }
-};
-
 function makeTargetCommand(_command: any, _args: any[]): TargetCommand {
-  let command: string | LiveString;
+  let command: string | AbsolutePath | TargetFile;
   if (typeof _command === "string")
     command = _command;
-  else if (_command instanceof LiveString)
+  else if (_command instanceof TargetFile)
     command = _command;
   else if (_command instanceof AbsolutePath)
-    command = _command.toString();
+    command = _command;
   else
     throw new TypeError(`Wrong type ${_command} for command`);
 
-  const args = new Array<string | LiveString>;
+  const args = new Array<string | AbsolutePath | TargetFile>;
   for (const iter of _args) {
     if (typeof iter === "string")
       args.push(iter);
-    else if (iter instanceof LiveString)
+    else if (iter instanceof TargetFile)
       args.push(iter);
     else if (iter instanceof AbsolutePath)
-      args.push(iter.toString());
-    else if (iter instanceof AbsolutePath)
-      args.push(iter.toString());
+      args.push(iter);
     else
       throw new TypeError(`Wrong type ${iter} for argument`);
   }
@@ -145,12 +120,12 @@ abstract class AbstractTarget {
   protected [TARGET_SCOPE]: SystemScope;
 
   private _name: string;
-  private _includes: TargetValueList<AbsolutePath | InterfaceIncludes>;
+  private _includes: TargetValueList<AbsolutePath | TargetIncludes>;
   private _definitions: TargetValueList<string>;
   private _compileOptions: TargetValueList<string | string[]>;
   private _linkOptions: TargetValueList<string | string[]>;
   private _libraries: TargetValueList<UserIndirectTarget>;
-  private _sources: TargetValueList<InterfaceObjects | SourceFile>;
+  private _sources: TargetValueList<TargetObjects | SourceFile>;
   private _preBuildList: TargetCommand[];
   private _postBuildList: TargetCommand[];
 
@@ -173,19 +148,31 @@ abstract class AbstractTarget {
     return this._name;
   }
 
+  public get includes(): TargetIncludes {
+    return TargetIncludes.create(this._name);
+  }
+
+  public get objects(): TargetObjects {
+    return TargetObjects.create(this._name);
+  }
+
+  public get targetFile(): TargetFile {
+    return TargetFile.create(this._name);
+  }
+
   public getIncludes() {
     return this._includes;
   }
 
-  public addIncludes(...includes: Array<InterfaceIncludes | AbsolutePath | string>): void {
+  public addIncludes(...includes: Array<TargetIncludes | AbsolutePath | string>): void {
     this.addIncludesImpl(false, ...includes);
   }
 
-  public addPublicIncludes(...includes: Array<InterfaceIncludes | AbsolutePath | string>): void {
+  public addPublicIncludes(...includes: Array<TargetIncludes | AbsolutePath | string>): void {
     this.addIncludesImpl(true, ...includes);
   }
 
-  public addIncludesImpl(publicOnly: boolean, ...includes: Array<InterfaceIncludes | AbsolutePath | string>): void {
+  public addIncludesImpl(publicOnly: boolean, ...includes: Array<TargetIncludes | AbsolutePath | string>): void {
     const baseDir = this[TARGET_SCOPE].SOURCE_DIR;
     for (const value of normalizeIncludes(baseDir, ...includes))
       this._includes.push({publicOnly, value});
@@ -267,8 +254,8 @@ abstract class AbstractTarget {
     return this._sources.map(i => i.value).filter(i => i instanceof SourceFile);
   }
 
-  public getInterfaceObjectsList(): InterfaceObjects[] {
-    return this._sources.map(i => i.value).filter(i => i instanceof InterfaceObjects);
+  public getTargetObjectsList(): TargetObjects[] {
+    return this._sources.map(i => i.value).filter(i => i instanceof TargetObjects);
   }
 
   public getSourceFiles(...sources: any[]): SourceFileList {
@@ -289,7 +276,7 @@ abstract class AbstractTarget {
     return SourceFileList.create(scope, sourceFiles);
   }
 
-  public addSources(...sources: Array<InterfaceObjects | SourceFile | AbsolutePath | string>) {
+  public addSources(...sources: Array<TargetObjects | SourceFile | AbsolutePath | string>) {
     for (let it of sources.flat()) {
       this._sources.push({publicOnly: false, value: createSources(this[TARGET_SCOPE], it)});
     }
@@ -330,14 +317,6 @@ export class UserIndirectTarget extends AbstractTarget implements IMakeTarget { 
     if (value instanceof UserIndirectTarget)
       return value;
     throw new Error(`The '${value}' is not a UserIndirectTarget`);
-  }
-
-  public get includes(): InterfaceIncludes {
-    return InterfaceIncludes.create(this.targetName);
-  }
-
-  public get objects(): InterfaceObjects {
-    return InterfaceObjects.create(this.targetName);
   }
 
   public get prefix() {
@@ -400,14 +379,6 @@ export class BaseTarget extends AbstractTarget implements IMakeTarget {
     this.addIncludesImpl(false, ...this[TARGET_SCOPE].INCLUDES);
   }
 
-  public get includes(): InterfaceIncludes {
-    return InterfaceIncludes.create(this.targetName);
-  }
-
-  public get objects(): InterfaceObjects {
-    return InterfaceObjects.create(this.targetName);
-  }
-
   public get prefix() {
     return this._prefix;
   }
@@ -456,11 +427,6 @@ export class BaseTarget extends AbstractTarget implements IMakeTarget {
 
   public get IMPL(): TargetStruct {
     return this[IMPL];
-  }
-
-  public get targetFile(): LiveString {
-    const targetFile = this[IMPL].targetFile;
-    return LiveString.create(() => targetFile.file ? targetFile.file.toString() : "");
   }
 
   public get positionIndependentCode() {

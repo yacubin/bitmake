@@ -7,30 +7,29 @@
  * under the MIT License. See LICENSE file for details.
  */
 
+import { TargetFile } from "@/core/TargetFile";
+import { TargetObjects } from "@/core/TargetObjects";
+import { TargetIncludes } from "@/core/TargetIncludes";
 import { InterfaceScript } from "@/core/InterfaceScript";
 import { UserIndirectTarget } from "@/core/Target";
 import { CustomScript } from "@/core/CustomScript";
 import { VariantMap } from "@/core/Scope";
 import { AbsolutePath } from "@/core/AbsolutePath";
-import { InterfaceIncludes } from "@/core/InterfaceIncludes";
-import { InterfaceObjects } from "@/core/InterfaceObjects";
 import { SourceFileList } from "@/core/SourceFileList";
 import { SourceFile } from "@/core/SourceFile";
 
-export interface ITargetFile {
-  targetName(): string;
-};
-
 export interface IMakeTarget {
   get targetName(): string;
-  get includes(): InterfaceIncludes;
-  get objects(): InterfaceObjects;
+  get targetFile(): TargetFile;
+  get includes(): TargetIncludes;
+  get objects(): TargetObjects;
 
   setPrefix(prefix: string): void;  
   setSuffix(suffix: string): void;
   setOutputName(outputName: string): void;
-  addSources(...sources: Array<InterfaceObjects | SourceFile | AbsolutePath | string>): void;
-  addIncludes(...includes: Array<InterfaceIncludes | AbsolutePath | string>): void;
+
+  addSources(...sources: Array<TargetObjects | SourceFile | AbsolutePath | string>): void;
+  addIncludes(...includes: Array<TargetIncludes | AbsolutePath | string>): void;
   addLibraries(...libraries: any): void;
   addCompileOptions(...options: Array<string|string[]>): void;
   addLinkOptions(...options: Array<string|string[]>): void;
@@ -40,7 +39,7 @@ export interface IMakeTarget {
   addPostBuild(command: any, args: any[]): void;
 
   setPositionIndependentCode(value: boolean): void;
-  addPublicIncludes(...includes: Array<InterfaceIncludes | AbsolutePath | string>): void;
+  addPublicIncludes(...includes: Array<TargetIncludes | AbsolutePath | string>): void;
   addPublicDefinitions(...definitions: any): void;
   addPublicLibraries(...libraries: any[]): void;
   addPublicCompileOptions(...options: Array<string|string[]>): void;

@@ -108,11 +108,13 @@ type TargetValueList<T> = Array<TargetValue<T>>;
 abstract class AbstractTarget {
   protected [IMPL]: TargetStruct;
   protected [TARGET_SCOPE]: SystemScope;
-  protected _name: string;
+
+  private _name: string;
   private _includes: TargetValueList<AbsolutePath | InterfaceIncludes>;
   private _definitions: TargetValueList<string>;
   private _compileOptions: TargetValueList<string | string[]>;
   private _linkOptions: TargetValueList<string | string[]>;
+  private _libraries: TargetValueList<UserIndirectTarget>;
 
   constructor(impl: TargetStruct, variableMap: VariableMap, name: string) {
     const variables = ScopeHelper.createVariableValues(variableMap, SYSTEM_VARIABLE_GROUP) as SystemScope;
@@ -123,6 +125,11 @@ abstract class AbstractTarget {
     this._definitions = [];
     this._compileOptions = [];
     this._linkOptions = [];
+    this._libraries = [];
+  }
+
+  public get targetName() {
+    return this._name;
   }
 
   public getIncludes() {
@@ -193,6 +200,23 @@ abstract class AbstractTarget {
     for (const value of options.flat())
       this._linkOptions.push({publicOnly, value});
   }
+
+  public getLibraries() {
+    return this._libraries;
+  }
+
+  public addLibraries(...libraries: UserIndirectTarget[]) {
+    this.addLibrariesImpl(false, ...libraries);
+  }
+
+  public addPublicLibraries(...libraries: UserIndirectTarget[]) {
+    this.addLibrariesImpl(true, ...libraries);
+  }
+
+  public addLibrariesImpl(publicOnly: boolean, ...libraries: UserIndirectTarget[]) {
+    for (const value of libraries.flat())
+      this._libraries.push({publicOnly, value});
+  }
 };
 
 export class UserIndirectTarget extends AbstractTarget implements IMakeTarget { // PostTarget
@@ -213,10 +237,6 @@ export class UserIndirectTarget extends AbstractTarget implements IMakeTarget { 
     if (value instanceof UserIndirectTarget)
       return value;
     throw new Error(`The '${value}' is not a UserIndirectTarget`);
-  }
-
-  public get targetName(): string {
-    return this._name;
   }
 
   public get includes(): InterfaceIncludes {
@@ -269,10 +289,6 @@ export class UserIndirectTarget extends AbstractTarget implements IMakeTarget { 
     return getSourceFiles(this[IMPL], this[TARGET_SCOPE], ...sources);
   }
 
-  public addLibraries(...libraries: any) {
-    new Error("Not Implemented");
-  }
-
   public addPreBuild(command: any, args: any[]) {
     new Error("Not Implemented");
   }
@@ -288,10 +304,6 @@ export class UserIndirectTarget extends AbstractTarget implements IMakeTarget { 
   public setPositionIndependentCode(value: boolean) {
     this._positionIndependentCode = value;
   }
-
-  public addPublicLibraries(...libraries: any[]) {
-    new Error("Not Implemented");
-  }
 };
 
 export class BaseTarget extends AbstractTarget implements IMakeTarget {
@@ -303,7 +315,6 @@ export class BaseTarget extends AbstractTarget implements IMakeTarget {
   protected constructor(impl: TargetStruct, variableMap: VariableMap, name: string) {
     super(impl, variableMap, name);
 
-    this._name = name;
     this._outputName = name;
 
     const targetFile = impl.targetFile;
@@ -312,10 +323,6 @@ export class BaseTarget extends AbstractTarget implements IMakeTarget {
     this._positionIndependentCode = this[TARGET_SCOPE].POSITION_INDEPENDENT_CODE;
 
     this.addIncludesImpl(false, ...this[TARGET_SCOPE].INCLUDES);
-  }
-
-  public get targetName() {
-    return this._name;
   }
 
   public get includes(): InterfaceIncludes {
@@ -382,10 +389,6 @@ export class BaseTarget extends AbstractTarget implements IMakeTarget {
     }
   }
 
-  public addLibraries(...libraries: any) {
-    this[IMPL].addLibraries("directly", false, ...libraries);
-  }
-
   public getSourceFiles(...sources: any[]): SourceFileList {
     return getSourceFiles(this[IMPL], this[TARGET_SCOPE], ...sources);
   }
@@ -409,10 +412,6 @@ export class BaseTarget extends AbstractTarget implements IMakeTarget {
 
   public setPositionIndependentCode(value: boolean) {
     this._positionIndependentCode = value;
-  }
-
-  public addPublicLibraries(...libraries: any[]) {
-    this[IMPL].addLibraries("directly", true, ...libraries);
   }
 
   public toJSON(): object {

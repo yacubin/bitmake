@@ -343,11 +343,6 @@ export class TargetStruct {
     this._libraries.addItem(origin, publicOnly, UserIndirectTarget.ensureInstance(value));
   }
 
-  public addLibraries(origin: TargetItemOrigin, publicOnly: boolean, ...libraries: UserIndirectTarget[]) {
-    for (const iter of libraries.flat())
-      this.addLibrary(origin, publicOnly, iter);
-  }
-
   public getLibraries(): Array<UserIndirectTarget> {
     return this._libraries.getItems();
   }

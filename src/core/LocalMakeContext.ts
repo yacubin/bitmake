@@ -11,7 +11,7 @@ import { IMakeContext } from "@/core/MakeInterfaces";
 import { fileExistsSync } from "@/utils/FileSystem";
 import { InterfaceScript } from "@/core/InterfaceScript";
 import { InstallEntity } from "@/core/InstallEntity";
-import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget, UserIndirectTarget } from "@/core/Target";
+import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget, PostTarget } from "@/core/Target";
 import { CustomScript } from "@/core/CustomScript";
 import { ProjectContext } from "@/core/ProjectContext";
 import { ScopeHelper, VariantMap, VariableMap } from "@/core/Scope";
@@ -26,7 +26,7 @@ export class LocalMakeContext implements IMakeContext {
   private _scope: VariableMap;
   private _project: ProjectContext;
   private _targets = new Map<string, BaseTarget>();
-  private _indirectTargets = new Map<string, UserIndirectTarget>();
+  private _indirectTargets = new Map<string, PostTarget>();
 
   public constructor(scope: VariableMap, project: ProjectContext) {
     this._scope = scope;
@@ -78,11 +78,10 @@ export class LocalMakeContext implements IMakeContext {
     return this._project.addCustomScript(newVariableMap);
   }
 
-  public target(name: string): UserIndirectTarget {
+  public target(name: string): PostTarget {
     let target = this._indirectTargets.get(name);
     if (!target) {
-      const impl = this._project.getTarget(name);
-      target = UserIndirectTarget.create(impl, this._scope, name)
+      target = PostTarget.create(this._scope, name)
       this._indirectTargets.set(name, target);
     }
     return target;
@@ -102,28 +101,36 @@ export class LocalMakeContext implements IMakeContext {
   }
 
   public addObjectLibrary(name: any, ...sources: any[]): ObjectLibrary {
-    const target = this._project.addObjectLibrary(this._scope, name);
+    if (this._targets.has(name))
+      throw new Error(`Target "${name}" exists`);
+    const target = ObjectLibrary.create(this._scope, name);
     this._targets.set(name, target);
     target.addSources(...sources);
     return target;
   }
 
   public addStaticLibrary(name: any, ...sources: any[]): StaticLibrary {
-    const target = this._project.addStaticLibrary(this._scope, name);
+    if (this._targets.has(name))
+      throw new Error(`Target "${name}" exists`);
+    const target = StaticLibrary.create(this._scope, name);
     this._targets.set(name, target);
     target.addSources(...sources);
     return target;
   }
 
   public addSharedLibrary(name: any, ...sources: any[]): SharedLibrary {
-    const target = this._project.addSharedLibrary(this._scope, name);
+    if (this._targets.has(name))
+      throw new Error(`Target "${name}" exists`);
+    const target = SharedLibrary.create(this._scope, name);
     this._targets.set(name, target);
     target.addSources(...sources);
     return target;
   }
 
   public addExecutable(name: string, ...sources: any[]): Executable {
-    const target = this._project.addExecutable(this._scope, name);
+    if (this._targets.has(name))
+      throw new Error(`Target "${name}" exists`);
+    const target = Executable.create(this._scope, name);
     this._targets.set(name, target);
     target.addSources(...sources);
     return target;

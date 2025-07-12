@@ -16,9 +16,10 @@ import { TargetObjects } from "@/core/TargetObjects";
 import { AbsolutePath } from "@/core/AbsolutePath";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
-import { TargetStruct, TargetType, TargetCommand } from "@/core/TargetStruct";
 import { SYSTEM_VARIABLE_GROUP } from "@/Constants";
 import { normalizeDefinitions } from "@/core/DefinitionHelper";
+import { SimpleObject } from "./SimpleObject";
+import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
 
 const _languageExtensions = {
   ASM: [ ".asm", ".s" ],
@@ -79,6 +80,11 @@ function createSources(scope: SystemScope, source: TargetObjects | SourceFile | 
   throw new Error(`Not support instance ${source}`);
 }
 
+export interface TargetCommand {
+  command: string | AbsolutePath | TargetFile;
+  args: Array<string | AbsolutePath | TargetFile>;
+};
+
 function makeTargetCommand(_command: any, _args: any[]): TargetCommand {
   let command: string | AbsolutePath | TargetFile;
   if (typeof _command === "string")
@@ -105,8 +111,7 @@ function makeTargetCommand(_command: any, _args: any[]): TargetCommand {
   return { command, args };
 }
 
-const IMPL                = Symbol("IMPL");
-const TARGET_SCOPE        = Symbol("TARGET_SCOPE");
+const TARGET_SCOPE = Symbol("TARGET_SCOPE");
 
 interface TargetValue<T> {
   value: T;
@@ -116,22 +121,29 @@ interface TargetValue<T> {
 type TargetValueList<T> = Array<TargetValue<T>>;
 
 abstract class AbstractTarget {
-  protected [IMPL]: TargetStruct;
   protected [TARGET_SCOPE]: SystemScope;
 
-  private _name: string;
-  private _includes: TargetValueList<AbsolutePath | TargetIncludes>;
-  private _definitions: TargetValueList<string>;
-  private _compileOptions: TargetValueList<string | string[]>;
-  private _linkOptions: TargetValueList<string | string[]>;
-  private _libraries: TargetValueList<UserIndirectTarget>;
-  private _sources: TargetValueList<TargetObjects | SourceFile>;
-  private _preBuildList: TargetCommand[];
-  private _postBuildList: TargetCommand[];
+  protected _name: string;
+  protected _includes: TargetValueList<AbsolutePath | TargetIncludes>;
+  protected _definitions: TargetValueList<string>;
+  protected _compileOptions: TargetValueList<string | string[]>;
+  protected _linkOptions: TargetValueList<string | string[]>;
+  protected _libraries: TargetValueList<PostTarget>;
+  protected _sources: TargetValueList<TargetObjects | SourceFile>;
+  protected _preBuildList: TargetCommand[];
+  protected _postBuildList: TargetCommand[];
 
-  constructor(impl: TargetStruct, variableMap: VariableMap, name: string) {
+  constructor(variableMap: VariableMap, name: string) {
+    if (typeof name !== "string")
+      throw new Error(`Target "${name}" is not string type`);
+
+    if (!name)
+      throw new Error(`A target with an empty name cannot exist`);
+
+    if ([ ALL_TARGET, INSTALL_TARGET ].includes(name))
+      throw new Error(`Target "${name}" is reserved name`);
+
     const variables = ScopeHelper.createVariableValues(variableMap, SYSTEM_VARIABLE_GROUP) as SystemScope;
-    this[IMPL] = impl;
     this[TARGET_SCOPE] = variables;
     this._name = name;
     this._includes = [];
@@ -148,6 +160,10 @@ abstract class AbstractTarget {
     return this._name;
   }
 
+  public get name() { // DELME
+    return this._name;
+  }
+
   public get includes(): TargetIncludes {
     return TargetIncludes.create(this._name);
   }
@@ -160,8 +176,12 @@ abstract class AbstractTarget {
     return TargetFile.create(this._name);
   }
 
-  public getIncludes() {
-    return this._includes;
+  public getIncludes(): Array<AbsolutePath | TargetIncludes> {
+    return this._includes.map(i => i.value);
+  }
+
+  public getPublicIncludes(): Array<AbsolutePath | TargetIncludes> {
+    return this._includes.filter(i => i.publicOnly).map(i => i.value);
   }
 
   public addIncludes(...includes: Array<TargetIncludes | AbsolutePath | string>): void {
@@ -172,14 +192,22 @@ abstract class AbstractTarget {
     this.addIncludesImpl(true, ...includes);
   }
 
-  public addIncludesImpl(publicOnly: boolean, ...includes: Array<TargetIncludes | AbsolutePath | string>): void {
-    const baseDir = this[TARGET_SCOPE].SOURCE_DIR;
-    for (const value of normalizeIncludes(baseDir, ...includes))
-      this._includes.push({publicOnly, value});
+  public addIncludeImpl(publicOnly: boolean, value: AbsolutePath | TargetIncludes): void {
+    this._includes.push({publicOnly, value});
   }
 
-  public getDefinitions() {
-    return this._definitions;
+  public addIncludesImpl(publicOnly: boolean, ...includes: Array<TargetIncludes | AbsolutePath | string>): void {
+    const baseDir = this[TARGET_SCOPE].SOURCE_DIR;
+    for (const iter of normalizeIncludes(baseDir, ...includes))
+      this.addIncludeImpl(publicOnly, iter);
+  }
+
+  public getDefinitions(): Array<string> {
+    return this._definitions.map(i => i.value);
+  }
+
+  public getPublicDefinitions(): Array<string> {
+    return this._definitions.filter(i => i.publicOnly).map(i => i.value);
   }
 
   public addDefinitions(...definitions: any): void {
@@ -195,8 +223,12 @@ abstract class AbstractTarget {
       this._definitions.push({publicOnly, value});
   }
 
-  public getCompileOptions() {
-    return this._compileOptions;
+  public getCompileOptions(): Array<string | string[]> {
+    return this._compileOptions.map(i => i.value);
+  }
+  
+  public getPublicCompileOptions(): Array<string|string[]> {
+    return this._compileOptions.filter(i => i.publicOnly).map(i => i.value);
   }
 
   public addCompileOptions(...options: Array<string | string[]>): void {
@@ -212,8 +244,12 @@ abstract class AbstractTarget {
       this._compileOptions.push({publicOnly, value});
   }
 
-  public getLinkOptions() {
-    return this._linkOptions;
+  public getLinkOptions(): Array<string | string[]> {
+    return this._linkOptions.map(i => i.value);
+  }
+
+  public getPublicLinkOptions(): Array<string | string[]> {
+    return this._linkOptions.filter(i => i.publicOnly).map(i => i.value);
   }
 
   public addLinkOptions(...options: Array<string | string[]>) {
@@ -230,20 +266,33 @@ abstract class AbstractTarget {
   }
 
   public getLibraries() {
-    return this._libraries;
+    return this._libraries.map(i => i.value);
   }
 
-  public addLibraries(...libraries: UserIndirectTarget[]) {
+  public getPublicLibraries() {
+    return this._libraries.filter(i => i.publicOnly).map(i => i.value);
+  }
+
+  public addLibraries(...libraries: PostTarget[]) {
     this.addLibrariesImpl(false, ...libraries);
   }
 
-  public addPublicLibraries(...libraries: UserIndirectTarget[]) {
+  public addPublicLibraries(...libraries: PostTarget[]) {
     this.addLibrariesImpl(true, ...libraries);
   }
 
-  public addLibrariesImpl(publicOnly: boolean, ...libraries: UserIndirectTarget[]) {
+  public addLibrariesImpl(publicOnly: boolean, ...libraries: PostTarget[]) {
     for (const value of libraries.flat())
       this._libraries.push({publicOnly, value});
+  }
+
+  public getHeaders(): SourceFile[] {
+    const result = new Array<SourceFile>;
+    for (const iter of this._sources) {
+      if (iter.value instanceof SourceFile && iter.value.HEADER_FILE_ONLY)
+        result.push(iter.value);
+    }
+    return result;
   }
 
   public getSources() {
@@ -297,26 +346,39 @@ abstract class AbstractTarget {
   public addPostBuild(command: any, args: any[]) {
     this._postBuildList.push(makeTargetCommand(command, args));
   }
+
+  public toJSON(): object {
+    return {
+      name: this._name,
+      preBuildList: this._preBuildList,
+      postBuildList: this._postBuildList,
+      includes: this._includes,
+      compileOptions: this._compileOptions,
+      linkOptions: this._linkOptions,
+      sources: this._sources,
+      libraries: this._libraries,
+    }
+  }
 };
 
-export class UserIndirectTarget extends AbstractTarget implements IMakeTarget { // PostTarget
+export class PostTarget extends AbstractTarget implements IMakeTarget {
   private _prefix?: string;
   private _outputName?: string;
   private _suffix?: string;
   private _positionIndependentCode?: boolean;
 
-  private constructor(impl: TargetStruct, variableMap: VariableMap, name: string) {
-    super(impl, variableMap, name);
+  private constructor(variableMap: VariableMap, name: string) {
+    super(variableMap, name);
   }
 
-  public static create(impl: TargetStruct, variableMap: VariableMap, name: string) {
-    return Object.seal(new UserIndirectTarget(impl, variableMap, name));
+  public static create(variableMap: VariableMap, name: string) {
+    return Object.seal(new PostTarget(variableMap, name));
   }
 
   public static ensureInstance(value: any) {
-    if (value instanceof UserIndirectTarget)
+    if (value instanceof PostTarget)
       return value;
-    throw new Error(`The '${value}' is not a UserIndirectTarget`);
+    throw new Error(`The '${value}' is not a PostTarget`);
   }
 
   public get prefix() {
@@ -351,32 +413,78 @@ export class UserIndirectTarget extends AbstractTarget implements IMakeTarget { 
     this._positionIndependentCode = value;
   }
 
-  public toJSON(): string {
-    return this.toString();
+  public get INCLUDES() {
+    return this._includes;
   }
 
-  public toString(): string {
-    return "${" + this.targetName + "}";
+  public get DEFINITIONS() {
+    return this._definitions;
+  }
+
+  public get COMPILE_OPTIONS() {
+    return this._compileOptions;
+  }
+
+  public get LINK_OPTIONS() {
+    return this._linkOptions;
+  }
+
+  public get LIBRARIES() {
+    return this._libraries;
+  }
+
+  public get SOURCES() {
+    return this._sources;
+  }
+
+  public toJSON(): SimpleObject {
+    const result: any = super.toJSON();
+
+    result.type = PostTarget.name;
+    
+    if (this._prefix !== undefined)
+      result.prefix = this._prefix;
+
+    if (this._outputName !== undefined)
+      result.outputName = this._outputName;
+
+    if (this._suffix !== undefined)
+      result.suffix = this._suffix;
+
+    if (this._positionIndependentCode !== undefined)
+      result.positionIndependentCode = this._positionIndependentCode;
+
+    return result;
   }
 };
 
 export class BaseTarget extends AbstractTarget implements IMakeTarget {
+  private _fileDir: AbsolutePath
   protected _prefix = "";
   protected _outputName: string;
   protected _suffix = "";
   private _positionIndependentCode: boolean;
 
-  protected constructor(impl: TargetStruct, variableMap: VariableMap, name: string) {
-    super(impl, variableMap, name);
+  protected constructor(variableMap: VariableMap, name: string) {
+    super(variableMap, name);
 
+    this._fileDir = this[TARGET_SCOPE].BINARY_DIR;
     this._outputName = name;
-
-    const targetFile = impl.targetFile;
-    targetFile.fileDir = this[TARGET_SCOPE].BINARY_DIR;
-
     this._positionIndependentCode = this[TARGET_SCOPE].POSITION_INDEPENDENT_CODE;
 
     this.addIncludesImpl(false, ...this[TARGET_SCOPE].INCLUDES);
+  }
+
+  public getFileDir() {
+    return this._fileDir;
+  }
+
+  public getFileName() {
+    return this.prefix + this.outputName + this.suffix;
+  }
+
+  public getFile() {
+    return this._fileDir.join(this.getFileName());
   }
 
   public get prefix() {
@@ -407,28 +515,6 @@ export class BaseTarget extends AbstractTarget implements IMakeTarget {
     return this[TARGET_SCOPE];
   }
 
-  public get FILE_DIR(): AbsolutePath {
-    if (!this[IMPL].targetFile.fileDir)
-      throw new Error(`Target "${this.targetName}" is not defined`);
-    return this[IMPL].targetFile.fileDir;
-  }
-
-  public get FILE_NAME(): string {
-    if (!this[IMPL].targetFile.fileName)
-      throw new Error(`Target "${this.targetName}" is not defined`);
-    return this[IMPL].targetFile.fileName;
-  }
-
-  public get FILE(): AbsolutePath {
-    if (!this[IMPL].targetFile.file)
-      throw new Error(`Target "${this.targetName}" is not defined`);
-    return this[IMPL].targetFile.file;
-  }
-
-  public get IMPL(): TargetStruct {
-    return this[IMPL];
-  }
-
   public get positionIndependentCode() {
     return this._positionIndependentCode;
   }
@@ -437,68 +523,110 @@ export class BaseTarget extends AbstractTarget implements IMakeTarget {
     this._positionIndependentCode = value;
   }
 
+  public postUpdate(target: PostTarget) {
+    if (target.prefix !== undefined)
+      this._prefix = target.prefix;
+    if (target.outputName !== undefined)
+      this._outputName = target.outputName;
+    if (target.suffix !== undefined)
+      this._suffix = target.suffix;
+    if (target.positionIndependentCode !== undefined)
+      this._positionIndependentCode = target.positionIndependentCode;
+    this._includes.push(...target.INCLUDES);
+    this._definitions.push(...target.DEFINITIONS);
+    this._compileOptions.push(...target.COMPILE_OPTIONS);
+    this._linkOptions.push(...target.LINK_OPTIONS);
+    this._libraries.push(...target.LIBRARIES);
+    this._sources.push(...target.SOURCES);
+    this._preBuildList.push(...target.preBuildList);
+    this._postBuildList.push(...target.postBuildList);
+  }
+
   public toJSON(): object {
-    return {
-      NAME: this.targetName,
-      TARGET_SCOPE: this.TARGET_SCOPE,
-      FILE_DIR: this.FILE_DIR,
-      FILE: this.FILE,
-    }
+    const result: any = super.toJSON();
+
+    result.fileDir = this._fileDir.toJSON();
+    result.prefix = this._prefix;
+    result.outputName = this._outputName;
+    result.suffix = this._suffix;
+    result.positionIndependentCode = this._positionIndependentCode;
+
+    return result;
   }
 };
 
 export class ObjectLibrary extends BaseTarget implements IObjectLibrary {
-  private constructor(impl: TargetStruct, variableMap: VariableMap, name: string) {
-    super(impl, variableMap, name);
+  private constructor(variableMap: VariableMap, name: string) {
+    super(variableMap, name);
     this._prefix = this[TARGET_SCOPE].OBJECT_LIBRARY_PREFIX;
     this._suffix = this[TARGET_SCOPE].OBJECT_LIBRARY_SUFFIX;
-    this[IMPL].type = TargetType.ObjectLibrary;
     this.addLinkOptionsImpl(false, ...this[TARGET_SCOPE].OBJECT_LINKER_FLAGS);
   }
 
-  public static create(impl: TargetStruct, variableMap: VariableMap, name: string) {
-    return Object.seal(new ObjectLibrary(impl, variableMap, name));
+  public static create(variableMap: VariableMap, name: string) {
+    return Object.seal(new ObjectLibrary(variableMap, name));
+  }
+
+  public toJSON(): SimpleObject {
+    const result: any = super.toJSON();
+    result.type = ObjectLibrary.name;
+    return result;
   }
 };
 
 export class StaticLibrary extends BaseTarget implements IStaticLibrary {
-  private constructor(impl: TargetStruct, variableMap: VariableMap, name: string) {
-    super(impl, variableMap, name);
+  private constructor(variableMap: VariableMap, name: string) {
+    super(variableMap, name);
     this._prefix = this[TARGET_SCOPE].STATIC_LIBRARY_PREFIX;
     this._suffix = this[TARGET_SCOPE].STATIC_LIBRARY_SUFFIX;
-    this[IMPL].type = TargetType.StaticLibrary;
     this.addLinkOptionsImpl(false, ...this[TARGET_SCOPE].STATIC_LINKER_FLAGS);
   }
 
-  public static create(impl: TargetStruct, variableMap: VariableMap, name: string) {
-    return Object.seal(new StaticLibrary(impl, variableMap, name));
+  public static create(variableMap: VariableMap, name: string) {
+    return Object.seal(new StaticLibrary(variableMap, name));
+  }
+
+  public toJSON(): SimpleObject {
+    const result: any = super.toJSON();
+    result.type = StaticLibrary.name;
+    return result;
   }
 };
 
 export class SharedLibrary extends BaseTarget implements ISharedLibrary {
-  private constructor(impl: TargetStruct, variableMap: VariableMap, name: string) {
-    super(impl, variableMap, name);
+  private constructor(variableMap: VariableMap, name: string) {
+    super(variableMap, name);
     this._prefix = this[TARGET_SCOPE].SHARED_LIBRARY_PREFIX;
     this._suffix = this[TARGET_SCOPE].SHARED_LIBRARY_SUFFIX;
-    this[IMPL].type = TargetType.SharedLibrary;
     this.addLinkOptionsImpl(false, ...this[TARGET_SCOPE].SHARED_LINKER_FLAGS);
   }
 
-  public static create(impl: TargetStruct, variableMap: VariableMap, name: string) {
-    return Object.seal(new SharedLibrary(impl, variableMap, name));
+  public static create(variableMap: VariableMap, name: string) {
+    return Object.seal(new SharedLibrary(variableMap, name));
+  }
+
+  public toJSON(): SimpleObject {
+    const result: any = super.toJSON();
+    result.type = SharedLibrary.name;
+    return result;
   }
 }
 
 export class Executable extends BaseTarget implements IExecutable {
-  private constructor(impl: TargetStruct, variableMap: VariableMap, name: string) {
-    super(impl, variableMap, name);
+  private constructor(variableMap: VariableMap, name: string) {
+    super(variableMap, name);
     this._prefix = "";
     this._suffix = this[TARGET_SCOPE].EXECUTABLE_SUFFIX;
-    this[IMPL].type = TargetType.Executable;
     this.addLinkOptionsImpl(false, ...this[TARGET_SCOPE].EXE_LINKER_FLAGS);
   }
 
-  public static create(impl: TargetStruct, variableMap: VariableMap, name: string) {
-    return Object.seal(new Executable(impl, variableMap, name));
+  public static create(variableMap: VariableMap, name: string) {
+    return Object.seal(new Executable(variableMap, name));
+  }
+
+  public toJSON(): SimpleObject {
+    const result: any = super.toJSON();
+    result.type = Executable.name;
+    return result;
   }
 };

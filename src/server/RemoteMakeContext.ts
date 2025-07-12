@@ -9,7 +9,7 @@
 
 import { IMakeContext } from "@/core/MakeInterfaces";
 import { InterfaceScript } from "@/core/InterfaceScript";
-import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget, UserIndirectTarget } from "@/core/Target";
+import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget, PostTarget } from "@/core/Target";
 import { CustomScript } from "@/core/CustomScript";
 import { createVariableMapForDirectory } from "@/core/BaseContext";
 import { JsonRpcRequestSync } from "@/server/JsonRpcRequestSync";
@@ -83,7 +83,7 @@ export class RemoteMakeContext implements IMakeContext {
     return this._transport.requestSync(MAINNODE_ADDCUSTOMSCRIPT, ScopeHelper.toJSON(newVariableMap));
   }
 
-  public target(name: string): UserIndirectTarget {
+  public target(name: string): PostTarget {
     throw new Error("Not Implemented");
   }
 

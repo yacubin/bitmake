@@ -11,7 +11,6 @@ import { TargetFile } from "@/core/TargetFile";
 import { TargetObjects } from "@/core/TargetObjects";
 import { TargetIncludes } from "@/core/TargetIncludes";
 import { InterfaceScript } from "@/core/InterfaceScript";
-import { UserIndirectTarget } from "@/core/Target";
 import { CustomScript } from "@/core/CustomScript";
 import { VariantMap } from "@/core/Scope";
 import { AbsolutePath } from "@/core/AbsolutePath";
@@ -64,7 +63,7 @@ export interface IMakeContext {
   addIncludeDirectories(...dirs: any[]): void;
   addSubdirectory(sourceDir: string | AbsolutePath, binaryDir?: string | AbsolutePath): void;
   addCustomScript(script: string, params: any): CustomScript;
-  target(name: string): UserIndirectTarget;
+  target(name: string): IMakeTarget;
   script(name: string): InterfaceScript;
   install(value: any, params: any): void;
   addObjectLibrary(name: string, ...sources: any[]): IObjectLibrary;

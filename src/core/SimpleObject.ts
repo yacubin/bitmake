@@ -9,7 +9,7 @@
 
 export interface SimpleObject {
   type: string;
-  [name: string]: boolean | number | string | object;
+  [name: string]: null | boolean | number | string |object;
 };
 
 type InstanceCreateFunction = (object: SimpleObject) => any;

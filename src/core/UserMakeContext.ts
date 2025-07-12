@@ -7,9 +7,8 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { IMakeContext, IObjectLibrary, IStaticLibrary, ISharedLibrary, IExecutable } from "@/core/MakeInterfaces";
+import { IMakeContext, IMakeTarget, IObjectLibrary, IStaticLibrary, ISharedLibrary, IExecutable } from "@/core/MakeInterfaces";
 import { InterfaceScript } from "@/core/InterfaceScript";
-import { UserIndirectTarget } from "@/core/Target";
 import { CustomScript } from "@/core/CustomScript";
 import { VariantMap, VariableMap } from "@/core/Scope";
 import { BaseContext, createContext } from "@/core/BaseContext";
@@ -51,7 +50,7 @@ export class UserMakeContext extends BaseContext implements IMakeContext {
     return this[IMPL].addCustomScript(script, params);
   }
 
-  public target(name: string): UserIndirectTarget {
+  public target(name: string): IMakeTarget {
     return this[IMPL].target(name);
   }
 

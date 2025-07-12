@@ -7,8 +7,9 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { UserIndirectTarget } from "@/core/Target";
+import { PostTarget } from "@/core/Target";
 import { AbsolutePath } from "@/core/AbsolutePath";
+import { SimpleObject } from "@/core/SimpleObject";
 import { SystemScope } from "@/core/SystemScope";
 
 const VALUE       = Symbol("VALUE");
@@ -16,11 +17,11 @@ const DESTINATION = Symbol("DESTINATION");
 const BASE_DIR    = Symbol("BASE_DIR");
 
 export class InstallEntity {
-  private [VALUE]: AbsolutePath | UserIndirectTarget;
+  private [VALUE]: AbsolutePath | PostTarget;
   private [DESTINATION]: AbsolutePath;
   private [BASE_DIR]: AbsolutePath | null;
 
-  private constructor(scope: SystemScope, value: string | AbsolutePath | UserIndirectTarget, params: string | any) {
+  private constructor(scope: SystemScope, value: string | AbsolutePath | PostTarget, params: string | any) {
     let destination: string | AbsolutePath | undefined;
     let baseDir;
     if (typeof params === "string")
@@ -29,7 +30,7 @@ export class InstallEntity {
       destination = params.destination;
       baseDir = params.baseDir;
     }
-  
+
     if (!destination)
       throw new Error(`Parameter destination is not specified`);
   
@@ -41,7 +42,7 @@ export class InstallEntity {
       value = AbsolutePath.create(value);
       baseDir = baseDir || value.dirname();
     }
-    else if (!(value instanceof UserIndirectTarget)) {
+    else if (!(value instanceof PostTarget)) {
       throw new Error(`Not supportet value of ${value}`);
     }
   
@@ -50,7 +51,7 @@ export class InstallEntity {
     this[BASE_DIR] = baseDir ? AbsolutePath.create(baseDir.toString()) : null;
   }
   
-  public static create(scope: any, value: string | AbsolutePath | UserIndirectTarget, params: string | any) {
+  public static create(scope: any, value: string | AbsolutePath | PostTarget, params: string | any) {
     return Object.seal(new InstallEntity(scope, value, params));
   }
 
@@ -66,8 +67,9 @@ export class InstallEntity {
     return this[BASE_DIR];
   }
 
-  public toJSON(): object {
+  public toJSON(): SimpleObject {
     return {
+      type: InstallEntity.name,
       VALUE: this.VALUE,
       DESTINATION: this.DESTINATION,
       BASE_DIR: this.BASE_DIR,

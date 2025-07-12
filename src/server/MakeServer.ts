@@ -125,16 +125,12 @@ export class MakeServer {
 
   private addStaticLibrary(params: any) {
     logger.debug("MakeServer.addStaticLibrary(", params.name, ")");
-    const variableMap = ScopeHelper.fromJSON(params.variableMap);
-    this._project.addStaticLibrary(variableMap, params.name);
-    return params.name;
+    throw new Error("Not Implemented");
   }
 
   private addExecutable(params: any) {
     logger.debug("MakeServer.addExecutable(", params.name, ")");
-    const variableMap = ScopeHelper.fromJSON(params.variableMap);
-    this._project.addExecutable(variableMap, params.name);
-    return params.name;
+    throw new Error("Not Implemented");
   }
 
   private targetSources(params: any) {

@@ -15,13 +15,13 @@ import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
 import { AbsolutePath } from "@/core/AbsolutePath";
 import { Path } from "@/utils/Path";
 import { fileExists, fileExistsSync } from "@/utils/FileSystem";
-import { TargetCollection, TargetStructCollection } from "@/core/TargetCollection";
+import { TargetCollection } from "@/core/TargetCollection";
 import { ScriptCollection } from "@/core/ScriptCollection";
 import { GoalCollection } from "@/core/GoalCollection";
 import { InterfaceScript } from "@/core/InterfaceScript";
 import { UserMakeContext } from "@/core/UserMakeContext";
 import { LocalMakeContext } from "@/core/LocalMakeContext";
-import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget, UserIndirectTarget } from "@/core/Target";
+import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget, PostTarget, TargetCommand } from "@/core/Target";
 import { SystemScope } from "@/core/SystemScope";
 import { importModule, requireSync } from "@/utils/Module";
 import { Logger } from "@/logger";
@@ -30,7 +30,6 @@ import { CustomScript } from "@/core/CustomScript";
 import { ScriptContext } from "@/core/ScriptContext";
 import { ScopeHelper, VariableMap } from "./Scope";
 import { TargetFile } from "@/core/TargetFile";
-import { TargetStruct, TargetCommand } from "./TargetStruct";
 import { SourceFile } from "@/core/SourceFile";
 import { performContext, createVariableMapForDirectory } from "@/core/BaseContext";
 
@@ -43,7 +42,6 @@ const CUSTOM_SCRIPTS = Symbol("CUSTOM_SCRIPTS");
 const CACHE = Symbol("CACHE");
 const INSTALL_LIST = Symbol("INSTALL_LIST");
 const BUILTIN_SCRIPTS = Symbol("BUILTIN_SCRIPTS");
-const TARGET_COLLECTION = Symbol("TARGET_COLLECTION");
 
 type SubdirectoryAlias = {
   [name: string]: AbsolutePath | null;
@@ -73,22 +71,16 @@ function ensureValueByType(type: any, value: any) {
   throw new Error(`The '${value}' is not a ${type}`);
 }
 
-function getFile(target: TargetStruct): AbsolutePath {
-  if (!target.targetFile.file)
-    throw new Error(`Target "${target.name}" is not defined`);
-  return target.targetFile.file;
+function getFileDir(target: BaseTarget): AbsolutePath {
+  return target.getFileDir();
 }
 
-function getFileName(target: TargetStruct): string {
-  if (!target.targetFile.fileName)
-    throw new Error(`Target "${target.name}" is not defined`);
-  return target.targetFile.fileName;
+function getFileName(target: BaseTarget): string {
+  return target.getFileName();
 }
 
-function getFileDir(target: TargetStruct): AbsolutePath {
-  if (!target.targetFile.fileDir)
-    throw new Error(`Target "${target.name}" is not defined`);
-  return target.targetFile.fileDir;
+function getFile(target: BaseTarget): AbsolutePath {
+  return getFileDir(target).join(target.getFileName());
 }
 
 type GoalHandler = () => Promise<void> | void;
@@ -105,8 +97,10 @@ function resolveInstance(project: ProjectContext, o: string | AbsolutePath | Tar
   if (o instanceof AbsolutePath)
     return o.toString();
 
-  if (o instanceof TargetFile)
-    return project.TARGETS.get(o.targetName).FILE.toString();
+  if (o instanceof TargetFile) {
+    const target = project.TARGETS.get(o.targetName);
+    return target.getFile().toString();
+  }
 
   throw new Error(`Unable to resolve object ${o}`);
 }
@@ -227,7 +221,6 @@ export class GoalWorkerImpl {
 };
 
 export class ProjectContext {
-  private [TARGET_COLLECTION] = new TargetStructCollection;
   private [TARGETS]: TargetCollection;
   private [CUSTOM_SCRIPTS]: ScriptCollection;
   private [CACHE]: CacheVariableDescriptors;
@@ -372,38 +365,6 @@ export class ProjectContext {
     }
   }
 
-  public addStaticLibrary(variableMap: VariableMap, name: string): StaticLibrary {
-    const impl = this[TARGET_COLLECTION].getOrCreate(name);
-    const target = StaticLibrary.create(impl, variableMap, name);
-    this[TARGETS].set(name, target);
-    return target;
-  }
-
-  public addObjectLibrary(variableMap: VariableMap, name: string): ObjectLibrary {
-    const impl = this[TARGET_COLLECTION].getOrCreate(name);
-    const target = ObjectLibrary.create(impl, variableMap, name);
-    this[TARGETS].set(name, target);
-    return target;
-  }
-
-  public addSharedLibrary(variableMap: VariableMap, name: string): SharedLibrary {
-    const impl = this[TARGET_COLLECTION].getOrCreate(name);
-    const target = SharedLibrary.create(impl, variableMap, name);
-    this[TARGETS].set(name, target);
-    return target;
-  }
-
-  public addExecutable(variableMap: VariableMap, name: string): Executable {
-    const impl = this[TARGET_COLLECTION].getOrCreate(name);
-    const target = Executable.create(impl, variableMap, name);
-    this[TARGETS].set(name, target);
-    return target;
-  }
-
-  public getTarget(name: string): TargetStruct {
-    return this[TARGET_COLLECTION].getOrCreate(name);
-  }
-
   public executeScriptSync(variableMap: VariableMap, script: any, params: any) {
     const newVariableMap = ScopeHelper.cloneVariableMap(variableMap);
     params && ScopeHelper.extendVariableMapByValues(newVariableMap, "", params);
@@ -482,59 +443,13 @@ export class ProjectContext {
     }
 
     for (const ctx of contextList) {
-      for (const [name, target] of ctx.targets) {
-        const impl = this[TARGET_COLLECTION].get(name);
-        impl.targetFile.setPrefix(target.prefix);
-        impl.targetFile.setOutputName(target.outputName);
-        impl.targetFile.setSuffix(target.suffix);
-        impl.setPositionIndependentCode(target.positionIndependentCode);
-        for (const {publicOnly, value} of target.getIncludes())
-          impl.addInclude(publicOnly, value);
-        for (const {publicOnly, value} of target.getDefinitions())
-          impl.addDefinition(publicOnly, value);
-        for (const {publicOnly, value} of target.getCompileOptions())
-          impl.addCompileOption(publicOnly, value);
-        for (const {publicOnly, value} of target.getLinkOptions())
-          impl.addLinkOption(publicOnly, value);
-        for (const {publicOnly, value} of target.getLibraries())
-          impl.addLibrary(publicOnly, value);
-        for (const {publicOnly, value} of target.getSources())
-          impl.addSource(publicOnly, value);
-        for (const iter of target.preBuildList)
-          impl.addPreBuild(iter);
-        for (const iter of target.postBuildList)
-          impl.addPostBuild(iter);
-      }
+      for (const [name, target] of ctx.targets)
+        this[TARGETS].set(name, target);
     }
 
     for (const ctx of contextList) {
-      for (const [name, target] of ctx.indirectTargets) {
-        const impl = this[TARGET_COLLECTION].get(name);
-        if (target.prefix !== undefined)
-          impl.targetFile.setPrefix(target.prefix);
-        if (target.outputName !== undefined)
-          impl.targetFile.setOutputName(target.outputName);
-        if (target.suffix !== undefined)
-          impl.targetFile.setSuffix(target.suffix);
-        if (target.positionIndependentCode !== undefined)
-          impl.setPositionIndependentCode(target.positionIndependentCode);
-        for (const {publicOnly, value} of target.getIncludes())
-          impl.addInclude(publicOnly, value);
-        for (const {publicOnly, value} of target.getDefinitions())
-          impl.addDefinition(publicOnly, value);
-        for (const {publicOnly, value} of target.getCompileOptions())
-          impl.addCompileOption(publicOnly, value);
-        for (const {publicOnly, value} of target.getLinkOptions())
-          impl.addLinkOption(publicOnly, value);
-        for (const {publicOnly, value} of target.getLibraries())
-          impl.addLibrary(publicOnly, value);
-        for (const {publicOnly, value} of target.getSources())
-          impl.addSource(publicOnly, value);
-        for (const iter of target.preBuildList)
-          impl.addPreBuild(iter);
-        for (const iter of target.postBuildList)
-          impl.addPostBuild(iter);
-      }
+      for (const [name, target] of ctx.indirectTargets)
+        this[TARGETS].get(name).postUpdate(target);
     }
   }
 
@@ -563,8 +478,8 @@ export class ProjectContext {
     }
 
     const objectFiles = new Map<SourceFile, AbsolutePath>();
-    for (const target of Object.values(this[TARGETS].ENTRIES)) {
-      for (const it of target.IMPL.getSourceFiles()) {
+    for (const target of this[TARGETS].ENTRIES.values()) {
+      for (const it of target.getSourceFileList()) {
         if (!it.LANGUAGE)
           continue;
         const rfile1 = target.TARGET_SCOPE.BINARY_DIR.relative(it.FILE);
@@ -575,19 +490,18 @@ export class ProjectContext {
       }
     }
 
-    for (const [name, target] of Object.entries(this[TARGETS].ENTRIES)) {
-      const targetImpl = target.IMPL;
+    for (const [name, target] of this[TARGETS].ENTRIES) {
       const depends = [];
-      for (const s of target.IMPL.getTargetObjectsList()) {
+      for (const s of target.getTargetObjectsList()) {
         const t = this[TARGETS].get(s.targetName) as BaseTarget;
-        for (const f of t.IMPL.getSourceFiles()) {
+        for (const f of t.getSourceFileList()) {
           const o = objectFiles.get(f);
           o && depends.push(o.toString());
         }
       }
   
       const headers = this[TARGETS].allHeadersOf(target);
-      for (const s of target.IMPL.getSourceFiles()) {
+      for (const s of target.getSourceFileList()) {
         if (s.HEADER_FILE_ONLY)
           continue;
 
@@ -610,7 +524,7 @@ export class ProjectContext {
         args.push(...definitions.map(i => "-D" + i));
         args.push(...this[TARGETS].allIncludesOf(target).map(i => "-I" + i));
         args.push(...this[TARGETS].allCompileOptionsOf(target));
-        if (targetImpl.positionIndependentCode)
+        if (target.positionIndependentCode)
           args.push("-fPIC");
         args.push(...s.COMPILE_FLAGS.flat());
         args.push("-o", relativeObject);
@@ -630,25 +544,25 @@ export class ProjectContext {
       }
 
       const generalGoal = new GoalWorkerImpl;
-      for (const params of target.IMPL.preBuildList) {
+      for (const params of target.preBuildList) {
         const execStruct = resolveTargetCommand(this, params);
         generalGoal.addExec(execStruct.command, execStruct.args, target.TARGET_SCOPE.BINARY_DIR.toString());
       }
 
       const linkOptions = this[TARGETS].allLinkOptionsOf(target);
       if (target instanceof ObjectLibrary) {
-        const objs = depends.filter(i => i.endsWith(".o") || i.endsWith(".obj")).map(i => target.FILE_DIR.relative(i));
+        const objs = depends.filter(i => i.endsWith(".o") || i.endsWith(".obj")).map(i => target.getFileDir().relative(i));
         if (objs.length) {
           const args = [
             ...linkOptions,
             "-r",
-            "-o", target.FILE_NAME,
+            "-o", target.getFileName(),
             ...objs
           ];
-          generalGoal.message = `Linking CXX object library ${target.FILE_NAME}`;
-          generalGoal.output = target.FILE.toString();
+          generalGoal.message = `Linking CXX object library ${target.getFileName()}`;
+          generalGoal.output = target.getFile().toString();
           generalGoal.addDependency(...depends);
-          generalGoal.addExec(scope.LINKER, args, target.FILE_DIR.toString());
+          generalGoal.addExec(scope.LINKER, args, target.getFileDir().toString());
         }
         else {
           logger.info(`No objects for "${target.targetName}"`);
@@ -656,13 +570,13 @@ export class ProjectContext {
       }
   
       if (target instanceof StaticLibrary) {
-        const objs = depends.filter(i => i.endsWith(".o") || i.endsWith(".obj")).map(i => target.FILE_DIR.relative(i));
+        const objs = depends.filter(i => i.endsWith(".o") || i.endsWith(".obj")).map(i => target.getFileDir().relative(i));
         if (objs.length) {
-          const args = [ "rc", target.FILE_NAME , ...objs ];
-          generalGoal.message = `Linking CXX static library ${target.FILE_NAME}`;
-          generalGoal.output = target.FILE.toString();
+          const args = [ "rc", target.getFileName() , ...objs ];
+          generalGoal.message = `Linking CXX static library ${target.getFileName()}`;
+          generalGoal.output = target.getFile().toString();
           generalGoal.addDependency(...depends);
-          generalGoal.addExec(scope.AR, args, target.FILE_DIR.toString());
+          generalGoal.addExec(scope.AR, args, target.getFileDir().toString());
         }
         else {
           logger.info(`No objects for "${target.targetName}"`);
@@ -674,29 +588,29 @@ export class ProjectContext {
       }
 
       if (target instanceof Executable) {
-        const objs = depends.filter(i => i.endsWith(".o") || i.endsWith(".obj")).map(i => target.FILE_DIR.relative(i));
+        const objs = depends.filter(i => i.endsWith(".o") || i.endsWith(".obj")).map(i => target.getFileDir().relative(i));
         if (objs.length) {
           const libs = this[TARGETS].allLibrariesOf(target);
           const args = [
             ...target.TARGET_SCOPE.CXX_FLAGS,
             ...linkOptions,
             ...objs,
-            "-o", target.FILE_NAME,
-            ...libs.map(i => target.FILE_DIR.relative(i)),
+            "-o", target.getFileName(),
+            ...libs.map(i => target.getFileDir().relative(i)),
           ];
 
-          generalGoal.message = `Linking CXX executable ${target.FILE_NAME}`;
-          generalGoal.output = target.FILE.toString();
+          generalGoal.message = `Linking CXX executable ${target.getFileName()}`;
+          generalGoal.output = target.getFile().toString();
           generalGoal.addDependency(...depends);
           generalGoal.addDependency(...libs);
-          generalGoal.addExec(scope.CXX_COMPILER, args, target.FILE_DIR.toString());
+          generalGoal.addExec(scope.CXX_COMPILER, args, target.getFileDir().toString());
         }
         else {
           logger.info(`No objects for "${target.targetName}"`);
         }
       }
 
-      for (const params of target.IMPL.postBuildList) {
+      for (const params of target.postBuildList) {
         const execStruct = resolveTargetCommand(this, params);
         generalGoal.addExec(execStruct.command, execStruct.args, target.TARGET_SCOPE.BINARY_DIR.toString());
       }
@@ -705,7 +619,7 @@ export class ProjectContext {
 
       const worker = new GoalWorkerImpl(name);
       worker.message = `Built target ${name}`;
-      worker.addDependency(target.FILE.toString());
+      worker.addDependency(target.getFile().toString());
       goalList.add(worker);
     }
 
@@ -724,9 +638,9 @@ export class ProjectContext {
         const rfile = (iter.BASE_DIR as any).relative(iter.VALUE);
         dest = iter.DESTINATION.join(rfile);
       }
-      else if (iter.VALUE instanceof UserIndirectTarget) {
+      else if (iter.VALUE instanceof PostTarget) {
         const targetName = iter.VALUE.targetName;
-        const target = this[TARGET_COLLECTION].get(targetName);
+        const target = this[TARGETS].get(targetName);
         src = getFile(target).toString();
         dest = iter.DESTINATION.join(getFileName(target));
       }
@@ -768,7 +682,6 @@ export class ProjectContext {
       INSTALL_LIST: this[INSTALL_LIST],
       processedVariableMap: this._processedVariableMap,
       subdirAlias: this._subdirAlias,
-      TARGET_COLLECTION: this[TARGET_COLLECTION],
     };
   }
 };

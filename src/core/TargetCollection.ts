@@ -8,53 +8,15 @@
  */
 
 import { TargetIncludes }from "@/core/TargetIncludes";
-import { UserIndirectTarget } from "@/core/Target";
-import { TargetStruct } from "@/core/TargetStruct";
-import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
+import { PostTarget } from "@/core/Target";
 import { BaseTarget } from "./Target";
-import { AbsolutePath } from "./AbsolutePath";
+import { AbsolutePath } from "@/core/AbsolutePath";
+import { SimpleObject } from "@/core/SimpleObject";
 
 const ENTRIES = Symbol("ENTRIES");
 
-export class TargetStructCollection {
-  private [ENTRIES] = new Map<string, TargetStruct>;
-
-  public constructor() {
-  }
-
-  public getOrCreate(name: string): TargetStruct {
-    if (typeof name !== "string")
-      throw new Error(`Target "${name}" is not string type`);
-    if ([ ALL_TARGET, INSTALL_TARGET ].includes(name))
-      throw new Error(`Target "${name}" is reserved name`);
-    let result: TargetStruct | undefined = this[ENTRIES].get(name);
-    if (!result) {
-      result = new TargetStruct(name);
-      this[ENTRIES].set(name, result);
-    }
-    return result;
-  }
-
-  public get(name: string): TargetStruct {
-    const result = this[ENTRIES].get(name);
-    if (!result)
-      throw `Target "${name}" does not exist`;
-    return result;
-  }
-
-  public toJSON(): object {
-    const result: any = {};
-    this[ENTRIES].forEach((v, k) => void (result[k] = v));
-    return result;
-  }
-};
-
 export class TargetCollection {
-  private [ENTRIES]: { [name: string]: BaseTarget };
-
-  private constructor() {
-    this[ENTRIES] = {};
-  }
+  private [ENTRIES] = new Map<string, BaseTarget>;
 
   public static create() {
     return Object.seal(new TargetCollection);
@@ -64,28 +26,33 @@ export class TargetCollection {
     return this[ENTRIES];
   }
 
-  public toJSON(): object {
-    return this[ENTRIES];
+  public toJSON(): SimpleObject {
+    const result: SimpleObject = { type: TargetCollection.name };
+    this[ENTRIES].forEach((v, k) => void (result[k] = v));
+    return result;
   }
 
   public get(name: string): BaseTarget {
-    return this[ENTRIES][name];
+    const result = this[ENTRIES].get(name);
+    if (!result)
+      throw `Target "${name}" does not exist`;
+    return result;
   }
 
   public set(name: string, target: any) {
-    if (this[ENTRIES][name])
+    if (this[ENTRIES].has(name))
       throw new Error(`Target "${name}" exists`);
-    this[ENTRIES][name] = target;
+    this[ENTRIES].set(name, target);
   }
 
-  private __getAllIncludes(includes: string[], targetSet: Set<string>, list: Array<AbsolutePath | TargetIncludes> | Array<UserIndirectTarget>) {
+  private __getAllIncludes(includes: string[], targetSet: Set<string>, list: Array<AbsolutePath | TargetIncludes> | Array<PostTarget>) {
     for (const iter of list) {
-      if (iter instanceof TargetIncludes || iter instanceof UserIndirectTarget) {
+      if (iter instanceof TargetIncludes || iter instanceof PostTarget) {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
           const target = this.get(iter.targetName);
-          this.__getAllIncludes(includes, targetSet, target.IMPL.getPublicIncludes());
-          this.__getAllIncludes(includes, targetSet, target.IMPL.getPublicLibraries());
+          this.__getAllIncludes(includes, targetSet, target.getPublicIncludes());
+          this.__getAllIncludes(includes, targetSet, target.getPublicLibraries());
         }
       }
       else if (iter instanceof AbsolutePath) {
@@ -101,24 +68,24 @@ export class TargetCollection {
   public allIncludesOf(params: string | BaseTarget): string[] {
     const target = (typeof params === "string") ? this.get(params) : params;
     const includes: string[] = [];
-    const targetSet = new Set([ target.IMPL.name ]);
-    this.__getAllIncludes(includes, targetSet, target.IMPL.getIncludes());
-    this.__getAllIncludes(includes, targetSet, target.IMPL.getLibraries());
+    const targetSet = new Set([ target.targetName ]);
+    this.__getAllIncludes(includes, targetSet, target.getIncludes());
+    this.__getAllIncludes(includes, targetSet, target.getLibraries());
     return includes;
   }
 
-  private __getAllHeaders(headers: string[], targetSet: Set<string>, list: Array<AbsolutePath | TargetIncludes> | Array<UserIndirectTarget>) {
+  private __getAllHeaders(headers: string[], targetSet: Set<string>, list: Array<AbsolutePath | TargetIncludes> | Array<PostTarget>) {
     for (const iter of list) {
-      if (iter instanceof TargetIncludes || iter instanceof UserIndirectTarget) {
+      if (iter instanceof TargetIncludes || iter instanceof PostTarget) {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
           const target = this.get(iter.targetName);
-          for (const header of target.IMPL.getHeaders().map((i: any) => i.FILE.toString())) {
+          for (const header of target.getHeaders().map((i: any) => i.FILE.toString())) {
             if (!headers.includes(header.toString()))
               headers.push(header.toString());
           }
-          this.__getAllHeaders(headers, targetSet, target.IMPL.getPublicIncludes());
-          this.__getAllHeaders(headers, targetSet, target.IMPL.getPublicLibraries());
+          this.__getAllHeaders(headers, targetSet, target.getPublicIncludes());
+          this.__getAllHeaders(headers, targetSet, target.getPublicLibraries());
         }
       }
     }
@@ -126,21 +93,21 @@ export class TargetCollection {
 
   public allHeadersOf(params: string | BaseTarget) {
     const target = (typeof params === "string") ? this.get(params) : params;
-    const headers = target.IMPL.getHeaders().map((i: any) => i.FILE.toString());
-    const targetSet = new Set([ target.IMPL.name ]);
-    this.__getAllHeaders(headers, targetSet, target.IMPL.getIncludes());
-    this.__getAllHeaders(headers, targetSet, target.IMPL.getLibraries());
+    const headers = target.getHeaders().map((i: any) => i.FILE.toString());
+    const targetSet = new Set([ target.targetName ]);
+    this.__getAllHeaders(headers, targetSet, target.getIncludes());
+    this.__getAllHeaders(headers, targetSet, target.getLibraries());
     return headers;
   }
 
-  private __getAllLibraries(libraries: string[], targetSet: Set<string>, list: Array<UserIndirectTarget>) {
+  private __getAllLibraries(libraries: string[], targetSet: Set<string>, list: Array<PostTarget>) {
     for (const iter of list) {
-      console.assert(iter instanceof UserIndirectTarget);
+      console.assert(iter instanceof PostTarget);
       if (!targetSet.has(iter.targetName)) {
         targetSet.add(iter.targetName);
         const target = this.get(iter.targetName);
-        libraries.push(target.FILE.toString());
-        this.__getAllLibraries(libraries, targetSet, target.IMPL.getPublicLibraries());
+        libraries.push(target.getFile().toString());
+        this.__getAllLibraries(libraries, targetSet, target.getPublicLibraries());
       }
     }
   }
@@ -148,19 +115,19 @@ export class TargetCollection {
   public allLibrariesOf(params: string | BaseTarget) {
     const target = (typeof params === "string") ? this.get(params) : params;
     const libraries: string[] = [];
-    const targetSet = new Set([ target.IMPL.name ]);
-    this.__getAllLibraries(libraries, targetSet, target.IMPL.getLibraries());
+    const targetSet = new Set([ target.targetName ]);
+    this.__getAllLibraries(libraries, targetSet, target.getLibraries());
     return libraries;
   }
 
-  private __getAllDefinitions(definitions: string[], targetSet: Set<string>, list: Array<string> | Array<UserIndirectTarget>) {
+  private __getAllDefinitions(definitions: string[], targetSet: Set<string>, list: Array<string> | Array<PostTarget>) {
     for (const iter of list) {
-      if (iter instanceof UserIndirectTarget) {
+      if (iter instanceof PostTarget) {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
           const target = this.get(iter.targetName);
-          this.__getAllDefinitions(definitions, targetSet, target.IMPL.getPublicDefinitions());
-          this.__getAllDefinitions(definitions, targetSet, target.IMPL.getPublicLibraries());
+          this.__getAllDefinitions(definitions, targetSet, target.getPublicDefinitions());
+          this.__getAllDefinitions(definitions, targetSet, target.getPublicLibraries());
         }
       }
       else if (typeof iter === "string") {
@@ -176,20 +143,20 @@ export class TargetCollection {
   public allDefinitionsOf(params: string | BaseTarget) {
     const target = (typeof params === "string") ? this.get(params) : params;
     const definitions: string[] = [];
-    const targetSet = new Set([ target.IMPL.name ]);
-    this.__getAllDefinitions(definitions, targetSet, target.IMPL.getDefinitions());
-    this.__getAllDefinitions(definitions, targetSet, target.IMPL.getPublicLibraries());
+    const targetSet = new Set([ target.targetName ]);
+    this.__getAllDefinitions(definitions, targetSet, target.getDefinitions());
+    this.__getAllDefinitions(definitions, targetSet, target.getPublicLibraries());
     return definitions;
   }
 
-  private __getAllCompileOptions(options: Array<string|string[]>, targetSet: Set<string>, list: Array<string|string[]> | Array<UserIndirectTarget>) {
+  private __getAllCompileOptions(options: Array<string|string[]>, targetSet: Set<string>, list: Array<string|string[]> | Array<PostTarget>) {
     for (const iter of list) {
-      if (iter instanceof UserIndirectTarget) {
+      if (iter instanceof PostTarget) {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
           const target = this.get(iter.targetName);
-          this.__getAllCompileOptions(options, targetSet, target.IMPL.getPublicCompileOptions());
-          this.__getAllCompileOptions(options, targetSet, target.IMPL.getPublicLibraries());
+          this.__getAllCompileOptions(options, targetSet, target.getPublicCompileOptions());
+          this.__getAllCompileOptions(options, targetSet, target.getPublicLibraries());
         }
       }
       else if (typeof iter === "string") {
@@ -209,20 +176,20 @@ export class TargetCollection {
   public allCompileOptionsOf(params: string | BaseTarget) {
     const target = (typeof params === "string") ? this.get(params) : params;
     const options: string[] = [];
-    const targetSet = new Set([ target.IMPL.name ]);
-    this.__getAllCompileOptions(options, targetSet, target.IMPL.getCompileOptions());
-    this.__getAllCompileOptions(options, targetSet, target.IMPL.getPublicLibraries());
+    const targetSet = new Set([ target.targetName ]);
+    this.__getAllCompileOptions(options, targetSet, target.getCompileOptions());
+    this.__getAllCompileOptions(options, targetSet, target.getPublicLibraries());
     return options.flat();
   }
 
-  private __getLinkOptions(options: Array<string|string[]>, targetSet: Set<string>, list: Array<string|string[]> | Array<UserIndirectTarget>) {
+  private __getLinkOptions(options: Array<string|string[]>, targetSet: Set<string>, list: Array<string|string[]> | Array<PostTarget>) {
     for (const iter of list) {
-      if (iter instanceof UserIndirectTarget) {
+      if (iter instanceof PostTarget) {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
           const target = this.get(iter.targetName);
-          this.__getLinkOptions(options, targetSet, target.IMPL.getPublicLinkOptions());
-          this.__getLinkOptions(options, targetSet, target.IMPL.getPublicLibraries());
+          this.__getLinkOptions(options, targetSet, target.getPublicLinkOptions());
+          this.__getLinkOptions(options, targetSet, target.getPublicLibraries());
         }
       }
       else if (typeof iter === "string") {
@@ -242,9 +209,9 @@ export class TargetCollection {
   public allLinkOptionsOf(params: string | BaseTarget) {
     const target = (typeof params === "string") ? this.get(params) : params;
     const options: string[] = [];
-    const targetSet = new Set([ target.IMPL.name ]);
-    this.__getLinkOptions(options, targetSet, target.IMPL.getLinkOptions());
-    this.__getLinkOptions(options, targetSet, target.IMPL.getPublicLibraries());
+    const targetSet = new Set([ target.targetName ]);
+    this.__getLinkOptions(options, targetSet, target.getLinkOptions());
+    this.__getLinkOptions(options, targetSet, target.getPublicLibraries());
     return options.flat();
   }
 }

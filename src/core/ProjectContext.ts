@@ -165,6 +165,11 @@ export class GoalWorkerImpl {
 
   addExec(command: string, args: string[], cwd: string): void {
     this.addCallback(() => {
+      logger.debug("spawnSync");
+      logger.debug("  command", command);
+      logger.debug("  cwd", cwd);
+      for (let i = 0; i < args.length; i++)
+        logger.debug(`  args[${i}]`, args[i]);
       const result = spawnSync(command, args, { cwd, encoding: "utf-8" });
       if (result.error || result.status) {
         logger.notice("cd " + cwd);

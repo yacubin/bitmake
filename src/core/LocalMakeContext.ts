@@ -7,7 +7,8 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { IMakeContext, InterfaceTarget } from "@/core/MakeInterfaces";
+import { InterfaceTarget } from "@/core/MakeInterfaces";
+import { MakeContext } from "@/core/BaseContext";
 import { fileExistsSync } from "@/utils/FileSystem";
 import { InterfaceScript } from "@/core/InterfaceScript";
 import { InstallEntity } from "@/core/InstallEntity";
@@ -22,13 +23,14 @@ import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
 
-export class LocalMakeContext implements IMakeContext {
+export class LocalMakeContext extends MakeContext {
   private _scope: VariableMap;
   private _project: ProjectContext;
   private _targets = new Map<string, MainTarget>();
   private _indirectTargets = new Map<string, PostTarget>();
 
   public constructor(scope: VariableMap, project: ProjectContext) {
+    super(scope);
     this._scope = scope;
     this._project = project;
   }

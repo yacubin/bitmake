@@ -36,7 +36,7 @@ export default async (env, argv) => {
     PROJECT_HOMEPAGE_URL: pkg.homepage || "",
     HOST_SOURCE_URL: url.pathToFileURL(sourceDir),
     LOGGER_DEBUG: [
-      "*",
+      "*:4",
     ],
   };
 
@@ -68,7 +68,7 @@ export default async (env, argv) => {
     ],
   };
 
-  const libConfig = {
+  const config = {
     mode,
     devtool,
     resolve,
@@ -96,30 +96,5 @@ export default async (env, argv) => {
     ],
   };
 
-  /*const cliConfig = {
-    mode,
-    devtool,
-    resolve,
-    target: 'node',
-    entry: {
-      "bitmake-cli": "./src/main.ts",
-    },
-    output: {
-      path: outputPath,
-      filename: "[name].js",
-    },
-    module,
-    plugins: [
-      new webpack.DefinePlugin(globalVariables),
-      new webpack.BannerPlugin({
-        banner: "#!/usr/bin/env node",
-        raw: true,
-      }),
-    ],
-    externals: {
-      "bitmake": "commonjs2 ./bitmake.js",
-    },
-  };*/
-
-  return libConfig;
+  return config;
 }

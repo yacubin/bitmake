@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { IMakeContext } from "@/core/MakeInterfaces";
+import { MakeContext } from "@/core/BaseContext";
 import { InterfaceScript } from "@/core/InterfaceScript";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, MainTarget, PostTarget } from "@/core/Target";
 import { CustomScript } from "@/core/CustomScript";
@@ -28,12 +28,13 @@ import { AbsolutePath } from "@/core/AbsolutePath";
 
 const logger = Logger.create(import.meta.url);
 
-export class RemoteMakeContext implements IMakeContext {
+export class RemoteMakeContext extends MakeContext {
   private _scope: VariableMap;
   private _transport: JsonRpcRequestSync;
   private _targets = new Map<string, MainTarget>();
 
   public constructor(scope: VariableMap, transport: JsonRpcRequestSync) {
+    super(scope);
     this._scope = scope;
     this._transport = transport;
   }

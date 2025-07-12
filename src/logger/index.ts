@@ -130,7 +130,7 @@ export function enable(filter: string) {
     return;
 
   if (pair[0] === "*") {
-    allSetFilter(pair[0]);
+    allSetFilter(pair[1]);
     return;
   }
 

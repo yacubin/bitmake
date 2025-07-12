@@ -9,12 +9,12 @@
 
 import { ProjectContext } from "@/core/ProjectContext";
 import { VariableMap } from "@/core/Scope";
-import { BaseContext, createContext } from "@/core/BaseContext";
+import { GeneralContext, createContext } from "@/core/BaseContext";
 
 const GLOBAL = Symbol("GLOBAL");
 const SCOPE = Symbol("SCOPE");
 
-export class PluginContext extends BaseContext {
+export class PluginContext extends GeneralContext {
   [GLOBAL]: ProjectContext;
   [SCOPE]: VariableMap;
 

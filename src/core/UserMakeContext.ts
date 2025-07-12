@@ -7,11 +7,11 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { IMakeContext, InterfaceTarget } from "@/core/MakeInterfaces";
+import { InterfaceContext, InterfaceTarget } from "@/core/MakeInterfaces";
 import { InterfaceScript } from "@/core/InterfaceScript";
 import { CustomScript } from "@/core/CustomScript";
 import { VariantMap, VariableMap } from "@/core/Scope";
-import { BaseContext, createContext } from "@/core/BaseContext";
+import { MakeContext, createContext } from "@/core/BaseContext";
 import { UserTargetStruct } from "@/core/UserTargetStruct";
 import { Logger } from "@/logger";
 
@@ -19,15 +19,15 @@ const logger = Logger.create(import.meta.url);
 
 const IMPL = Symbol("IMPL");
 
-export class UserMakeContext extends BaseContext implements IMakeContext {
-  [IMPL]: IMakeContext;
+export class UserMakeContext extends MakeContext {
+  [IMPL]: InterfaceContext;
 
-  public constructor(impl: IMakeContext, variableMap: VariableMap) {
+  public constructor(impl: InterfaceContext, variableMap: VariableMap) {
     super(variableMap);
     this[IMPL] = impl;
   }
 
-  public static create(impl: IMakeContext, variableMap: VariableMap) {
+  public static create(impl: InterfaceContext, variableMap: VariableMap) {
     return createContext(new UserMakeContext(impl, variableMap));
   }
 

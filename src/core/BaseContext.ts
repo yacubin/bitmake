@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { IMakeObject } from "@/core/IMakeObject";
+import { InterfaceContext, InterfaceGeneralContext } from "@/core/MakeInterfaces";
 import { findProgramSync } from "@/core/FindProgram";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { Logger } from "@/logger";
@@ -19,41 +19,64 @@ const logger = Logger.create(import.meta.url);
 
 const VARIABLE_MAP = Symbol("VARIABLE_MAP");
 
-export abstract class BaseContext implements IMakeObject {
-  [VARIABLE_MAP]: VariableMap;
+function getProperty(this: any, name: string): any {
+  return ScopeHelper.get(this[VARIABLE_MAP], name);
+}
+
+function setProperty(this: any, name: string, value: any): any {
+  const entry = this[VARIABLE_MAP][name];
+  if (entry)
+    ScopeHelper.setEntryValue(entry, value);
+  else
+    ScopeHelper.defineVariable(this[VARIABLE_MAP], "", name, {value});
+  return true;
+}
+
+function hasProperty(this: any, name: string): boolean {
+  return Object.hasOwn(this[VARIABLE_MAP], name);
+}
+
+function deleteProperty(this: any, name: string): boolean {
+  return delete this[VARIABLE_MAP][name];
+}
+
+function getPropertyNames(this: any): string[] {
+  return Object.keys(this[VARIABLE_MAP]);
+}
+
+export abstract class GeneralContext extends InterfaceGeneralContext {
+  private [VARIABLE_MAP]: VariableMap;
+
+  public findProgram = findProgramSync;
+  public getProperty = getProperty;
+  public setProperty = setProperty;
+  public hasProperty = hasProperty;
+  public deleteProperty = deleteProperty;
+  public getPropertyNames = getPropertyNames;
 
   protected constructor(variableMap: VariableMap) {
+    super();
     this[VARIABLE_MAP] = variableMap;
-  }
-
-  public findProgram(name: string): string | undefined {
-    return findProgramSync(name);
-  }
-
-  // MakeObject
-  public getProperty(name: string): any {
-    return ScopeHelper.get(this[VARIABLE_MAP], name);
-  }
-  public setProperty(name: string, value: any): any {
-    const entry = this[VARIABLE_MAP][name];
-    if (entry)
-      ScopeHelper.setEntryValue(entry, value);
-    else
-      ScopeHelper.defineVariable(this[VARIABLE_MAP], "", name, {value});
-    return true;
-  }
-  public hasProperty(name: string): boolean {
-    return Object.hasOwn(this[VARIABLE_MAP], name);
-  }
-  public deleteProperty(name: string): boolean {
-    return delete this[VARIABLE_MAP][name];
-  }
-  public getPropertyNames(): string[] {
-    return Object.keys(this[VARIABLE_MAP]);
   }
 };
 
-export function createContext<T extends IMakeObject>(ctx: T): T & SystemScope {
+export abstract class MakeContext extends InterfaceContext {
+  private [VARIABLE_MAP]: VariableMap;
+
+  public findProgram = findProgramSync;
+  public getProperty = getProperty;
+  public setProperty = setProperty;
+  public hasProperty = hasProperty;
+  public deleteProperty = deleteProperty;
+  public getPropertyNames = getPropertyNames;
+
+  protected constructor(variableMap: VariableMap) {
+    super();
+    this[VARIABLE_MAP] = variableMap;
+  }
+};
+
+export function createContext<T extends InterfaceGeneralContext>(ctx: T): T & SystemScope {
   const handler: ProxyHandler<T> = {
     get(target: T, name: string, receiver: any) {
       if (name in target)
@@ -84,7 +107,7 @@ export function createContext<T extends IMakeObject>(ctx: T): T & SystemScope {
   return new Proxy(ctx, handler) as T & SystemScope;
 }
 
-export async function performContext(mk: BaseContext & SystemScope) {
+export async function performContext(mk: InterfaceGeneralContext & SystemScope) {
   const scriptUrl = mk.SCRIPT_FILE.toJSON();
   const module = await importModule(scriptUrl);
   if (!module.default)

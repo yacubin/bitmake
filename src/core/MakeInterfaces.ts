@@ -45,18 +45,28 @@ export abstract class InterfaceTarget {
   abstract addPublicLinkOptions(...options: Array<string|string[]>): void;
 };
 
-export interface IMakeContext {
-  getCacheVariables(): any;
-  addCacheVariables(params: string | VariantMap): void;
-  addIncludeDirectories(...dirs: any[]): void;
-  addSubdirectory(sourceDir: string | AbsolutePath, binaryDir?: string | AbsolutePath): void;
-  addCustomScript(script: string, params: any): CustomScript;
-  target(name: string): InterfaceTarget;
-  script(name: string): InterfaceScript;
-  install(value: any, params: any): void;
-  addObjectLibrary(name: string, ...sources: any[]): InterfaceTarget;
-  addStaticLibrary(name: string, ...sources: any[]): InterfaceTarget;
-  addSharedLibrary(name: string, ...sources: any[]): InterfaceTarget;
-  addExecutable(name: string, ...sources: any[]): InterfaceTarget;
-  executeScript(script: any, params: any): void;
+export abstract class InterfaceGeneralContext {
+  abstract getProperty(name: string): any;
+  abstract setProperty(name: string, value: any): boolean;
+  abstract hasProperty(name: string): boolean;
+  abstract deleteProperty(name: string): boolean;
+  abstract getPropertyNames(): string[];
+
+  abstract findProgram(name: string): string | undefined;
+};
+
+export abstract class InterfaceContext extends InterfaceGeneralContext {
+  abstract getCacheVariables(): any;
+  abstract addCacheVariables(params: string | VariantMap): void;
+  abstract addIncludeDirectories(...dirs: any[]): void;
+  abstract addSubdirectory(sourceDir: string | AbsolutePath, binaryDir?: string | AbsolutePath): void;
+  abstract addCustomScript(script: string, params: any): CustomScript;
+  abstract target(name: string): InterfaceTarget;
+  abstract script(name: string): InterfaceScript;
+  abstract install(value: any, params: any): void;
+  abstract addObjectLibrary(name: string, ...sources: any[]): InterfaceTarget;
+  abstract addStaticLibrary(name: string, ...sources: any[]): InterfaceTarget;
+  abstract addSharedLibrary(name: string, ...sources: any[]): InterfaceTarget;
+  abstract addExecutable(name: string, ...sources: any[]): InterfaceTarget;
+  abstract executeScript(script: any, params: any): void;
 };

@@ -88,7 +88,7 @@ export class UserTargetStruct extends InterfaceTarget {
   }
 
   public addPostBuild(command: any, args: any[]): void {
-    this[IMPL].addPreBuild(command, args);
+    this[IMPL].addPostBuild(command, args);
   }
 
   public setPositionIndependentCode(value: boolean): void {

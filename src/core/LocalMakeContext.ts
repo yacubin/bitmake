@@ -7,11 +7,11 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { IMakeContext } from "@/core/MakeInterfaces";
+import { IMakeContext, InterfaceTarget } from "@/core/MakeInterfaces";
 import { fileExistsSync } from "@/utils/FileSystem";
 import { InterfaceScript } from "@/core/InterfaceScript";
 import { InstallEntity } from "@/core/InstallEntity";
-import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget, PostTarget } from "@/core/Target";
+import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, MainTarget, PostTarget } from "@/core/Target";
 import { CustomScript } from "@/core/CustomScript";
 import { ProjectContext } from "@/core/ProjectContext";
 import { ScopeHelper, VariantMap, VariableMap } from "@/core/Scope";
@@ -25,7 +25,7 @@ const logger = Logger.create(import.meta.url);
 export class LocalMakeContext implements IMakeContext {
   private _scope: VariableMap;
   private _project: ProjectContext;
-  private _targets = new Map<string, BaseTarget>();
+  private _targets = new Map<string, MainTarget>();
   private _indirectTargets = new Map<string, PostTarget>();
 
   public constructor(scope: VariableMap, project: ProjectContext) {
@@ -94,7 +94,7 @@ export class LocalMakeContext implements IMakeContext {
   public install(value: any, params: any): void {
     const scope = ScopeHelper.createVariableValues(this._scope);
     for (const it of [ value ].flat()) {
-      const iter = (it instanceof BaseTarget) ? this.target(it.targetName) : it;
+      const iter = (it instanceof InterfaceTarget) ? this.target(it.targetName) : it;
       const entity = InstallEntity.create(scope, iter, params);
       this._project.addInstallEntry(entity);
     }

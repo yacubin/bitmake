@@ -7,11 +7,12 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { IMakeContext, IMakeTarget, IObjectLibrary, IStaticLibrary, ISharedLibrary, IExecutable } from "@/core/MakeInterfaces";
+import { IMakeContext, InterfaceTarget } from "@/core/MakeInterfaces";
 import { InterfaceScript } from "@/core/InterfaceScript";
 import { CustomScript } from "@/core/CustomScript";
 import { VariantMap, VariableMap } from "@/core/Scope";
 import { BaseContext, createContext } from "@/core/BaseContext";
+import { UserTargetStruct } from "@/core/UserTargetStruct";
 import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
@@ -50,7 +51,7 @@ export class UserMakeContext extends BaseContext implements IMakeContext {
     return this[IMPL].addCustomScript(script, params);
   }
 
-  public target(name: string): IMakeTarget {
+  public target(name: string): InterfaceTarget {
     return this[IMPL].target(name);
   }
 
@@ -62,20 +63,24 @@ export class UserMakeContext extends BaseContext implements IMakeContext {
     this[IMPL].install(value, params);
   }
 
-  public addObjectLibrary(name: any, ...sources: any[]): IObjectLibrary {
-    return this[IMPL].addObjectLibrary(name, ...sources);
+  public addObjectLibrary(name: any, ...sources: any[]): UserTargetStruct {
+    const target = this[IMPL].addObjectLibrary(name, ...sources);
+    return UserTargetStruct.create(target);
   }
 
-  public addStaticLibrary(name: any, ...sources: any[]): IStaticLibrary {
-    return this[IMPL].addStaticLibrary(name, ...sources);
+  public addStaticLibrary(name: any, ...sources: any[]): UserTargetStruct {
+    const target = this[IMPL].addStaticLibrary(name, ...sources);
+    return UserTargetStruct.create(target);
   }
 
-  public addSharedLibrary(name: any, ...sources: any[]): ISharedLibrary {
-    return this[IMPL].addSharedLibrary(name, ...sources);
+  public addSharedLibrary(name: any, ...sources: any[]): UserTargetStruct {
+    const target = this[IMPL].addSharedLibrary(name, ...sources);
+    return UserTargetStruct.create(target);
   }
 
-  public addExecutable(name: any, ...sources: any[]): IExecutable {
-    return this[IMPL].addExecutable(name, ...sources);
+  public addExecutable(name: any, ...sources: any[]): UserTargetStruct {
+    const target = this[IMPL].addExecutable(name, ...sources);
+    return UserTargetStruct.create(target);
   }
 
   public executeScript(script: any, params: any): void {

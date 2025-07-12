@@ -21,7 +21,7 @@ import { GoalCollection } from "@/core/GoalCollection";
 import { InterfaceScript } from "@/core/InterfaceScript";
 import { UserMakeContext } from "@/core/UserMakeContext";
 import { LocalMakeContext } from "@/core/LocalMakeContext";
-import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget, PostTarget, TargetCommand } from "@/core/Target";
+import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, PostTarget, TargetCommand } from "@/core/Target";
 import { SystemScope } from "@/core/SystemScope";
 import { importModule, requireSync } from "@/utils/Module";
 import { Logger } from "@/logger";
@@ -69,18 +69,6 @@ function ensureValueByType(type: any, value: any) {
   if (Array.isArray(type) ? type.includes(value) : typeof value === type)
     return value;
   throw new Error(`The '${value}' is not a ${type}`);
-}
-
-function getFileDir(target: BaseTarget): AbsolutePath {
-  return target.getFileDir();
-}
-
-function getFileName(target: BaseTarget): string {
-  return target.getFileName();
-}
-
-function getFile(target: BaseTarget): AbsolutePath {
-  return getFileDir(target).join(target.getFileName());
 }
 
 type GoalHandler = () => Promise<void> | void;
@@ -493,7 +481,7 @@ export class ProjectContext {
     for (const [name, target] of this[TARGETS].ENTRIES) {
       const depends = [];
       for (const s of target.getTargetObjectsList()) {
-        const t = this[TARGETS].get(s.targetName) as BaseTarget;
+        const t = this[TARGETS].get(s.targetName);
         for (const f of t.getSourceFileList()) {
           const o = objectFiles.get(f);
           o && depends.push(o.toString());
@@ -641,8 +629,8 @@ export class ProjectContext {
       else if (iter.VALUE instanceof PostTarget) {
         const targetName = iter.VALUE.targetName;
         const target = this[TARGETS].get(targetName);
-        src = getFile(target).toString();
-        dest = iter.DESTINATION.join(getFileName(target));
+        src = target.getFile().toString();
+        dest = iter.DESTINATION.join(target.getFileName());
       }
       else {
         throw new Error(`Can not install ${iter.VALUE}`)

@@ -8,15 +8,14 @@
  */
 
 import { TargetIncludes }from "@/core/TargetIncludes";
-import { PostTarget } from "@/core/Target";
-import { BaseTarget } from "./Target";
+import { MainTarget, PostTarget } from "@/core/Target";
 import { AbsolutePath } from "@/core/AbsolutePath";
 import { SimpleObject } from "@/core/SimpleObject";
 
 const ENTRIES = Symbol("ENTRIES");
 
 export class TargetCollection {
-  private [ENTRIES] = new Map<string, BaseTarget>;
+  private [ENTRIES] = new Map<string, MainTarget>;
 
   public static create() {
     return Object.seal(new TargetCollection);
@@ -32,7 +31,7 @@ export class TargetCollection {
     return result;
   }
 
-  public get(name: string): BaseTarget {
+  public get(name: string): MainTarget {
     const result = this[ENTRIES].get(name);
     if (!result)
       throw `Target "${name}" does not exist`;
@@ -65,7 +64,7 @@ export class TargetCollection {
     }
   }
 
-  public allIncludesOf(params: string | BaseTarget): string[] {
+  public allIncludesOf(params: string | MainTarget): string[] {
     const target = (typeof params === "string") ? this.get(params) : params;
     const includes: string[] = [];
     const targetSet = new Set([ target.targetName ]);
@@ -91,7 +90,7 @@ export class TargetCollection {
     }
   }
 
-  public allHeadersOf(params: string | BaseTarget) {
+  public allHeadersOf(params: string | MainTarget) {
     const target = (typeof params === "string") ? this.get(params) : params;
     const headers = target.getHeaders().map((i: any) => i.FILE.toString());
     const targetSet = new Set([ target.targetName ]);
@@ -112,7 +111,7 @@ export class TargetCollection {
     }
   }
 
-  public allLibrariesOf(params: string | BaseTarget) {
+  public allLibrariesOf(params: string | MainTarget) {
     const target = (typeof params === "string") ? this.get(params) : params;
     const libraries: string[] = [];
     const targetSet = new Set([ target.targetName ]);
@@ -140,7 +139,7 @@ export class TargetCollection {
     }
   }
 
-  public allDefinitionsOf(params: string | BaseTarget) {
+  public allDefinitionsOf(params: string | MainTarget) {
     const target = (typeof params === "string") ? this.get(params) : params;
     const definitions: string[] = [];
     const targetSet = new Set([ target.targetName ]);
@@ -173,7 +172,7 @@ export class TargetCollection {
     }
   }
 
-  public allCompileOptionsOf(params: string | BaseTarget) {
+  public allCompileOptionsOf(params: string | MainTarget) {
     const target = (typeof params === "string") ? this.get(params) : params;
     const options: string[] = [];
     const targetSet = new Set([ target.targetName ]);
@@ -206,7 +205,7 @@ export class TargetCollection {
     }
   }
 
-  public allLinkOptionsOf(params: string | BaseTarget) {
+  public allLinkOptionsOf(params: string | MainTarget) {
     const target = (typeof params === "string") ? this.get(params) : params;
     const options: string[] = [];
     const targetSet = new Set([ target.targetName ]);

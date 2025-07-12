@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { IMakeTarget, IObjectLibrary, IStaticLibrary, ISharedLibrary, IExecutable } from "@/core/MakeInterfaces";
+import { InterfaceTarget } from "@/core/MakeInterfaces";
 import { SourceFile } from "@/core/SourceFile";
 import { SourceFileList } from "@/core/SourceFileList";
 import { TargetFile } from "@/core/TargetFile";
@@ -120,7 +120,7 @@ interface TargetValue<T> {
 
 type TargetValueList<T> = Array<TargetValue<T>>;
 
-abstract class AbstractTarget {
+abstract class BaseTarget extends InterfaceTarget {
   protected [TARGET_SCOPE]: SystemScope;
 
   protected _name: string;
@@ -134,6 +134,8 @@ abstract class AbstractTarget {
   protected _postBuildList: TargetCommand[];
 
   constructor(variableMap: VariableMap, name: string) {
+    super();
+
     if (typeof name !== "string")
       throw new Error(`Target "${name}" is not string type`);
 
@@ -361,7 +363,7 @@ abstract class AbstractTarget {
   }
 };
 
-export class PostTarget extends AbstractTarget implements IMakeTarget {
+export class PostTarget extends BaseTarget {
   private _prefix?: string;
   private _outputName?: string;
   private _suffix?: string;
@@ -458,12 +460,12 @@ export class PostTarget extends AbstractTarget implements IMakeTarget {
   }
 };
 
-export class BaseTarget extends AbstractTarget implements IMakeTarget {
-  private _fileDir: AbsolutePath
+export class MainTarget extends BaseTarget {
+  protected _fileDir: AbsolutePath
   protected _prefix = "";
   protected _outputName: string;
   protected _suffix = "";
-  private _positionIndependentCode: boolean;
+  protected _positionIndependentCode: boolean;
 
   protected constructor(variableMap: VariableMap, name: string) {
     super(variableMap, name);
@@ -555,7 +557,7 @@ export class BaseTarget extends AbstractTarget implements IMakeTarget {
   }
 };
 
-export class ObjectLibrary extends BaseTarget implements IObjectLibrary {
+export class ObjectLibrary extends MainTarget {
   private constructor(variableMap: VariableMap, name: string) {
     super(variableMap, name);
     this._prefix = this[TARGET_SCOPE].OBJECT_LIBRARY_PREFIX;
@@ -574,7 +576,7 @@ export class ObjectLibrary extends BaseTarget implements IObjectLibrary {
   }
 };
 
-export class StaticLibrary extends BaseTarget implements IStaticLibrary {
+export class StaticLibrary extends MainTarget {
   private constructor(variableMap: VariableMap, name: string) {
     super(variableMap, name);
     this._prefix = this[TARGET_SCOPE].STATIC_LIBRARY_PREFIX;
@@ -593,7 +595,7 @@ export class StaticLibrary extends BaseTarget implements IStaticLibrary {
   }
 };
 
-export class SharedLibrary extends BaseTarget implements ISharedLibrary {
+export class SharedLibrary extends MainTarget {
   private constructor(variableMap: VariableMap, name: string) {
     super(variableMap, name);
     this._prefix = this[TARGET_SCOPE].SHARED_LIBRARY_PREFIX;
@@ -612,7 +614,7 @@ export class SharedLibrary extends BaseTarget implements ISharedLibrary {
   }
 }
 
-export class Executable extends BaseTarget implements IExecutable {
+export class Executable extends MainTarget {
   private constructor(variableMap: VariableMap, name: string) {
     super(variableMap, name);
     this._prefix = "";

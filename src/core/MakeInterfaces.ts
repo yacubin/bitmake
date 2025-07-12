@@ -17,44 +17,32 @@ import { AbsolutePath } from "@/core/AbsolutePath";
 import { SourceFileList } from "@/core/SourceFileList";
 import { SourceFile } from "@/core/SourceFile";
 
-export interface IMakeTarget {
-  get targetName(): string;
-  get targetFile(): TargetFile;
-  get includes(): TargetIncludes;
-  get objects(): TargetObjects;
+export abstract class InterfaceTarget {
+  abstract get targetName(): string;
+  abstract get targetFile(): TargetFile;
+  abstract get includes(): TargetIncludes;
+  abstract get objects(): TargetObjects;
 
-  setPrefix(prefix: string): void;  
-  setSuffix(suffix: string): void;
-  setOutputName(outputName: string): void;
+  abstract setPrefix(prefix: string): void;  
+  abstract setSuffix(suffix: string): void;
+  abstract setOutputName(outputName: string): void;
 
-  addSources(...sources: Array<TargetObjects | SourceFile | AbsolutePath | string>): void;
-  addIncludes(...includes: Array<TargetIncludes | AbsolutePath | string>): void;
-  addLibraries(...libraries: any): void;
-  addCompileOptions(...options: Array<string|string[]>): void;
-  addLinkOptions(...options: Array<string|string[]>): void;
-  getSourceFiles(...sources: any[]): SourceFileList;
-  addDefinitions(...definitions: any[]): void;
-  addPreBuild(command: any, args: any[]): void;
-  addPostBuild(command: any, args: any[]): void;
+  abstract addSources(...sources: Array<TargetObjects | SourceFile | AbsolutePath | string>): void;
+  abstract addIncludes(...includes: Array<TargetIncludes | AbsolutePath | string>): void;
+  abstract addLibraries(...libraries: any): void;
+  abstract addCompileOptions(...options: Array<string|string[]>): void;
+  abstract addLinkOptions(...options: Array<string|string[]>): void;
+  abstract getSourceFiles(...sources: any[]): SourceFileList;
+  abstract addDefinitions(...definitions: any[]): void;
+  abstract addPreBuild(command: any, args: any[]): void;
+  abstract addPostBuild(command: any, args: any[]): void;
 
-  setPositionIndependentCode(value: boolean): void;
-  addPublicIncludes(...includes: Array<TargetIncludes | AbsolutePath | string>): void;
-  addPublicDefinitions(...definitions: any): void;
-  addPublicLibraries(...libraries: any[]): void;
-  addPublicCompileOptions(...options: Array<string|string[]>): void;
-  addPublicLinkOptions(...options: Array<string|string[]>): void;
-};
-
-export interface IObjectLibrary extends IMakeTarget {
-};
-
-export interface IStaticLibrary extends IMakeTarget {
-};
-
-export interface ISharedLibrary extends IMakeTarget {
-}
-
-export interface IExecutable extends IMakeTarget {
+  abstract setPositionIndependentCode(value: boolean): void;
+  abstract addPublicIncludes(...includes: Array<TargetIncludes | AbsolutePath | string>): void;
+  abstract addPublicDefinitions(...definitions: any): void;
+  abstract addPublicLibraries(...libraries: any[]): void;
+  abstract addPublicCompileOptions(...options: Array<string|string[]>): void;
+  abstract addPublicLinkOptions(...options: Array<string|string[]>): void;
 };
 
 export interface IMakeContext {
@@ -63,12 +51,12 @@ export interface IMakeContext {
   addIncludeDirectories(...dirs: any[]): void;
   addSubdirectory(sourceDir: string | AbsolutePath, binaryDir?: string | AbsolutePath): void;
   addCustomScript(script: string, params: any): CustomScript;
-  target(name: string): IMakeTarget;
+  target(name: string): InterfaceTarget;
   script(name: string): InterfaceScript;
   install(value: any, params: any): void;
-  addObjectLibrary(name: string, ...sources: any[]): IObjectLibrary;
-  addStaticLibrary(name: string, ...sources: any[]): IStaticLibrary;
-  addSharedLibrary(name: string, ...sources: any[]): ISharedLibrary;
-  addExecutable(name: string, ...sources: any[]): IExecutable;
+  addObjectLibrary(name: string, ...sources: any[]): InterfaceTarget;
+  addStaticLibrary(name: string, ...sources: any[]): InterfaceTarget;
+  addSharedLibrary(name: string, ...sources: any[]): InterfaceTarget;
+  addExecutable(name: string, ...sources: any[]): InterfaceTarget;
   executeScript(script: any, params: any): void;
 };

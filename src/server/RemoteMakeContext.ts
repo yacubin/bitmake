@@ -9,7 +9,7 @@
 
 import { IMakeContext } from "@/core/MakeInterfaces";
 import { InterfaceScript } from "@/core/InterfaceScript";
-import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, BaseTarget, PostTarget } from "@/core/Target";
+import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, MainTarget, PostTarget } from "@/core/Target";
 import { CustomScript } from "@/core/CustomScript";
 import { createVariableMapForDirectory } from "@/core/BaseContext";
 import { JsonRpcRequestSync } from "@/server/JsonRpcRequestSync";
@@ -31,7 +31,7 @@ const logger = Logger.create(import.meta.url);
 export class RemoteMakeContext implements IMakeContext {
   private _scope: VariableMap;
   private _transport: JsonRpcRequestSync;
-  private _targets = new Map<string, BaseTarget>();
+  private _targets = new Map<string, MainTarget>();
 
   public constructor(scope: VariableMap, transport: JsonRpcRequestSync) {
     this._scope = scope;

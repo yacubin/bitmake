@@ -30,14 +30,50 @@ function truncate(str: string, maxLength: number) {
   return str;
 }
 
+const SEPARATOR = " ";
+const MESSAGE_MAX = 320;
+
+function toMessageString(o: any) {
+  return (typeof o === "string") ? o : JSON.stringify(o);
+}
+
+function* messageGenerator(messages: string[]) {
+  let length = 0;
+  const msgList: string[] = [];
+
+  for (;;) {
+    const iter = messages.shift();
+    if (!iter)
+      break;
+
+    msgList.push(iter);
+    length += iter.length;
+
+    if (length > MESSAGE_MAX) {
+      const msg = msgList.join(SEPARATOR);
+      msgList.length = 0;
+      msgList.push(msg.substring(MESSAGE_MAX));
+      yield msg.substring(0, MESSAGE_MAX);
+    }
+  }
+
+  yield msgList.join(SEPARATOR);
+}
+
 function makeLogMethod(withPrefix: boolean, type: string, tagName: string, target: any, handler: LoggerHandler) {
   return (...args: any[]) => {
     const now = new Date();
-    const strList = withPrefix ? [ now.toISOString(), type, tagName ] : [];
-    for (const iter of args)
-      strList.push((typeof iter === "string") ? iter : JSON.stringify(iter));
-    const message = strList.join(" ");
-    handler.call(target, truncate(message, 320));
+    const messages = args.map(i => toMessageString(i))
+
+    if (!withPrefix) {
+      handler.call(target, messages.join(SEPARATOR));
+      return;
+    }
+
+    const prefix = [ now.toISOString(), type, tagName ].join(SEPARATOR);
+    for (const iter of messageGenerator(messages)) {
+      handler.call(target, [prefix, iter].join(SEPARATOR));
+    }
   };
 }
 

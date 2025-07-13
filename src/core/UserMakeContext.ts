@@ -49,8 +49,9 @@ export class UserMakeContext extends GeneralContext implements IMakeContext {
     return this[IMPL].addCustomScript(script, params);
   }
 
-  public target(name: string): InterfaceTarget {
-    return this[IMPL].target(name);
+  public target(name: string): UserTargetStruct {
+    const target = this[IMPL].target(name);
+    return UserTargetStruct.create(target);
   }
 
   public script(name: string): InterfaceScript {

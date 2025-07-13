@@ -120,10 +120,18 @@ interface TargetValue<T> {
 
 type TargetValueList<T> = Array<TargetValue<T>>;
 
+export interface BaseTargetOptions {
+  name: string;
+  sourceDir: AbsolutePath;
+  binaryDir: AbsolutePath;
+};
+
 abstract class BaseTarget extends InterfaceTarget {
   protected [TARGET_SCOPE]: SystemScope;
 
   protected _name: string;
+  protected _sourceDir: AbsolutePath;
+  protected _binaryDir: AbsolutePath;
   protected _includes: TargetValueList<AbsolutePath | TargetIncludes>;
   protected _definitions: TargetValueList<string>;
   protected _compileOptions: TargetValueList<string | string[]>;
@@ -133,9 +141,10 @@ abstract class BaseTarget extends InterfaceTarget {
   protected _preBuildList: TargetCommand[];
   protected _postBuildList: TargetCommand[];
 
-  constructor(variableMap: VariableMap, name: string) {
+  constructor(variableMap: VariableMap, options: BaseTargetOptions) {
     super();
 
+    const name = options.name;
     if (typeof name !== "string")
       throw new Error(`Target "${name}" is not string type`);
 
@@ -147,7 +156,9 @@ abstract class BaseTarget extends InterfaceTarget {
 
     const variables = ScopeHelper.createVariableValues(variableMap, SYSTEM_VARIABLE_GROUP) as SystemScope;
     this[TARGET_SCOPE] = variables;
-    this._name = name;
+    this._name = options.name;
+    this._sourceDir = options.sourceDir;
+    this._binaryDir = options.binaryDir;
     this._includes = [];
     this._definitions = [];
     this._compileOptions = [];
@@ -164,6 +175,14 @@ abstract class BaseTarget extends InterfaceTarget {
 
   public get name() { // DELME
     return this._name;
+  }
+
+  public get sourceDir() {
+    return this._sourceDir;
+  }
+
+  public get binaryDir() {
+    return this._binaryDir;
   }
 
   public get includes(): TargetIncludes {
@@ -199,8 +218,7 @@ abstract class BaseTarget extends InterfaceTarget {
   }
 
   public addIncludesImpl(publicOnly: boolean, ...includes: Array<TargetIncludes | AbsolutePath | string>): void {
-    const baseDir = this[TARGET_SCOPE].SOURCE_DIR;
-    for (const iter of normalizeIncludes(baseDir, ...includes))
+    for (const iter of normalizeIncludes(this._sourceDir, ...includes))
       this.addIncludeImpl(publicOnly, iter);
   }
 
@@ -352,6 +370,8 @@ abstract class BaseTarget extends InterfaceTarget {
   public toJSON(): object {
     return {
       name: this._name,
+      sourceDir: this._sourceDir,
+      binaryDir: this._binaryDir,
       preBuildList: this._preBuildList,
       postBuildList: this._postBuildList,
       includes: this._includes,
@@ -369,12 +389,12 @@ export class PostTarget extends BaseTarget {
   private _suffix?: string;
   private _positionIndependentCode?: boolean;
 
-  private constructor(variableMap: VariableMap, name: string) {
-    super(variableMap, name);
+  private constructor(variableMap: VariableMap, options: BaseTargetOptions) {
+    super(variableMap, options);
   }
 
-  public static create(variableMap: VariableMap, name: string) {
-    return Object.seal(new PostTarget(variableMap, name));
+  public static create(variableMap: VariableMap, options: BaseTargetOptions) {
+    return Object.seal(new PostTarget(variableMap, options));
   }
 
   public static ensureInstance(value: any) {
@@ -460,25 +480,37 @@ export class PostTarget extends BaseTarget {
   }
 };
 
+export interface TargetOptions extends BaseTargetOptions {
+  name: string;
+  sourceDir: AbsolutePath;
+  binaryDir: AbsolutePath;
+  prefix: string;
+  suffix: string;
+  positionIndependentCode: boolean;
+  includes: Array<TargetIncludes | AbsolutePath | string>;
+  linkOptions: Array<string | string[]>;
+};
+
 export class MainTarget extends BaseTarget {
-  protected _fileDir: AbsolutePath
-  protected _prefix = "";
+  protected _prefix: string;
+  protected _suffix: string;
   protected _outputName: string;
-  protected _suffix = "";
   protected _positionIndependentCode: boolean;
 
-  protected constructor(variableMap: VariableMap, name: string) {
-    super(variableMap, name);
+  protected constructor(variableMap: VariableMap, options: TargetOptions) {
+    super(variableMap, options);
 
-    this._fileDir = this[TARGET_SCOPE].BINARY_DIR;
-    this._outputName = name;
-    this._positionIndependentCode = this[TARGET_SCOPE].POSITION_INDEPENDENT_CODE;
+    this._prefix = options.prefix;
+    this._suffix = options.suffix;
+    this._outputName = options.name;
+    this._positionIndependentCode = options.positionIndependentCode;
 
-    this.addIncludesImpl(false, ...this[TARGET_SCOPE].INCLUDES);
+    this.addIncludesImpl(false, ...options.includes);
+    this.addLinkOptionsImpl(false, ...options.linkOptions);
   }
 
   public getFileDir() {
-    return this._fileDir;
+    return this._binaryDir;
   }
 
   public getFileName() {
@@ -486,7 +518,7 @@ export class MainTarget extends BaseTarget {
   }
 
   public getFile() {
-    return this._fileDir.join(this.getFileName());
+    return this._binaryDir.join(this.getFileName());
   }
 
   public get prefix() {
@@ -547,7 +579,6 @@ export class MainTarget extends BaseTarget {
   public toJSON(): object {
     const result: any = super.toJSON();
 
-    result.fileDir = this._fileDir.toJSON();
     result.prefix = this._prefix;
     result.outputName = this._outputName;
     result.suffix = this._suffix;
@@ -558,15 +589,12 @@ export class MainTarget extends BaseTarget {
 };
 
 export class ObjectLibrary extends MainTarget {
-  private constructor(variableMap: VariableMap, name: string) {
-    super(variableMap, name);
-    this._prefix = this[TARGET_SCOPE].OBJECT_LIBRARY_PREFIX;
-    this._suffix = this[TARGET_SCOPE].OBJECT_LIBRARY_SUFFIX;
-    this.addLinkOptionsImpl(false, ...this[TARGET_SCOPE].OBJECT_LINKER_FLAGS);
+  private constructor(variableMap: VariableMap, options: TargetOptions) {
+    super(variableMap, options);
   }
 
-  public static create(variableMap: VariableMap, name: string) {
-    return Object.seal(new ObjectLibrary(variableMap, name));
+  public static create(variableMap: VariableMap, options: TargetOptions) {
+    return Object.seal(new ObjectLibrary(variableMap, options));
   }
 
   public toJSON(): SimpleObject {
@@ -577,15 +605,12 @@ export class ObjectLibrary extends MainTarget {
 };
 
 export class StaticLibrary extends MainTarget {
-  private constructor(variableMap: VariableMap, name: string) {
-    super(variableMap, name);
-    this._prefix = this[TARGET_SCOPE].STATIC_LIBRARY_PREFIX;
-    this._suffix = this[TARGET_SCOPE].STATIC_LIBRARY_SUFFIX;
-    this.addLinkOptionsImpl(false, ...this[TARGET_SCOPE].STATIC_LINKER_FLAGS);
+  private constructor(variableMap: VariableMap, options: TargetOptions) {
+    super(variableMap, options);
   }
 
-  public static create(variableMap: VariableMap, name: string) {
-    return Object.seal(new StaticLibrary(variableMap, name));
+  public static create(variableMap: VariableMap, options: TargetOptions) {
+    return Object.seal(new StaticLibrary(variableMap, options));
   }
 
   public toJSON(): SimpleObject {
@@ -596,15 +621,12 @@ export class StaticLibrary extends MainTarget {
 };
 
 export class SharedLibrary extends MainTarget {
-  private constructor(variableMap: VariableMap, name: string) {
-    super(variableMap, name);
-    this._prefix = this[TARGET_SCOPE].SHARED_LIBRARY_PREFIX;
-    this._suffix = this[TARGET_SCOPE].SHARED_LIBRARY_SUFFIX;
-    this.addLinkOptionsImpl(false, ...this[TARGET_SCOPE].SHARED_LINKER_FLAGS);
+  private constructor(variableMap: VariableMap, options: TargetOptions) {
+    super(variableMap, options);
   }
 
-  public static create(variableMap: VariableMap, name: string) {
-    return Object.seal(new SharedLibrary(variableMap, name));
+  public static create(variableMap: VariableMap, options: TargetOptions) {
+    return Object.seal(new SharedLibrary(variableMap, options));
   }
 
   public toJSON(): SimpleObject {
@@ -615,15 +637,12 @@ export class SharedLibrary extends MainTarget {
 }
 
 export class Executable extends MainTarget {
-  private constructor(variableMap: VariableMap, name: string) {
-    super(variableMap, name);
-    this._prefix = "";
-    this._suffix = this[TARGET_SCOPE].EXECUTABLE_SUFFIX;
-    this.addLinkOptionsImpl(false, ...this[TARGET_SCOPE].EXE_LINKER_FLAGS);
+  private constructor(variableMap: VariableMap, options: TargetOptions) {
+    super(variableMap, options);
   }
 
-  public static create(variableMap: VariableMap, name: string) {
-    return Object.seal(new Executable(variableMap, name));
+  public static create(variableMap: VariableMap, options: TargetOptions) {
+    return Object.seal(new Executable(variableMap, options));
   }
 
   public toJSON(): SimpleObject {

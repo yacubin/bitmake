@@ -434,10 +434,10 @@ export class ProjectContext {
       for (const it of target.getSourceFileList()) {
         if (!it.LANGUAGE)
           continue;
-        const rfile1 = target.TARGET_SCOPE.BINARY_DIR.relative(it.FILE);
-        const rfile2 =  target.TARGET_SCOPE.SOURCE_DIR.relative(it.FILE);
+        const rfile1 = target.binaryDir.relative(it.FILE);
+        const rfile2 =  target.sourceDir.relative(it.FILE);
         const rfile = (rfile2.length < rfile1.length ? rfile2 : rfile1).replace("../", "__/");
-        const ofile =  target.TARGET_SCOPE.BINARY_DIR.join("MakeFiles", target.targetName + ".dir",  rfile + ".obj");
+        const ofile =  target.binaryDir.join("MakeFiles", target.targetName + ".dir",  rfile + ".obj");
         objectFiles.set(it, ofile);
       }
     }
@@ -463,8 +463,8 @@ export class ProjectContext {
 
         fs.mkdirSync(o.dirname().toString(), { recursive: true });
   
-        const relativeObject = target.TARGET_SCOPE.BINARY_DIR.relative(o);
-        const relativeBinaryDir = scope.PROJECT_BINARY_DIR.relative(target.TARGET_SCOPE.BINARY_DIR);
+        const relativeObject = target.binaryDir.relative(o);
+        const relativeBinaryDir = scope.PROJECT_BINARY_DIR.relative(target.binaryDir);
         const msg = "\x1b[32m" + `Building ${s.LANGUAGE} object ${relativeBinaryDir}/${relativeObject}` + "\x1b[0m";
   
         const definitions = [
@@ -483,7 +483,7 @@ export class ProjectContext {
         args.push("-c", s.FILE.toString());
   
         const command = (target.TARGET_SCOPE as any)[s.LANGUAGE + "_COMPILER"].toString();
-        const output = AbsolutePath.create(target.TARGET_SCOPE.BINARY_DIR.join(relativeObject));
+        const output = AbsolutePath.create(target.binaryDir.join(relativeObject));
         depends.push(output.toString());
 
         const worker = new GoalWorkerImpl;
@@ -491,14 +491,14 @@ export class ProjectContext {
         worker.output = output.toString();
         worker.addDependency(...headers);
         worker.addDependency(s.FILE.toString());
-        worker.addExec(command, args, target.TARGET_SCOPE.BINARY_DIR.toString());
+        worker.addExec(command, args, target.binaryDir.toPath());
         goalList.add(worker);
       }
 
       const generalGoal = new GoalWorkerImpl;
       for (const params of target.preBuildList) {
         const execStruct = resolveTargetCommand(this, params);
-        generalGoal.addExec(execStruct.command, execStruct.args, target.TARGET_SCOPE.BINARY_DIR.toString());
+        generalGoal.addExec(execStruct.command, execStruct.args, target.binaryDir.toString());
       }
 
       const linkOptions = this[TARGETS].allLinkOptionsOf(target);
@@ -564,7 +564,7 @@ export class ProjectContext {
 
       for (const params of target.postBuildList) {
         const execStruct = resolveTargetCommand(this, params);
-        generalGoal.addExec(execStruct.command, execStruct.args, target.TARGET_SCOPE.BINARY_DIR.toString());
+        generalGoal.addExec(execStruct.command, execStruct.args, target.binaryDir.toString());
       }
       
       goalList.add(generalGoal);

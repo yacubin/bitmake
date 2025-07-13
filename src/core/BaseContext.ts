@@ -16,8 +16,9 @@ import { AbsolutePath } from "@/core/AbsolutePath";
 import { importModule } from "@/utils/Module";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, MainTarget, PostTarget } from "@/core/Target";
 import { CUSTOM_VARIABLE_GROUP } from "@/Constants";
-import { PostCustomScript } from "@/core/CustomScript";
+import { CustomScript, PostCustomScript } from "@/core/CustomScript";
 import { InstallEntity } from "@/core/InstallEntity";
+import { ScriptCollection } from "@/core/ScriptCollection";
 
 const logger = Logger.create(import.meta.url);
 
@@ -60,7 +61,8 @@ export abstract class GeneralContext implements IGeneralContext {
 
 export abstract class MakeContext extends GeneralContext {
   private _targets = new Map<string, MainTarget>();
-  private _indirectTargets = new Map<string, PostTarget>();
+  private _postTargets = new Map<string, PostTarget>();
+  private _scriptCollection = ScriptCollection.create();
   private _postScripts = new Map<string, PostCustomScript>();
   private _installList = new Array<InstallEntity>();
 
@@ -72,8 +74,12 @@ export abstract class MakeContext extends GeneralContext {
     return this._targets;
   }
 
-  public get indirectTargets() {
-    return this._indirectTargets;
+  public get postTargets() {
+    return this._postTargets;
+  }
+
+  public get scriptCollection() {
+    return this._scriptCollection;
   }
 
   public get postScripts() {
@@ -95,10 +101,10 @@ export abstract class MakeContext extends GeneralContext {
   }
 
   public target(name: string): PostTarget {
-    let target = this._indirectTargets.get(name);
+    let target = this._postTargets.get(name);
     if (!target) {
       target = PostTarget.create(this._scope, name)
-      this._indirectTargets.set(name, target);
+      this._postTargets.set(name, target);
     }
     return target;
   }
@@ -146,6 +152,40 @@ export abstract class MakeContext extends GeneralContext {
       this._postScripts.set(name, script);
     }
     return script;
+  }
+
+  public addCustomScript(scriptModule: string, params: any): CustomScript {
+    const variableMap = ScopeHelper.cloneVariableMap(this._scope);
+    ScopeHelper.extendVariableMapByValues(variableMap, CUSTOM_VARIABLE_GROUP, params);
+    ScopeHelper.set(variableMap, "SCRIPT_MODULE", scriptModule);
+    
+    const sourceDir = ScopeHelper.get(variableMap, "SOURCE_DIR") as AbsolutePath;
+    const binaryDir = ScopeHelper.get(variableMap, "BINARY_DIR") as AbsolutePath;
+
+    let inputFile = ScopeHelper.get(variableMap, "SCRIPT_INPUT");
+    if (inputFile)
+      inputFile = sourceDir.resolve(inputFile);
+
+    let outputFile = ScopeHelper.get(variableMap, "SCRIPT_OUTPUT");
+    if (!outputFile)
+      throw new Error("CustomScript parameters required output entity");
+
+    outputFile = sourceDir.resolve(outputFile);
+
+    const options: CustomScript.Options = {
+      variableMap,
+      name: ScopeHelper.get(variableMap, "SCRIPT_NAME"),
+      scriptModule,
+      output: outputFile,
+      input: inputFile,
+      sourceDir,
+      binaryDir,
+    };
+
+    const target = CustomScript.create(options);
+    this._scriptCollection.add(target, options.name);
+
+    return target;
   }
 
   public install(value: any, params: any): void {

@@ -58,6 +58,12 @@ export class AbsolutePath {
     return url.fileURLToPath(this[PATH]);
   }
 
+  public toPath() {
+    if (this[PATH].startsWith(FILE_SCHEME))
+      return url.fileURLToPath(this[PATH]);
+    throw new Error(`URL ${this[PATH]} can't convert to path`);
+  }
+
   public valueOf() {
     return url.fileURLToPath(this[PATH]);
   }

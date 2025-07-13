@@ -25,7 +25,6 @@ import { SystemScope } from "@/core/SystemScope";
 import { importModule, requireSync } from "@/utils/Module";
 import { Logger } from "@/logger";
 import { InstallEntity } from "@/core/InstallEntity";
-import { CustomScript } from "@/core/CustomScript";
 import { ScriptContext } from "@/core/ScriptContext";
 import { ScopeHelper, VariableMap } from "./Scope";
 import { TargetFile } from "@/core/TargetFile";
@@ -240,43 +239,6 @@ export class ProjectContext {
     return this[CACHE];
   }
 
-  public addCustomScript(variableMap: VariableMap): CustomScript {
-    const script = ScopeHelper.get(variableMap, "SCRIPT_MODULE");
-    const sourceDir = ScopeHelper.get(variableMap, "SOURCE_DIR") as AbsolutePath;
-    let scriptObj: Function | AbsolutePath | undefined;
-    if (typeof script === "string")
-      scriptObj = this.findScriptFunction(script);
-    if (!scriptObj)
-      scriptObj = sourceDir.resolve(script);
-
-    let inputFile = ScopeHelper.get(variableMap, "SCRIPT_INPUT");
-    if (inputFile)
-      inputFile = sourceDir.resolve(inputFile);
-
-    let outputFile = ScopeHelper.get(variableMap, "SCRIPT_OUTPUT");
-    if (!outputFile)
-      throw new Error("CustomScript parameters required output entity");
-
-    outputFile = sourceDir.resolve(outputFile);
-
-    const options: CustomScript.Options = {
-      variableMap,
-      name: ScopeHelper.get(variableMap, "SCRIPT_NAME"),
-      script: scriptObj,
-      output: outputFile,
-      input: inputFile,
-      workDir: ScopeHelper.get(variableMap, "BINARY_DIR"),
-    };
-
-    const target = CustomScript.create(options);
-    if (options.name)
-      this[CUSTOM_SCRIPTS].set(options.name, target);
-    else
-      this[CUSTOM_SCRIPTS].add(target);
-
-    return target;
-  }
-
   public registerVariableMap(name: string, variableMap: VariableMap) {
     if (this._processedVariableMap[name])
       throw new Error(`SystemVariables exists for ${name}`);
@@ -417,11 +379,13 @@ export class ProjectContext {
     for (const ctx of contextList) {
       for (const [name, target] of ctx.targets)
         this[TARGETS].set(name, target);
+      for (const iter of ctx.scriptCollection.ENTRIES)
+        this[CUSTOM_SCRIPTS].add(iter, iter.NAME);
       this._installList.push(...ctx.installList);
     }
 
     for (const ctx of contextList) {
-      for (const [name, postTarget] of ctx.indirectTargets) {
+      for (const [name, postTarget] of ctx.postTargets) {
         const target = this[TARGETS].get(name);
         if (!target)
           throw new Error(`There is no Target named ${name}`);
@@ -440,16 +404,27 @@ export class ProjectContext {
     const goalList = GoalCollection.create();
     for (const script of this[CUSTOM_SCRIPTS].ENTRIES) {   
       const depends = [];
-      if (script.SCRIPT instanceof AbsolutePath)
-        depends.push(script.SCRIPT.toString());
-      if (script.INPUT)
-        depends.push(script.INPUT.toString());
-      const msg = "\x1b[36m" + "Generating " + script.workDir.relative(script.OUTPUT) + "\x1b[0m";
+
+      let scriptObj: AbsolutePath | Function;
+      if (typeof script.scriptModule === "string") {
+        const func = this.findScriptFunction(script.scriptModule);
+        scriptObj = func ? func : script.sourceDir.resolve(script.scriptModule);
+      }
+      else {
+        depends.push(script.scriptModule.toPath());
+        scriptObj = script.scriptModule;
+      }
+
+      if (script.INPUT) {
+        depends.push(script.INPUT.toPath());
+      }
+
+      const msg = "\x1b[36m" + "Generating " + script.binaryDir.relative(script.OUTPUT) + "\x1b[0m";
       const worker = new GoalWorkerImpl(script.NAME);
       worker.message = msg;
       worker.output = script.OUTPUT.toString();
       worker.addDependency(...depends);
-      worker.addScript(this, script.variableMap, script.SCRIPT);
+      worker.addScript(this, script.variableMap, scriptObj);
       goalList.add(worker);
     }
 

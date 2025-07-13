@@ -15,7 +15,6 @@ import { JsonRpcRequestSync } from "@/server/JsonRpcRequestSync";
 import { MAINNODE_LOADJSON } from "@/server/RemoteMethods";
 import { MAINNODE_EXECUTESCRIPT } from "@/server/RemoteMethods";
 import { MAINNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
-import { MAINNODE_ADDCUSTOMSCRIPT } from "@/server/RemoteMethods";
 import { Logger } from "@/logger";
 import { ScopeHelper, VariableMap, VariantMap } from "@/core/Scope";
 import { CUSTOM_VARIABLE_GROUP } from "@/Constants";
@@ -55,13 +54,5 @@ export class RemoteMakeContext extends MakeContext implements IMakeContext {
     logger.debug("RemoteMakeContext.addSubdirectory(", sourceDir, binaryDir, ")");
     const newVariableMap = createVariableMapForDirectory(this._scope, sourceDir, binaryDir);
     this._transport.requestSync(MAINNODE_STARTMAKESCRIPT, ScopeHelper.toJSON(newVariableMap));
-  }
-
-  public addCustomScript(script: any, params: any): CustomScript {
-    logger.debug("RemoteMakeContext.addCustomScript(", script, params, ")");
-    const newVariableMap = ScopeHelper.cloneVariableMap(this._scope);
-    ScopeHelper.extendVariableMapByValues(newVariableMap, CUSTOM_VARIABLE_GROUP, params);
-    ScopeHelper.set(newVariableMap, "SCRIPT_MODULE", script);
-    return this._transport.requestSync(MAINNODE_ADDCUSTOMSCRIPT, ScopeHelper.toJSON(newVariableMap));
   }
 };

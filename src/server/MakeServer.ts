@@ -20,10 +20,6 @@ import { MAINNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
 import { MAINNODE_LOADJSON } from "@/server/RemoteMethods";
 import { MAINNODE_EXECUTESCRIPT } from "@/server/RemoteMethods";
 import { WORKERNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
-import { MAINNODE_ADDCUSTOMSCRIPT } from "@/server/RemoteMethods";
-import { MAINNODE_ADDSTATICLIBRARY } from "@/server/RemoteMethods";
-import { MAINNODE_ADDEXECUTABLE } from "@/server/RemoteMethods";
-import { MAINNODE_TARGETSOURCES } from "@/server/RemoteMethods";
 import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
@@ -62,7 +58,6 @@ export class MakeServer {
     this._jsonRpcServer.registerCallback(MAINNODE_EXECUTESCRIPT, params => this.executeScript(params));
     this._jsonRpcServer.registerCallback(MAINNODE_LOADJSON, params => this.loadJSON(params));
     this._jsonRpcServer.registerCallback(MAINNODE_STARTMAKESCRIPT, params => this.startMakeScript(params));
-    this._jsonRpcServer.registerCallback(MAINNODE_ADDCUSTOMSCRIPT, params => this.addCustomScript(params));
   }
 
   public get rootVariableMap() {
@@ -112,12 +107,6 @@ export class MakeServer {
 
     const mk = ScriptContext.create(this._project, variableMap);
     module.default(mk);
-  }
-
-  private addCustomScript(params: any) {
-    logger.debug("MakeServer.addCustomScript");
-    const variableMap = ScopeHelper.fromJSON(params);
-    return this._project.addCustomScript(variableMap);
   }
 
   public async runMakeScript(variableMap: VariableMap): Promise<boolean> {

@@ -10,7 +10,6 @@
 import { IMakeContext, InterfaceTarget } from "@/core/MakeInterfaces";
 import { MakeContext } from "@/core/BaseContext";
 import { fileExistsSync } from "@/utils/FileSystem";
-import { CustomScript } from "@/core/CustomScript";
 import { ProjectContext } from "@/core/ProjectContext";
 import { ScopeHelper, VariantMap, VariableMap } from "@/core/Scope";
 import { requireSync } from "@/utils/Module";
@@ -46,12 +45,5 @@ export class LocalMakeContext extends MakeContext implements IMakeContext {
 
   public addSubdirectory(sourceDir: string | AbsolutePath, binaryDir?: string | AbsolutePath): void {
     this._project.addSubdirectory(this._scope, sourceDir, binaryDir);
-  }
-
-  public addCustomScript(script: string, params: any): CustomScript {
-    const newVariableMap = ScopeHelper.cloneVariableMap(this._scope);
-    ScopeHelper.extendVariableMapByValues(newVariableMap, CUSTOM_VARIABLE_GROUP, params);
-    ScopeHelper.set(newVariableMap, "SCRIPT_MODULE", script);
-    return this._project.addCustomScript(newVariableMap);
   }
 };

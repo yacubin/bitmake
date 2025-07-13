@@ -53,27 +53,27 @@ export class PostCustomScript extends InterfaceScript {
 
 const SCOPE        = Symbol("SCOPE");
 const NAME         = Symbol("NAME");
-const SCRIPT       = Symbol("SCRIPT");
 const INPUT        = Symbol("INPUT");
 const OUTPUT       = Symbol("OUTPUT");
-const WORK_DIR     = Symbol("WORK_DIR");
 
 export class CustomScript extends InterfaceScript {
   private [SCOPE]: VariableMap;
   private [NAME]: string;
-  private [SCRIPT]: AbsolutePath | Function;
+  private _scriptModule: string | AbsolutePath;
   private [INPUT]: AbsolutePath | undefined;
   private [OUTPUT]: AbsolutePath;
-  private [WORK_DIR]: AbsolutePath;
+  private _sourceDir: AbsolutePath;
+  private _binaryDir: AbsolutePath;
 
   private constructor(options: CustomScript.Options) {
     super();
     this[SCOPE] = options.variableMap;
     this[NAME] = options.name || "";
     this[INPUT] = options.input;
-    this[SCRIPT] = options.script;
+    this._scriptModule = options.scriptModule;
     this[OUTPUT] = options.output;
-    this[WORK_DIR] = options.workDir;
+    this._sourceDir = options.sourceDir;
+    this._binaryDir = options.binaryDir;
   }
 
   public static create(options: CustomScript.Options): CustomScript {
@@ -88,8 +88,8 @@ export class CustomScript extends InterfaceScript {
     return this[NAME];
   }
 
-  public get SCRIPT() {
-    return this[SCRIPT];
+  public get scriptModule() {
+    return this._scriptModule;
   }
 
   public get INPUT(): AbsolutePath | undefined {
@@ -100,8 +100,12 @@ export class CustomScript extends InterfaceScript {
     return this[OUTPUT];
   }
 
-  public get workDir(): AbsolutePath {
-    return this[WORK_DIR];
+  public get sourceDir(): AbsolutePath {
+    return this._sourceDir;
+  }
+
+  public get binaryDir(): AbsolutePath {
+    return this._binaryDir;
   }
 
   public get variableMap() {
@@ -116,9 +120,11 @@ export class CustomScript extends InterfaceScript {
     return {
       variableMap: this[SCOPE],
       NAME: this[NAME],
-      SCRIPT: this.SCRIPT,
+      scriptModule: this._scriptModule,
       INPUT: this.INPUT,
       OUTPUT: this.OUTPUT,
+      sourceDir: this._sourceDir,
+      binaryDir: this._binaryDir,
     }
   }
 };
@@ -128,10 +134,11 @@ export namespace CustomScript {
 export interface Options {
   variableMap: VariableMap,
   name?: string,
-  script: AbsolutePath | Function,
+  scriptModule: string | AbsolutePath,
   input?: AbsolutePath,
   output: AbsolutePath,
-  workDir: AbsolutePath,
+  sourceDir: AbsolutePath,
+  binaryDir: AbsolutePath,
 };
 
 } // namespace CustomScript

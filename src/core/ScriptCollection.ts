@@ -33,16 +33,12 @@ export class ScriptCollection {
     return this[MAP][name];
   }
 
-  public set(name: string, target: CustomScript) {
-    if (!name)
-      throw new Error("Not supported empty name for CustomScript");
-    if (this[MAP][name])
-      throw new Error(`Script "${name}" exists`);
-    this[MAP][name] = target;
-    this[ENTRIES].push(target);
-  }
-
-  public add(target: CustomScript) {
+  public add(target: CustomScript, name?: string) {
+    if (name) {
+      if (this[MAP][name])
+        throw new Error(`Script "${name}" exists`);
+      this[MAP][name] = target;
+    }
     this[ENTRIES].push(target);
   }
   

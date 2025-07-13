@@ -24,6 +24,7 @@ import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, PostTarget, Ta
 import { SystemScope } from "@/core/SystemScope";
 import { importModule, requireSync } from "@/utils/Module";
 import { Logger } from "@/logger";
+import { TargetLink } from "@/core/TargetLink";
 import { InstallEntity } from "@/core/InstallEntity";
 import { ScriptContext } from "@/core/ScriptContext";
 import { ScopeHelper, VariableMap } from "./Scope";
@@ -589,7 +590,7 @@ export class ProjectContext {
         const rfile = (iter.BASE_DIR as any).relative(iter.VALUE);
         dest = iter.DESTINATION.join(rfile);
       }
-      else if (iter.VALUE instanceof PostTarget) {
+      else if (iter.VALUE instanceof TargetLink) {
         const targetName = iter.VALUE.targetName;
         const target = this[TARGETS].get(targetName);
         src = target.getFile().toString();

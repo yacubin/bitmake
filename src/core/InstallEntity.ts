@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { PostTarget } from "@/core/Target";
+import { TargetLink } from "@/core/TargetLink";
 import { AbsolutePath } from "@/core/AbsolutePath";
 import { SimpleObject } from "@/core/SimpleObject";
 import { SystemScope } from "@/core/SystemScope";
@@ -17,11 +17,11 @@ const DESTINATION = Symbol("DESTINATION");
 const BASE_DIR    = Symbol("BASE_DIR");
 
 export class InstallEntity {
-  private [VALUE]: AbsolutePath | PostTarget;
+  private [VALUE]: AbsolutePath | TargetLink;
   private [DESTINATION]: AbsolutePath;
   private [BASE_DIR]: AbsolutePath | null;
 
-  private constructor(scope: SystemScope, value: string | AbsolutePath | PostTarget, params: string | any) {
+  private constructor(scope: SystemScope, value: string | AbsolutePath | TargetLink, params: string | any) {
     let destination: string | AbsolutePath | undefined;
     let baseDir;
     if (typeof params === "string")
@@ -42,7 +42,7 @@ export class InstallEntity {
       value = AbsolutePath.create(value);
       baseDir = baseDir || value.dirname();
     }
-    else if (!(value instanceof PostTarget)) {
+    else if (!(value instanceof TargetLink)) {
       throw new Error(`Not supportet value of ${value}`);
     }
   
@@ -51,7 +51,7 @@ export class InstallEntity {
     this[BASE_DIR] = baseDir ? AbsolutePath.create(baseDir.toString()) : null;
   }
   
-  public static create(scope: any, value: string | AbsolutePath | PostTarget, params: string | any) {
+  public static create(scope: any, value: string | AbsolutePath | TargetLink, params: string | any) {
     return Object.seal(new InstallEntity(scope, value, params));
   }
 

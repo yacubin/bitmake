@@ -10,8 +10,6 @@
 import { TargetFile } from "@/core/TargetFile";
 import { TargetObjects } from "@/core/TargetObjects";
 import { TargetIncludes } from "@/core/TargetIncludes";
-import { InterfaceScript } from "@/core/InterfaceScript";
-import { CustomScript } from "@/core/CustomScript";
 import { VariantMap } from "@/core/Scope";
 import { AbsolutePath } from "@/core/AbsolutePath";
 import { SourceFileList } from "@/core/SourceFileList";
@@ -45,6 +43,10 @@ export abstract class InterfaceTarget {
   abstract addPublicLinkOptions(...options: Array<string|string[]>): void;
 };
 
+export abstract class InterfaceScript {
+  abstract mergeVariables(variables: VariantMap): void;
+};
+
 export interface IGeneralContext {
   getProperty(name: string): any;
   setProperty(name: string, value: any): boolean;
@@ -60,13 +62,13 @@ export interface IMakeContext extends IGeneralContext {
   addCacheVariables(params: string | VariantMap): void;
   addIncludeDirectories(...dirs: any[]): void;
   addSubdirectory(sourceDir: string | AbsolutePath, binaryDir?: string | AbsolutePath): void;
-  addCustomScript(script: string, params: any): CustomScript;
-  target(name: string): InterfaceTarget;
   script(name: string): InterfaceScript;
-  install(value: any, params: any): void;
+  addCustomScript(script: string, params: any): InterfaceScript;
+  target(name: string): InterfaceTarget;
   addObjectLibrary(name: string, ...sources: any[]): InterfaceTarget;
   addStaticLibrary(name: string, ...sources: any[]): InterfaceTarget;
   addSharedLibrary(name: string, ...sources: any[]): InterfaceTarget;
   addExecutable(name: string, ...sources: any[]): InterfaceTarget;
   executeScript(script: any, params: any): void;
+  install(value: any, params: any): void;
 };

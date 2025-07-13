@@ -16,6 +16,7 @@ import { AbsolutePath } from "@/core/AbsolutePath";
 import { importModule } from "@/utils/Module";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, MainTarget, PostTarget } from "@/core/Target";
 import { CUSTOM_VARIABLE_GROUP } from "@/Constants";
+import { PostCustomScript } from "@/core/CustomScript";
 import { InstallEntity } from "@/core/InstallEntity";
 
 const logger = Logger.create(import.meta.url);
@@ -60,6 +61,7 @@ export abstract class GeneralContext implements IGeneralContext {
 export abstract class MakeContext extends GeneralContext {
   private _targets = new Map<string, MainTarget>();
   private _indirectTargets = new Map<string, PostTarget>();
+  private _postScripts = new Map<string, PostCustomScript>();
   private _installList = new Array<InstallEntity>();
 
   protected constructor(scope: VariableMap) {
@@ -72,6 +74,10 @@ export abstract class MakeContext extends GeneralContext {
 
   public get indirectTargets() {
     return this._indirectTargets;
+  }
+
+  public get postScripts() {
+    return this._postScripts;
   }
 
   public get installList() {
@@ -131,6 +137,15 @@ export abstract class MakeContext extends GeneralContext {
     this._targets.set(name, target);
     target.addSources(...sources);
     return target;
+  }
+
+  public script(name: string): PostCustomScript {
+    let script = this._postScripts.get(name);
+    if (!script) {
+      script = PostCustomScript.create(name)
+      this._postScripts.set(name, script);
+    }
+    return script;
   }
 
   public install(value: any, params: any): void {

@@ -7,9 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { IMakeContext, InterfaceTarget } from "@/core/MakeInterfaces";
-import { InterfaceScript } from "@/core/InterfaceScript";
-import { CustomScript } from "@/core/CustomScript";
+import { IMakeContext, InterfaceTarget, InterfaceScript } from "@/core/MakeInterfaces";
 import { VariantMap, VariableMap } from "@/core/Scope";
 import { GeneralContext, createContext } from "@/core/BaseContext";
 import { UserTargetStruct } from "@/core/UserTargetStruct";
@@ -47,7 +45,7 @@ export class UserMakeContext extends GeneralContext implements IMakeContext {
     this[IMPL].addSubdirectory(sourceDir, binaryDir);
   }
   
-  public addCustomScript(script: any, params: any): CustomScript {
+  public addCustomScript(script: any, params: any): InterfaceScript {
     return this[IMPL].addCustomScript(script, params);
   }
 

@@ -10,7 +10,6 @@
 import { IMakeContext, InterfaceTarget } from "@/core/MakeInterfaces";
 import { MakeContext } from "@/core/BaseContext";
 import { fileExistsSync } from "@/utils/FileSystem";
-import { InterfaceScript } from "@/core/InterfaceScript";
 import { CustomScript } from "@/core/CustomScript";
 import { ProjectContext } from "@/core/ProjectContext";
 import { ScopeHelper, VariantMap, VariableMap } from "@/core/Scope";
@@ -54,9 +53,5 @@ export class LocalMakeContext extends MakeContext implements IMakeContext {
     ScopeHelper.extendVariableMapByValues(newVariableMap, CUSTOM_VARIABLE_GROUP, params);
     ScopeHelper.set(newVariableMap, "SCRIPT_MODULE", script);
     return this._project.addCustomScript(newVariableMap);
-  }
-
-  public script(name: string): InterfaceScript {
-    return this._project.getInterfaceScript(this._scope, name);
   }
 };

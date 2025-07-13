@@ -18,7 +18,6 @@ import { fileExists, fileExistsSync } from "@/utils/FileSystem";
 import { TargetCollection } from "@/core/TargetCollection";
 import { ScriptCollection } from "@/core/ScriptCollection";
 import { GoalCollection } from "@/core/GoalCollection";
-import { InterfaceScript } from "@/core/InterfaceScript";
 import { UserMakeContext } from "@/core/UserMakeContext";
 import { LocalMakeContext } from "@/core/LocalMakeContext";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, PostTarget, TargetCommand } from "@/core/Target";
@@ -44,10 +43,6 @@ const BUILTIN_SCRIPTS = Symbol("BUILTIN_SCRIPTS");
 
 type SubdirectoryAlias = {
   [name: string]: AbsolutePath | null;
-};
-
-type InterfaceScripts = {
-  [name: string]: InterfaceScript;
 };
 
 type CacheVariableDescriptor = {
@@ -216,7 +211,6 @@ export class ProjectContext {
   private [TARGETS]: TargetCollection;
   private [CUSTOM_SCRIPTS]: ScriptCollection;
   private [CACHE]: CacheVariableDescriptors;
-  private _interfaceScripts: InterfaceScripts;
   private _installList: InstallEntity[];
   private _processedVariableMap: any;
   private [BUILTIN_SCRIPTS]: BuildinScripts;
@@ -227,7 +221,6 @@ export class ProjectContext {
     this[TARGETS] = TargetCollection.create();
     this[CUSTOM_SCRIPTS] = ScriptCollection.create();
     this[CACHE] = {};
-    this._interfaceScripts = {};
     this._installList = [];
     this._processedVariableMap = {};
     this._subdirAlias = {};
@@ -247,33 +240,24 @@ export class ProjectContext {
     return this[CACHE];
   }
 
-  public getInterfaceScript(variableMap: VariableMap, name: string): InterfaceScript {
-    let script = this._interfaceScripts[name];
-    if (!script) {
-      script = InterfaceScript.create(name);
-      this._interfaceScripts[name] = script;
-    }
-    return script;
-  }
-
   public addCustomScript(variableMap: VariableMap): CustomScript {
     const script = ScopeHelper.get(variableMap, "SCRIPT_MODULE");
-    const sourceDir = ScopeHelper.get(variableMap, "SOURCE_DIR");
+    const sourceDir = ScopeHelper.get(variableMap, "SOURCE_DIR") as AbsolutePath;
     let scriptObj: Function | AbsolutePath | undefined;
     if (typeof script === "string")
       scriptObj = this.findScriptFunction(script);
     if (!scriptObj)
-      scriptObj = sourceDir.resolve(script) as AbsolutePath;
+      scriptObj = sourceDir.resolve(script);
 
     let inputFile = ScopeHelper.get(variableMap, "SCRIPT_INPUT");
     if (inputFile)
-      inputFile = sourceDir.resolve(inputFile) as AbsolutePath;
+      inputFile = sourceDir.resolve(inputFile);
 
     let outputFile = ScopeHelper.get(variableMap, "SCRIPT_OUTPUT");
     if (!outputFile)
       throw new Error("CustomScript parameters required output entity");
 
-    outputFile = sourceDir.resolve(outputFile) as AbsolutePath;
+    outputFile = sourceDir.resolve(outputFile);
 
     const options: CustomScript.Options = {
       variableMap,
@@ -437,19 +421,22 @@ export class ProjectContext {
     }
 
     for (const ctx of contextList) {
-      for (const [name, target] of ctx.indirectTargets)
-        this[TARGETS].get(name).postUpdate(target);
+      for (const [name, postTarget] of ctx.indirectTargets) {
+        const target = this[TARGETS].get(name);
+        if (!target)
+          throw new Error(`There is no Target named ${name}`);
+        target.postUpdate(postTarget);
+      }
+      for (const [name, postScript] of ctx.postScripts) {
+        const script = this[CUSTOM_SCRIPTS].get(name);
+        if (!script)
+          throw new Error(`There is no CustomScript named ${name}`);
+        script.postUpdate(postScript);
+      }
     }
   }
 
   public createGoals(scope: SystemScope): GoalCollection {
-    for (const iter of Object.values(this._interfaceScripts)) {
-      const script = this[CUSTOM_SCRIPTS].get(iter.NAME);
-      if (!script)
-        throw new Error(`There is no CustomScript named ${iter.NAME}`);
-      script.mergeVariables(iter.variables);
-    }
-  
     const goalList = GoalCollection.create();
     for (const script of this[CUSTOM_SCRIPTS].ENTRIES) {   
       const depends = [];
@@ -667,7 +654,6 @@ export class ProjectContext {
       TARGETS: this.TARGETS,
       CUSTOM_SCRIPTS: this[CUSTOM_SCRIPTS],
       CACHE: this.CACHE,
-      interfaceScripts: this._interfaceScripts,
       installList: this._installList,
       processedVariableMap: this._processedVariableMap,
       subdirAlias: this._subdirAlias,

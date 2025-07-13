@@ -9,7 +9,6 @@
 
 import { IMakeContext } from "@/core/MakeInterfaces";
 import { MakeContext } from "@/core/BaseContext";
-import { InterfaceScript } from "@/core/InterfaceScript";
 import { CustomScript } from "@/core/CustomScript";
 import { createVariableMapForDirectory } from "@/core/BaseContext";
 import { JsonRpcRequestSync } from "@/server/JsonRpcRequestSync";
@@ -64,13 +63,5 @@ export class RemoteMakeContext extends MakeContext implements IMakeContext {
     ScopeHelper.extendVariableMapByValues(newVariableMap, CUSTOM_VARIABLE_GROUP, params);
     ScopeHelper.set(newVariableMap, "SCRIPT_MODULE", script);
     return this._transport.requestSync(MAINNODE_ADDCUSTOMSCRIPT, ScopeHelper.toJSON(newVariableMap));
-  }
-
-  public script(name: string): InterfaceScript {
-    throw new Error("Not Implemented");
-  }
-  
-  public install(value: any, params: any): void {
-    throw new Error("Not Implemented");
   }
 };

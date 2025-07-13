@@ -139,14 +139,14 @@ export class MakeServer {
     const sourceDir = ScopeHelper.get(this._rootVariableMap, "PROJECT_SOURCE_DIR");
     const binaryDir = ScopeHelper.get(this._rootVariableMap, "PROJECT_BINARY_DIR");
 
-    const variableMap = createVariableMapForDirectory(this._rootVariableMap, sourceDir, binaryDir);
+    /*const variableMap = createVariableMapForDirectory(this._rootVariableMap, sourceDir, binaryDir);
     if (!await this.runMakeScript(variableMap))
-      throw Error("Can't prepear ScriptFile");
+      throw Error("Can't prepear ScriptFile");*/
 
     // this.onConfigureEnd();
 
-    /*this._project.addSubdirectory(this._rootVariableMap, sourceDir, binaryDir);
-    this._project.doSubdirectory().then(() => this.onConfigureEnd());*/
+    this._project.addSubdirectory(this._rootVariableMap, sourceDir, binaryDir);
+    this._project.doSubdirectory().then(() => this.onConfigureEnd());
   }
 
   private async onConfigureEnd() {

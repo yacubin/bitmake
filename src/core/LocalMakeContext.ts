@@ -11,7 +11,6 @@ import { IMakeContext, InterfaceTarget } from "@/core/MakeInterfaces";
 import { MakeContext } from "@/core/BaseContext";
 import { fileExistsSync } from "@/utils/FileSystem";
 import { InterfaceScript } from "@/core/InterfaceScript";
-import { InstallEntity } from "@/core/InstallEntity";
 import { CustomScript } from "@/core/CustomScript";
 import { ProjectContext } from "@/core/ProjectContext";
 import { ScopeHelper, VariantMap, VariableMap } from "@/core/Scope";
@@ -59,14 +58,5 @@ export class LocalMakeContext extends MakeContext implements IMakeContext {
 
   public script(name: string): InterfaceScript {
     return this._project.getInterfaceScript(this._scope, name);
-  }
-
-  public install(value: any, params: any): void {
-    const scope = ScopeHelper.createVariableValues(this._scope);
-    for (const it of [ value ].flat()) {
-      const iter = (it instanceof InterfaceTarget) ? this.target(it.targetName) : it;
-      const entity = InstallEntity.create(scope, iter, params);
-      this._project.addInstallEntry(entity);
-    }
   }
 };

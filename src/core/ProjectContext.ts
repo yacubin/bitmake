@@ -40,7 +40,6 @@ const logger = Logger.create(import.meta.url);
 const TARGETS = Symbol("TARGETS");
 const CUSTOM_SCRIPTS = Symbol("CUSTOM_SCRIPTS");
 const CACHE = Symbol("CACHE");
-const INSTALL_LIST = Symbol("INSTALL_LIST");
 const BUILTIN_SCRIPTS = Symbol("BUILTIN_SCRIPTS");
 
 type SubdirectoryAlias = {
@@ -218,7 +217,7 @@ export class ProjectContext {
   private [CUSTOM_SCRIPTS]: ScriptCollection;
   private [CACHE]: CacheVariableDescriptors;
   private _interfaceScripts: InterfaceScripts;
-  private [INSTALL_LIST]: InstallEntity[];
+  private _installList: InstallEntity[];
   private _processedVariableMap: any;
   private [BUILTIN_SCRIPTS]: BuildinScripts;
   private _subdirAlias: SubdirectoryAlias;
@@ -229,7 +228,7 @@ export class ProjectContext {
     this[CUSTOM_SCRIPTS] = ScriptCollection.create();
     this[CACHE] = {};
     this._interfaceScripts = {};
-    this[INSTALL_LIST] = [];
+    this._installList = [];
     this._processedVariableMap = {};
     this._subdirAlias = {};
     this[BUILTIN_SCRIPTS] = BuildinScripts;
@@ -316,10 +315,6 @@ export class ProjectContext {
     if (this._subdirAlias.hasOwnProperty(srcStr))
       logger.warn(`Owerride "${srcStr}" subdirectory alias`);
     this._subdirAlias[srcStr] = destPath;
-  }
-
-  public addInstallEntry(entry: InstallEntity) {
-    return this[INSTALL_LIST].push(entry);
   }
 
   public addCacheVariables(variables: CacheVariableDescriptors) {
@@ -438,6 +433,7 @@ export class ProjectContext {
     for (const ctx of contextList) {
       for (const [name, target] of ctx.targets)
         this[TARGETS].set(name, target);
+      this._installList.push(...ctx.installList);
     }
 
     for (const ctx of contextList) {
@@ -622,7 +618,7 @@ export class ProjectContext {
     };
 
     const installPairs = new Array<InstallGoalParams>;
-    for (const iter of this[INSTALL_LIST]) {
+    for (const iter of this._installList) {
       let src: string, dest: any;
       if (iter.VALUE instanceof AbsolutePath) {
         if (scope.PREVENT_INSTALL_FILES)
@@ -672,7 +668,7 @@ export class ProjectContext {
       CUSTOM_SCRIPTS: this[CUSTOM_SCRIPTS],
       CACHE: this.CACHE,
       interfaceScripts: this._interfaceScripts,
-      INSTALL_LIST: this[INSTALL_LIST],
+      installList: this._installList,
       processedVariableMap: this._processedVariableMap,
       subdirAlias: this._subdirAlias,
     };

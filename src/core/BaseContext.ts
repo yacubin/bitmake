@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { IGeneralContext } from "@/core/MakeInterfaces";
+import { IGeneralContext, InterfaceTarget } from "@/core/MakeInterfaces";
 import { findProgramSync } from "@/core/FindProgram";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { Logger } from "@/logger";
@@ -16,6 +16,7 @@ import { AbsolutePath } from "@/core/AbsolutePath";
 import { importModule } from "@/utils/Module";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, MainTarget, PostTarget } from "@/core/Target";
 import { CUSTOM_VARIABLE_GROUP } from "@/Constants";
+import { InstallEntity } from "@/core/InstallEntity";
 
 const logger = Logger.create(import.meta.url);
 
@@ -59,6 +60,7 @@ export abstract class GeneralContext implements IGeneralContext {
 export abstract class MakeContext extends GeneralContext {
   private _targets = new Map<string, MainTarget>();
   private _indirectTargets = new Map<string, PostTarget>();
+  private _installList = new Array<InstallEntity>();
 
   protected constructor(scope: VariableMap) {
     super(scope);
@@ -70,6 +72,10 @@ export abstract class MakeContext extends GeneralContext {
 
   public get indirectTargets() {
     return this._indirectTargets;
+  }
+
+  public get installList() {
+    return this._installList;
   }
   
   public getCacheVariables(): any {
@@ -125,6 +131,15 @@ export abstract class MakeContext extends GeneralContext {
     this._targets.set(name, target);
     target.addSources(...sources);
     return target;
+  }
+
+  public install(value: any, params: any): void {
+    const scope = ScopeHelper.createVariableValues(this._scope);
+    for (const it of [ value ].flat()) {
+      const iter = (it instanceof InterfaceTarget) ? this.target(it.targetName) : it;
+      const entity = InstallEntity.create(scope, iter, params);
+      this._installList.push(entity);
+    }
   }
 };
 

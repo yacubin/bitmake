@@ -63,9 +63,6 @@ export class MakeServer {
     this._jsonRpcServer.registerCallback(MAINNODE_LOADJSON, params => this.loadJSON(params));
     this._jsonRpcServer.registerCallback(MAINNODE_STARTMAKESCRIPT, params => this.startMakeScript(params));
     this._jsonRpcServer.registerCallback(MAINNODE_ADDCUSTOMSCRIPT, params => this.addCustomScript(params));
-    this._jsonRpcServer.registerCallback(MAINNODE_ADDSTATICLIBRARY, params => this.addStaticLibrary(params));
-    this._jsonRpcServer.registerCallback(MAINNODE_ADDEXECUTABLE, params => this.addExecutable(params));
-    this._jsonRpcServer.registerCallback(MAINNODE_TARGETSOURCES, params => this.targetSources(params));
   }
 
   public get rootVariableMap() {
@@ -123,21 +120,6 @@ export class MakeServer {
     return this._project.addCustomScript(variableMap);
   }
 
-  private addStaticLibrary(params: any) {
-    logger.debug("MakeServer.addStaticLibrary(", params.name, ")");
-    throw new Error("Not Implemented");
-  }
-
-  private addExecutable(params: any) {
-    logger.debug("MakeServer.addExecutable(", params.name, ")");
-    throw new Error("Not Implemented");
-  }
-
-  private targetSources(params: any) {
-    logger.debug("MakeServer.targetSources(", params, ")");
-    throw new Error("Not Implemented");
-  }
-
   public async runMakeScript(variableMap: VariableMap): Promise<boolean> {
     if (!await this._project.prepearScriptFile(variableMap))
       return false;
@@ -157,14 +139,14 @@ export class MakeServer {
     const sourceDir = ScopeHelper.get(this._rootVariableMap, "PROJECT_SOURCE_DIR");
     const binaryDir = ScopeHelper.get(this._rootVariableMap, "PROJECT_BINARY_DIR");
 
-    /*const variableMap = createVariableMapForDirectory(this._rootVariableMap, sourceDir, binaryDir);
+    const variableMap = createVariableMapForDirectory(this._rootVariableMap, sourceDir, binaryDir);
     if (!await this.runMakeScript(variableMap))
       throw Error("Can't prepear ScriptFile");
 
-    this.onConfigureEnd();*/
+    // this.onConfigureEnd();
 
-    this._project.addSubdirectory(this._rootVariableMap, sourceDir, binaryDir);
-    this._project.doSubdirectory().then(() => this.onConfigureEnd());
+    /*this._project.addSubdirectory(this._rootVariableMap, sourceDir, binaryDir);
+    this._project.doSubdirectory().then(() => this.onConfigureEnd());*/
   }
 
   private async onConfigureEnd() {

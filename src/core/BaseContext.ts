@@ -7,76 +7,128 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { InterfaceContext, InterfaceGeneralContext } from "@/core/MakeInterfaces";
+import { IGeneralContext } from "@/core/MakeInterfaces";
 import { findProgramSync } from "@/core/FindProgram";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { Logger } from "@/logger";
 import { SystemScope } from "@/core/SystemScope";
 import { AbsolutePath } from "@/core/AbsolutePath";
 import { importModule } from "@/utils/Module";
+import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, MainTarget, PostTarget } from "@/core/Target";
+import { CUSTOM_VARIABLE_GROUP } from "@/Constants";
 
 const logger = Logger.create(import.meta.url);
 
-const VARIABLE_MAP = Symbol("VARIABLE_MAP");
+export abstract class GeneralContext implements IGeneralContext {
+  protected _scope: VariableMap;
 
-function getProperty(this: any, name: string): any {
-  return ScopeHelper.get(this[VARIABLE_MAP], name);
-}
+  constructor(scope: VariableMap) {
+    this._scope = scope;
+  }
 
-function setProperty(this: any, name: string, value: any): any {
-  const entry = this[VARIABLE_MAP][name];
-  if (entry)
-    ScopeHelper.setEntryValue(entry, value);
-  else
-    ScopeHelper.defineVariable(this[VARIABLE_MAP], "", name, {value});
-  return true;
-}
+  public findProgram(name: string): string | undefined {
+    return findProgramSync(name);
+  }
 
-function hasProperty(this: any, name: string): boolean {
-  return Object.hasOwn(this[VARIABLE_MAP], name);
-}
+  public getProperty(this: any, name: string): any {
+    return ScopeHelper.get(this._scope, name);
+  }
 
-function deleteProperty(this: any, name: string): boolean {
-  return delete this[VARIABLE_MAP][name];
-}
+  public setProperty(this: any, name: string, value: any): any {
+    const entry = this._scope[name];
+    if (entry)
+      ScopeHelper.setEntryValue(entry, value);
+    else
+      ScopeHelper.defineVariable(this._scope, "", name, {value});
+    return true;
+  }
 
-function getPropertyNames(this: any): string[] {
-  return Object.keys(this[VARIABLE_MAP]);
-}
+  public hasProperty(this: any, name: string): boolean {
+    return Object.hasOwn(this._scope, name);
+  }
 
-export abstract class GeneralContext extends InterfaceGeneralContext {
-  private [VARIABLE_MAP]: VariableMap;
+  public deleteProperty(this: any, name: string): boolean {
+    return delete this._scope[name];
+  }
 
-  public findProgram = findProgramSync;
-  public getProperty = getProperty;
-  public setProperty = setProperty;
-  public hasProperty = hasProperty;
-  public deleteProperty = deleteProperty;
-  public getPropertyNames = getPropertyNames;
-
-  protected constructor(variableMap: VariableMap) {
-    super();
-    this[VARIABLE_MAP] = variableMap;
+  public getPropertyNames(this: any): string[] {
+    return Object.keys(this._scope);
   }
 };
 
-export abstract class MakeContext extends InterfaceContext {
-  private [VARIABLE_MAP]: VariableMap;
+export abstract class MakeContext extends GeneralContext {
+  private _targets = new Map<string, MainTarget>();
+  private _indirectTargets = new Map<string, PostTarget>();
 
-  public findProgram = findProgramSync;
-  public getProperty = getProperty;
-  public setProperty = setProperty;
-  public hasProperty = hasProperty;
-  public deleteProperty = deleteProperty;
-  public getPropertyNames = getPropertyNames;
+  protected constructor(scope: VariableMap) {
+    super(scope);
+  }
 
-  protected constructor(variableMap: VariableMap) {
-    super();
-    this[VARIABLE_MAP] = variableMap;
+  public get targets() {
+    return this._targets;
+  }
+
+  public get indirectTargets() {
+    return this._indirectTargets;
+  }
+  
+  public getCacheVariables(): any {
+    return ScopeHelper.getVariablesByGroup(this._scope, CUSTOM_VARIABLE_GROUP);
+  }
+
+  public addIncludeDirectories(...dirs: any[]) {
+    const sourceDir = ScopeHelper.get(this._scope, "SOURCE_DIR");
+    for (const iter of dirs.flat())
+      ScopeHelper.get(this._scope, "INCLUDES").push(sourceDir.resolve(iter));
+  }
+
+  public target(name: string): PostTarget {
+    let target = this._indirectTargets.get(name);
+    if (!target) {
+      target = PostTarget.create(this._scope, name)
+      this._indirectTargets.set(name, target);
+    }
+    return target;
+  }
+
+  public addObjectLibrary(name: any, ...sources: any[]): ObjectLibrary {
+    if (this._targets.has(name))
+      throw new Error(`Target "${name}" exists`);
+    const target = ObjectLibrary.create(this._scope, name);
+    this._targets.set(name, target);
+    target.addSources(...sources);
+    return target;
+  }
+
+  public addStaticLibrary(name: any, ...sources: any[]): StaticLibrary {
+    if (this._targets.has(name))
+      throw new Error(`Target "${name}" exists`);
+    const target = StaticLibrary.create(this._scope, name);
+    this._targets.set(name, target);
+    target.addSources(...sources);
+    return target;
+  }
+
+  public addSharedLibrary(name: any, ...sources: any[]): SharedLibrary {
+    if (this._targets.has(name))
+      throw new Error(`Target "${name}" exists`);
+    const target = SharedLibrary.create(this._scope, name);
+    this._targets.set(name, target);
+    target.addSources(...sources);
+    return target;
+  }
+
+  public addExecutable(name: string, ...sources: any[]): Executable {
+    if (this._targets.has(name))
+      throw new Error(`Target "${name}" exists`);
+    const target = Executable.create(this._scope, name);
+    this._targets.set(name, target);
+    target.addSources(...sources);
+    return target;
   }
 };
 
-export function createContext<T extends InterfaceGeneralContext>(ctx: T): T & SystemScope {
+export function createContext<T extends IGeneralContext>(ctx: T): T & SystemScope {
   const handler: ProxyHandler<T> = {
     get(target: T, name: string, receiver: any) {
       if (name in target)
@@ -107,7 +159,7 @@ export function createContext<T extends InterfaceGeneralContext>(ctx: T): T & Sy
   return new Proxy(ctx, handler) as T & SystemScope;
 }
 
-export async function performContext(mk: InterfaceGeneralContext & SystemScope) {
+export async function performContext(mk: IGeneralContext & SystemScope) {
   const scriptUrl = mk.SCRIPT_FILE.toJSON();
   const module = await importModule(scriptUrl);
   if (!module.default)

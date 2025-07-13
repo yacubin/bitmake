@@ -7,12 +7,11 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { InterfaceTarget } from "@/core/MakeInterfaces";
+import { IMakeContext, InterfaceTarget } from "@/core/MakeInterfaces";
 import { MakeContext } from "@/core/BaseContext";
 import { fileExistsSync } from "@/utils/FileSystem";
 import { InterfaceScript } from "@/core/InterfaceScript";
 import { InstallEntity } from "@/core/InstallEntity";
-import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, MainTarget, PostTarget } from "@/core/Target";
 import { CustomScript } from "@/core/CustomScript";
 import { ProjectContext } from "@/core/ProjectContext";
 import { ScopeHelper, VariantMap, VariableMap } from "@/core/Scope";
@@ -23,32 +22,16 @@ import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
 
-export class LocalMakeContext extends MakeContext {
-  private _scope: VariableMap;
+export class LocalMakeContext extends MakeContext implements IMakeContext {
   private _project: ProjectContext;
-  private _targets = new Map<string, MainTarget>();
-  private _indirectTargets = new Map<string, PostTarget>();
 
   public constructor(scope: VariableMap, project: ProjectContext) {
     super(scope);
-    this._scope = scope;
     this._project = project;
-  }
-
-  public get targets() {
-    return this._targets;
-  }
-
-  public get indirectTargets() {
-    return this._indirectTargets;
   }
 
   public executeScript(script: any, params: any) {
     this._project.executeScriptSync(this._scope, script, params);
-  }
-
-  public getCacheVariables(): any {
-    return ScopeHelper.getVariablesByGroup(this._scope, CUSTOM_VARIABLE_GROUP);
   }
 
   public addCacheVariables(params: string | VariantMap): void {
@@ -63,12 +46,6 @@ export class LocalMakeContext extends MakeContext {
     ScopeHelper.defineVariablesInVariableMap(this._scope, CUSTOM_VARIABLE_GROUP, variables);
   }
 
-  public addIncludeDirectories(...dirs: any[]) {
-    const sourceDir = ScopeHelper.get(this._scope, "SOURCE_DIR");
-    for (const iter of dirs.flat())
-      ScopeHelper.get(this._scope, "INCLUDES").push(sourceDir.resolve(iter));
-  }
-
   public addSubdirectory(sourceDir: string | AbsolutePath, binaryDir?: string | AbsolutePath): void {
     this._project.addSubdirectory(this._scope, sourceDir, binaryDir);
   }
@@ -78,15 +55,6 @@ export class LocalMakeContext extends MakeContext {
     ScopeHelper.extendVariableMapByValues(newVariableMap, CUSTOM_VARIABLE_GROUP, params);
     ScopeHelper.set(newVariableMap, "SCRIPT_MODULE", script);
     return this._project.addCustomScript(newVariableMap);
-  }
-
-  public target(name: string): PostTarget {
-    let target = this._indirectTargets.get(name);
-    if (!target) {
-      target = PostTarget.create(this._scope, name)
-      this._indirectTargets.set(name, target);
-    }
-    return target;
   }
 
   public script(name: string): InterfaceScript {
@@ -100,41 +68,5 @@ export class LocalMakeContext extends MakeContext {
       const entity = InstallEntity.create(scope, iter, params);
       this._project.addInstallEntry(entity);
     }
-  }
-
-  public addObjectLibrary(name: any, ...sources: any[]): ObjectLibrary {
-    if (this._targets.has(name))
-      throw new Error(`Target "${name}" exists`);
-    const target = ObjectLibrary.create(this._scope, name);
-    this._targets.set(name, target);
-    target.addSources(...sources);
-    return target;
-  }
-
-  public addStaticLibrary(name: any, ...sources: any[]): StaticLibrary {
-    if (this._targets.has(name))
-      throw new Error(`Target "${name}" exists`);
-    const target = StaticLibrary.create(this._scope, name);
-    this._targets.set(name, target);
-    target.addSources(...sources);
-    return target;
-  }
-
-  public addSharedLibrary(name: any, ...sources: any[]): SharedLibrary {
-    if (this._targets.has(name))
-      throw new Error(`Target "${name}" exists`);
-    const target = SharedLibrary.create(this._scope, name);
-    this._targets.set(name, target);
-    target.addSources(...sources);
-    return target;
-  }
-
-  public addExecutable(name: string, ...sources: any[]): Executable {
-    if (this._targets.has(name))
-      throw new Error(`Target "${name}" exists`);
-    const target = Executable.create(this._scope, name);
-    this._targets.set(name, target);
-    target.addSources(...sources);
-    return target;
   }
 };

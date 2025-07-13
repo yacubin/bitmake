@@ -24,20 +24,14 @@ interface EntryLogger {
   logger: ILogger;
 };
 
-function truncate(str: string, maxLength: number) {
-  if (str.length > maxLength)
-    return str.slice(0, maxLength - 3) + "...";
-  return str;
-}
-
 const SEPARATOR = " ";
-const MESSAGE_MAX = 320;
+const MESSAGE_MAX = 240;
 
 function toMessageString(o: any) {
   return (typeof o === "string") ? o : JSON.stringify(o);
 }
 
-function* messageGenerator(messages: string[]) {
+function* messageGenerator(messages: string[], maxLength: number) {
   let length = 0;
   const msgList: string[] = [];
 
@@ -46,14 +40,19 @@ function* messageGenerator(messages: string[]) {
     if (!iter)
       break;
 
+    if (msgList.length)
+      length += SEPARATOR.length;
+
     msgList.push(iter);
     length += iter.length;
 
-    if (length > MESSAGE_MAX) {
+    while (length > maxLength) {
       const msg = msgList.join(SEPARATOR);
+      const nextMsg = msg.substring(maxLength);
       msgList.length = 0;
-      msgList.push(msg.substring(MESSAGE_MAX));
-      yield msg.substring(0, MESSAGE_MAX);
+      msgList.push(nextMsg);
+      length = nextMsg.length;
+      yield msg.substring(0, maxLength);
     }
   }
 
@@ -71,7 +70,7 @@ function makeLogMethod(withPrefix: boolean, type: string, tagName: string, targe
     }
 
     const prefix = [ now.toISOString(), type, tagName ].join(SEPARATOR);
-    for (const iter of messageGenerator(messages)) {
+    for (const iter of messageGenerator(messages, MESSAGE_MAX - prefix.length - SEPARATOR.length)) {
       handler.call(target, [prefix, iter].join(SEPARATOR));
     }
   };

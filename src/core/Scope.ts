@@ -310,7 +310,7 @@ export function cloneVariableMap(map: VariableMap) {
   return result;
 }
 
-export function extendVariableMapByValues(map: VariableMap, group: string, values: { [ key: string ]: any }) {
+export function extendVariableMapByValues(map: VariableMap, group: string, values: VariantMap) {
   for (const [name, value] of Object.entries(values)) {
     defineVariable(map, group, name, { value });
     map[name].value = value;

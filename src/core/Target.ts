@@ -127,7 +127,7 @@ export interface BaseTargetOptions {
   binaryDir: AbsolutePath;
 };
 
-abstract class BaseTarget extends InterfaceTarget {
+export abstract class BaseTarget {
   protected [TARGET_SCOPE]: SystemScope;
 
   protected _name: string;
@@ -143,8 +143,6 @@ abstract class BaseTarget extends InterfaceTarget {
   protected _postBuildList: TargetCommand[];
 
   constructor(variableMap: VariableMap, options: BaseTargetOptions) {
-    super();
-
     const name = options.name;
     if (typeof name !== "string")
       throw new Error(`Target "${name}" is not string type`);
@@ -169,6 +167,11 @@ abstract class BaseTarget extends InterfaceTarget {
     this._preBuildList = [];
     this._postBuildList = [];
   }
+
+  abstract setPrefix(value: string) : void;
+  abstract setOutputName(value: any) : void;
+  abstract setSuffix(value: string) : void;
+  abstract setPositionIndependentCode(value: boolean) : void;
 
   public get targetName() {
     return this._name;

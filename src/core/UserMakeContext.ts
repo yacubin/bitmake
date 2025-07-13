@@ -7,25 +7,29 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { IMakeContext, InterfaceTarget, InterfaceScript } from "@/core/MakeInterfaces";
-import { VariantMap, VariableMap } from "@/core/Scope";
-import { GeneralContext, createContext } from "@/core/BaseContext";
+import { IMakeContext, InterfaceScript } from "@/core/MakeInterfaces";
+import { VariantMap, VariableMap, ScopeHelper } from "@/core/Scope";
+import { SystemScope } from "@/core/SystemScope";
+import { GeneralContext, MakeContext, createContext } from "@/core/BaseContext";
 import { UserTargetStruct } from "@/core/UserTargetStruct";
 import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
 
+const SCOPE = Symbol("SCOPE");
 const IMPL = Symbol("IMPL");
 
 export class UserMakeContext extends GeneralContext implements IMakeContext {
-  [IMPL]: IMakeContext;
+  [IMPL]: MakeContext;
+  [SCOPE]: SystemScope;
 
-  public constructor(impl: IMakeContext, variableMap: VariableMap) {
+  public constructor(impl: MakeContext, variableMap: VariableMap) {
     super(variableMap);
     this[IMPL] = impl;
+    this[SCOPE] = ScopeHelper.createProxy(variableMap);
   }
 
-  public static create(impl: IMakeContext, variableMap: VariableMap) {
+  public static create(impl: MakeContext, variableMap: VariableMap) {
     return createContext(new UserMakeContext(impl, variableMap));
   }
 
@@ -51,7 +55,7 @@ export class UserMakeContext extends GeneralContext implements IMakeContext {
 
   public target(name: string): UserTargetStruct {
     const target = this[IMPL].target(name);
-    return UserTargetStruct.create(target);
+    return UserTargetStruct.create(target, this[SCOPE]);
   }
 
   public script(name: string): InterfaceScript {
@@ -64,22 +68,22 @@ export class UserMakeContext extends GeneralContext implements IMakeContext {
 
   public addObjectLibrary(name: any, ...sources: any[]): UserTargetStruct {
     const target = this[IMPL].addObjectLibrary(name, ...sources);
-    return UserTargetStruct.create(target);
+    return UserTargetStruct.create(target, this[SCOPE]);
   }
 
   public addStaticLibrary(name: any, ...sources: any[]): UserTargetStruct {
     const target = this[IMPL].addStaticLibrary(name, ...sources);
-    return UserTargetStruct.create(target);
+    return UserTargetStruct.create(target, this[SCOPE]);
   }
 
   public addSharedLibrary(name: any, ...sources: any[]): UserTargetStruct {
     const target = this[IMPL].addSharedLibrary(name, ...sources);
-    return UserTargetStruct.create(target);
+    return UserTargetStruct.create(target, this[SCOPE]);
   }
 
   public addExecutable(name: any, ...sources: any[]): UserTargetStruct {
     const target = this[IMPL].addExecutable(name, ...sources);
-    return UserTargetStruct.create(target);
+    return UserTargetStruct.create(target, this[SCOPE]);
   }
 
   public executeScript(script: any, params: any): void {

@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { IMakeContext, InterfaceTarget } from "@/core/MakeInterfaces";
+import { IMakeContext } from "@/core/MakeInterfaces";
 import { MakeContext } from "@/core/BaseContext";
 import { fileExistsSync } from "@/utils/FileSystem";
 import { ProjectContext } from "@/core/ProjectContext";

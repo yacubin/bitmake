@@ -8,23 +8,28 @@
  */
 
 import { InterfaceTarget } from "@/core/MakeInterfaces";
-import { Logger } from "@/logger";
+import { BaseTarget } from "@/core/Target";
+import { SystemScope } from "@/core/SystemScope";
 import { ensureString } from "@/utils/StrictType";
+import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
 
+const SCOPE = Symbol("SCOPE");
 const IMPL = Symbol("IMPL");
 
 export class UserTargetStruct extends InterfaceTarget {
-  [IMPL]: InterfaceTarget;
+  [IMPL]: BaseTarget;
+  [SCOPE]: SystemScope;
 
-  private constructor(impl: InterfaceTarget) {
+  private constructor(impl: BaseTarget, scope: SystemScope) {
     super();
     this[IMPL] = impl;
+    this[SCOPE] = scope;
   }
 
-  public static create(impl: InterfaceTarget) {
-    return Object.seal(new UserTargetStruct(impl));
+  public static create(impl: BaseTarget, scope: SystemScope) {
+    return Object.seal(new UserTargetStruct(impl, scope));
   }
 
   public get targetName() {

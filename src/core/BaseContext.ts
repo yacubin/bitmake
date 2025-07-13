@@ -9,7 +9,7 @@
 
 import { IGeneralContext, InterfaceTarget } from "@/core/MakeInterfaces";
 import { findProgramSync } from "@/core/FindProgram";
-import { ScopeHelper, VariableMap } from "@/core/Scope";
+import { ScopeHelper, VariableMap, VariantMap } from "@/core/Scope";
 import { Logger } from "@/logger";
 import { SystemScope } from "@/core/SystemScope";
 import { AbsolutePath } from "@/core/AbsolutePath";
@@ -122,6 +122,10 @@ export abstract class MakeContext extends GeneralContext {
   protected constructor(scope: VariableMap) {
     super(scope);
   }
+
+  abstract executeScript(script: any, params: any): any;
+  abstract addCacheVariables(params: string | VariantMap): void;
+  abstract addSubdirectory(sourceDir: string | AbsolutePath, binaryDir?: string | AbsolutePath): void;
 
   public get targets() {
     return this._targets;

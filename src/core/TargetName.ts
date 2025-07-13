@@ -11,7 +11,7 @@ import { SimpleObject } from "@/core/SimpleObject";
 
 const NAME = Symbol("NAME");
 
-export class TargetLink {
+export class TargetName {
   private [NAME]: string;
 
   private constructor(name: string) {
@@ -19,11 +19,11 @@ export class TargetLink {
   }
 
   public static create(name: string) {
-    return Object.seal(new TargetLink(name));
+    return Object.seal(new TargetName(name));
   }
 
   public static fromJSON(object: SimpleObject) {
-    return TargetLink.create(object.targetName as string);
+    return TargetName.create(object.targetName as string);
   }
 
   public get targetName(): string {
@@ -36,10 +36,10 @@ export class TargetLink {
 
   public toJSON(): SimpleObject {
     return {
-      type: TargetLink.name,
+      type: TargetName.name,
       targetName: this[NAME],
     }
   }
 };
 
-SimpleObject.registerInstanceCreator(TargetLink.name, TargetLink.fromJSON);
+SimpleObject.registerInstanceCreator(TargetName.name, TargetName.fromJSON);

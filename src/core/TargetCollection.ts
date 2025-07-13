@@ -8,7 +8,8 @@
  */
 
 import { TargetIncludes }from "@/core/TargetIncludes";
-import { MainTarget, PostTarget } from "@/core/Target";
+import { TargetName }from "@/core/TargetName";
+import { MainTarget } from "@/core/Target";
 import { AbsolutePath } from "@/core/AbsolutePath";
 import { SimpleObject } from "@/core/SimpleObject";
 
@@ -44,9 +45,9 @@ export class TargetCollection {
     this[ENTRIES].set(name, target);
   }
 
-  private __getAllIncludes(includes: string[], targetSet: Set<string>, list: Array<AbsolutePath | TargetIncludes> | Array<PostTarget>) {
+  private __getAllIncludes(includes: string[], targetSet: Set<string>, list: Array<AbsolutePath | TargetIncludes> | Array<TargetName>) {
     for (const iter of list) {
-      if (iter instanceof TargetIncludes || iter instanceof PostTarget) {
+      if (iter instanceof TargetIncludes || iter instanceof TargetName) {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
           const target = this.get(iter.targetName);
@@ -73,9 +74,9 @@ export class TargetCollection {
     return includes;
   }
 
-  private __getAllHeaders(headers: string[], targetSet: Set<string>, list: Array<AbsolutePath | TargetIncludes> | Array<PostTarget>) {
+  private __getAllHeaders(headers: string[], targetSet: Set<string>, list: Array<AbsolutePath | TargetIncludes> | Array<TargetName>) {
     for (const iter of list) {
-      if (iter instanceof TargetIncludes || iter instanceof PostTarget) {
+      if (iter instanceof TargetIncludes || iter instanceof TargetName) {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
           const target = this.get(iter.targetName);
@@ -99,9 +100,9 @@ export class TargetCollection {
     return headers;
   }
 
-  private __getAllLibraries(libraries: string[], targetSet: Set<string>, list: Array<PostTarget>) {
+  private __getAllLibraries(libraries: string[], targetSet: Set<string>, list: Array<TargetName>) {
     for (const iter of list) {
-      console.assert(iter instanceof PostTarget);
+      console.assert(iter instanceof TargetName);
       if (!targetSet.has(iter.targetName)) {
         targetSet.add(iter.targetName);
         const target = this.get(iter.targetName);
@@ -119,9 +120,9 @@ export class TargetCollection {
     return libraries;
   }
 
-  private __getAllDefinitions(definitions: string[], targetSet: Set<string>, list: Array<string> | Array<PostTarget>) {
+  private __getAllDefinitions(definitions: string[], targetSet: Set<string>, list: Array<string> | Array<TargetName>) {
     for (const iter of list) {
-      if (iter instanceof PostTarget) {
+      if (iter instanceof TargetName) {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
           const target = this.get(iter.targetName);
@@ -148,9 +149,9 @@ export class TargetCollection {
     return definitions;
   }
 
-  private __getAllCompileOptions(options: Array<string|string[]>, targetSet: Set<string>, list: Array<string|string[]> | Array<PostTarget>) {
+  private __getAllCompileOptions(options: Array<string|string[]>, targetSet: Set<string>, list: Array<string|string[]> | Array<TargetName>) {
     for (const iter of list) {
-      if (iter instanceof PostTarget) {
+      if (iter instanceof TargetName) {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
           const target = this.get(iter.targetName);
@@ -181,9 +182,9 @@ export class TargetCollection {
     return options.flat();
   }
 
-  private __getLinkOptions(options: Array<string|string[]>, targetSet: Set<string>, list: Array<string|string[]> | Array<PostTarget>) {
+  private __getLinkOptions(options: Array<string|string[]>, targetSet: Set<string>, list: Array<string|string[]> | Array<TargetName>) {
     for (const iter of list) {
-      if (iter instanceof PostTarget) {
+      if (iter instanceof TargetName) {
         if (!targetSet.has(iter.targetName)) {
           targetSet.add(iter.targetName);
           const target = this.get(iter.targetName);

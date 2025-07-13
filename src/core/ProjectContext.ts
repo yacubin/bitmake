@@ -20,11 +20,11 @@ import { ScriptCollection } from "@/core/ScriptCollection";
 import { GoalCollection } from "@/core/GoalCollection";
 import { UserMakeContext } from "@/core/UserMakeContext";
 import { LocalMakeContext } from "@/core/LocalMakeContext";
-import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, PostTarget, TargetCommand } from "@/core/Target";
+import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, TargetCommand } from "@/core/Target";
 import { SystemScope } from "@/core/SystemScope";
 import { importModule, requireSync } from "@/utils/Module";
 import { Logger } from "@/logger";
-import { TargetLink } from "@/core/TargetLink";
+import { TargetName } from "@/core/TargetName";
 import { InstallEntity } from "@/core/InstallEntity";
 import { ScriptContext } from "@/core/ScriptContext";
 import { ScopeHelper, VariableMap } from "./Scope";
@@ -590,7 +590,7 @@ export class ProjectContext {
         const rfile = (iter.BASE_DIR as any).relative(iter.VALUE);
         dest = iter.DESTINATION.join(rfile);
       }
-      else if (iter.VALUE instanceof TargetLink) {
+      else if (iter.VALUE instanceof TargetName) {
         const targetName = iter.VALUE.targetName;
         const target = this[TARGETS].get(targetName);
         src = target.getFile().toString();

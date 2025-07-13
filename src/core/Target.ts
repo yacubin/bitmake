@@ -10,6 +10,7 @@
 import { InterfaceTarget } from "@/core/MakeInterfaces";
 import { SourceFile } from "@/core/SourceFile";
 import { SourceFileList } from "@/core/SourceFileList";
+import { TargetName } from "@/core/TargetName";
 import { TargetFile } from "@/core/TargetFile";
 import { TargetIncludes } from "@/core/TargetIncludes";
 import { TargetObjects } from "@/core/TargetObjects";
@@ -136,7 +137,7 @@ abstract class BaseTarget extends InterfaceTarget {
   protected _definitions: TargetValueList<string>;
   protected _compileOptions: TargetValueList<string | string[]>;
   protected _linkOptions: TargetValueList<string | string[]>;
-  protected _libraries: TargetValueList<PostTarget>;
+  protected _libraries: TargetValueList<TargetName>;
   protected _sources: TargetValueList<TargetObjects | SourceFile>;
   protected _preBuildList: TargetCommand[];
   protected _postBuildList: TargetCommand[];
@@ -302,8 +303,8 @@ abstract class BaseTarget extends InterfaceTarget {
   }
 
   public addLibrariesImpl(publicOnly: boolean, ...libraries: PostTarget[]) {
-    for (const value of libraries.flat())
-      this._libraries.push({publicOnly, value});
+    for (const iter of libraries.flat())
+      this._libraries.push({publicOnly, value: TargetName.create(iter.targetName)});
   }
 
   public getHeaders(): SourceFile[] {

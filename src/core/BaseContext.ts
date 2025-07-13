@@ -19,7 +19,7 @@ import { CUSTOM_VARIABLE_GROUP } from "@/Constants";
 import { CustomScript, PostCustomScript } from "@/core/CustomScript";
 import { InstallEntity } from "@/core/InstallEntity";
 import { ScriptCollection } from "@/core/ScriptCollection";
-import { TargetLink } from "@/core/TargetLink";
+import { TargetName } from "@/core/TargetName";
 
 const logger = Logger.create(import.meta.url);
 
@@ -253,7 +253,7 @@ export abstract class MakeContext extends GeneralContext {
   public install(value: any, params: any): void {
     const scope = ScopeHelper.createVariableValues(this._scope);
     for (const it of [ value ].flat()) {
-      const iter = (it instanceof InterfaceTarget) ? TargetLink.create(it.targetName) : it;
+      const iter = (it instanceof InterfaceTarget) ? TargetName.create(it.targetName) : it;
       const entity = InstallEntity.create(scope, iter, params);
       this._installList.push(entity);
     }

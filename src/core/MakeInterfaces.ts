@@ -15,6 +15,10 @@ import { AbsolutePath } from "@/core/AbsolutePath";
 import { SourceFileList } from "@/core/SourceFileList";
 import { SourceFile } from "@/core/SourceFile";
 
+export abstract class InterfaceTask {
+  abstract execute(): Promise<void> | void;
+};
+
 export abstract class InterfaceTarget {
   abstract get targetName(): string;
   abstract get targetFile(): TargetFile;

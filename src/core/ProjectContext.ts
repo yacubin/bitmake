@@ -9,7 +9,6 @@
 
 import fs from "node:fs";
 import url from "node:url";
-import { spawnSync } from "node:child_process";
 
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
 import { AbsolutePath } from "@/core/AbsolutePath";
@@ -22,7 +21,7 @@ import { UserMakeContext } from "@/core/UserMakeContext";
 import { LocalMakeContext } from "@/core/LocalMakeContext";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, TargetCommand } from "@/core/Target";
 import { SystemScope } from "@/core/SystemScope";
-import { importModule, requireSync } from "@/utils/Module";
+import { requireSync } from "@/utils/Module";
 import { Logger } from "@/logger";
 import { TargetName } from "@/core/TargetName";
 import { InstallEntity } from "@/core/InstallEntity";
@@ -30,6 +29,10 @@ import { ScriptContext } from "@/core/ScriptContext";
 import { ScopeHelper, VariableMap } from "./Scope";
 import { TargetFile } from "@/core/TargetFile";
 import { SourceFile } from "@/core/SourceFile";
+import { InterfaceTask } from "@/core/MakeInterfaces";
+import { ExecScriptTask } from "@/core/ExecScriptTask";
+import { SpawnSyncTask } from "@/core/SpawnSyncTask";
+import { FileInstallationTask } from "@/core/FileInstallationTask";
 import { performContext, createVariableMapForDirectory } from "@/core/BaseContext";
 
 import BuildinScripts from "@/core/BuildinScripts";
@@ -59,18 +62,16 @@ type BuildinScripts = {
   [name: string]: Function;
 };
 
+export interface ExecStruct {
+  command: string;
+  args: string[];
+};
+
 function ensureValueByType(type: any, value: any) {
   if (Array.isArray(type) ? type.includes(value) : typeof value === type)
     return value;
   throw new Error(`The '${value}' is not a ${type}`);
 }
-
-type GoalHandler = () => Promise<void> | void;
-
-interface ExecStruct {
-  command: string;
-  args: string[];
-};
 
 function resolveInstance(project: ProjectContext, o: string | AbsolutePath | TargetFile): string {
   if (typeof o === "string")
@@ -98,12 +99,12 @@ export class GoalWorkerImpl {
   private _name: string | undefined;
   private _output: string | undefined;
   private _depends: string[];
-  private _callbacks: GoalHandler[];
+  private _tasks: InterfaceTask[];
 
   constructor(name?: string) {
     this._name = name;
     this._depends = [];
-    this._callbacks = [];
+    this._tasks = [];
   }
 
   get message(): string | undefined {
@@ -134,16 +135,16 @@ export class GoalWorkerImpl {
     this._depends.push(...value);
   }
 
-  public addCallback(handler: GoalHandler) {
-    this._callbacks.push(handler);
+  public addTask(task: InterfaceTask) {
+    this._tasks.push(task);
   }
 
   async doWork(): Promise<void> {
     if (this._output)
       await fs.promises.mkdir(Path.dirname(this._output), { recursive: true });
 
-    for (const func of this._callbacks) {
-      const res = func();
+    for (const task of this._tasks) {
+      const res = task.execute();
       if (res instanceof Promise)
         await res;
     }
@@ -155,55 +156,6 @@ export class GoalWorkerImpl {
       const percent = "[" + relationOfLength.toString().padStart(3, " ") + "%] ";
       logger.notice(percent + this._message);
     }
-  }
-
-  addExec(command: string, args: string[], cwd: string): void {
-    this.addCallback(() => {
-      logger.debug("spawnSync");
-      logger.debug("  command", command);
-      logger.debug("  cwd", cwd);
-      for (let i = 0; i < args.length; i++)
-        logger.debug(`  args[${i}]`, args[i]);
-      const result = spawnSync(command, args, { cwd, encoding: "utf-8" });
-      if (result.error || result.status) {
-        logger.notice("cd " + cwd);
-        let cmd = args.join(" ");
-        cmd = command + (cmd ? " " : "") + cmd;
-        logger.notice(cmd);
-        logger.notice("");
-    
-        logger.fatal(result.stderr);
-    
-        if (result.error)
-            throw result.error;
-    
-        throw new Error(result.error as any || "Status " + result.status);
-      }
-      if (result.stdout) {
-        for (const line of result.stdout.trim().split("\n")) {
-          logger.notice(line);
-        }
-      }
-    })
-  }
-
-  addScript(global: ProjectContext, variableMap: VariableMap, script: AbsolutePath | Function): void {
-    this.addCallback(async () => {
-      let func: any = script;
-      if (script instanceof AbsolutePath) {
-        const scriptUrl = url.pathToFileURL(func.toString());
-        func = (await importModule(scriptUrl)).default;
-      }
-      if (func instanceof Function) {
-        const mk = ScriptContext.create(global, variableMap);
-        const result = func(mk);
-        if (result instanceof Promise)
-          await result;
-      }
-      else {
-        throw new Error(`There is no Function`);
-      }
-    });
   }
 };
 
@@ -305,7 +257,7 @@ export class ProjectContext {
     params && ScopeHelper.extendVariableMapByValues(newVariableMap, "", params);
     const scriptPath = ScopeHelper.get(newVariableMap, "SOURCE_DIR").resolve(script);
     const func = requireSync(scriptPath.toString());
-    const mk = ScriptContext.create(this, newVariableMap);
+    const mk = ScriptContext.create(newVariableMap);
     func(mk);
   }
 
@@ -425,7 +377,7 @@ export class ProjectContext {
       worker.message = msg;
       worker.output = script.OUTPUT.toString();
       worker.addDependency(...depends);
-      worker.addScript(this, script.variableMap, scriptObj);
+      worker.addTask(new ExecScriptTask(script.variableMap, scriptObj));
       goalList.add(worker);
     }
 
@@ -491,14 +443,14 @@ export class ProjectContext {
         worker.output = output.toString();
         worker.addDependency(...headers);
         worker.addDependency(s.FILE.toString());
-        worker.addExec(command, args, target.binaryDir.toPath());
+        worker.addTask(new SpawnSyncTask(command, args, target.binaryDir.toPath()));
         goalList.add(worker);
       }
 
       const generalGoal = new GoalWorkerImpl;
       for (const params of target.preBuildList) {
         const execStruct = resolveTargetCommand(this, params);
-        generalGoal.addExec(execStruct.command, execStruct.args, target.binaryDir.toString());
+        generalGoal.addTask(new SpawnSyncTask(execStruct.command, execStruct.args, target.binaryDir.toString()));
       }
 
       const linkOptions = this[TARGETS].allLinkOptionsOf(target);
@@ -514,7 +466,7 @@ export class ProjectContext {
           generalGoal.message = `Linking CXX object library ${target.getFileName()}`;
           generalGoal.output = target.getFile().toString();
           generalGoal.addDependency(...depends);
-          generalGoal.addExec(scope.LINKER, args, target.getFileDir().toString());
+          generalGoal.addTask(new SpawnSyncTask(scope.LINKER, args, target.getFileDir().toString()));
         }
         else {
           logger.info(`No objects for "${target.targetName}"`);
@@ -528,7 +480,7 @@ export class ProjectContext {
           generalGoal.message = `Linking CXX static library ${target.getFileName()}`;
           generalGoal.output = target.getFile().toString();
           generalGoal.addDependency(...depends);
-          generalGoal.addExec(scope.AR, args, target.getFileDir().toString());
+          generalGoal.addTask(new SpawnSyncTask(scope.AR, args, target.getFileDir().toString()));
         }
         else {
           logger.info(`No objects for "${target.targetName}"`);
@@ -555,7 +507,7 @@ export class ProjectContext {
           generalGoal.output = target.getFile().toString();
           generalGoal.addDependency(...depends);
           generalGoal.addDependency(...libs);
-          generalGoal.addExec(scope.CXX_COMPILER, args, target.getFileDir().toString());
+          generalGoal.addTask(new SpawnSyncTask(scope.CXX_COMPILER, args, target.getFileDir().toString()));
         }
         else {
           logger.info(`No objects for "${target.targetName}"`);
@@ -564,7 +516,7 @@ export class ProjectContext {
 
       for (const params of target.postBuildList) {
         const execStruct = resolveTargetCommand(this, params);
-        generalGoal.addExec(execStruct.command, execStruct.args, target.binaryDir.toString());
+        generalGoal.addTask(new SpawnSyncTask(execStruct.command, execStruct.args, target.binaryDir.toString()));
       }
       
       goalList.add(generalGoal);
@@ -575,46 +527,33 @@ export class ProjectContext {
       goalList.add(worker);
     }
 
-    interface InstallGoalParams {
-      src: string;
-      dest: string;
-    };
-
-    const installPairs = new Array<InstallGoalParams>;
-    for (const iter of this._installList) {
-      let src: string, dest: any;
-      if (iter.VALUE instanceof AbsolutePath) {
-        if (scope.PREVENT_INSTALL_FILES)
-          continue;
-        src = iter.VALUE.toString();
-        const rfile = (iter.BASE_DIR as any).relative(iter.VALUE);
-        dest = iter.DESTINATION.join(rfile);
-      }
-      else if (iter.VALUE instanceof TargetName) {
-        const targetName = iter.VALUE.targetName;
-        const target = this[TARGETS].get(targetName);
-        src = target.getFile().toString();
-        dest = iter.DESTINATION.join(target.getFileName());
-      }
-      else {
-        throw new Error(`Can not install ${iter.VALUE}`)
-      }
-      if (scope.DESTDIR)
-        dest = scope.DESTDIR.join(dest).toString();
-      dest = dest.toString();
-      installPairs.push({src, dest});
-    }
-
-    if (installPairs.length) {
+    if (this._installList.length) {
       const worker = new GoalWorkerImpl(INSTALL_TARGET);
-      installPairs.forEach(i => void worker.addDependency(i.src));
-      worker.addCallback(async () => {
-        for (const {src, dest} of installPairs) {
-          logger.notice("Installing: " + dest);
-          await fs.promises.mkdir(Path.dirname(dest), { recursive: true });
-          await fs.promises.cp(src.toString(), dest.toString(), { force: true });
+      const fileInstallationTask = new FileInstallationTask;
+      for (const iter of this._installList) {
+        let src: AbsolutePath, dest: AbsolutePath;
+        if (iter.VALUE instanceof AbsolutePath) {
+          if (scope.PREVENT_INSTALL_FILES)
+            continue;
+          src = iter.VALUE;
+          const rfile = (iter.BASE_DIR as any).relative(iter.VALUE);
+          dest = iter.DESTINATION.join(rfile);
         }
-      });
+        else if (iter.VALUE instanceof TargetName) {
+          const targetName = iter.VALUE.targetName;
+          const target = this[TARGETS].get(targetName);
+          src = target.getFile();
+          dest = iter.DESTINATION.join(target.getFileName());
+        }
+        else {
+          throw new Error(`Can not install ${iter.VALUE}`)
+        }
+        if (scope.DESTDIR)
+          dest = scope.DESTDIR.join(dest);
+        worker.addDependency(src.toPath());
+        fileInstallationTask.add(src, dest);
+      }
+      worker.addTask(fileInstallationTask);
       goalList.add(worker);
     }
 

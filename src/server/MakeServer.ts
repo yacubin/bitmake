@@ -105,7 +105,7 @@ export class MakeServer {
     if (!module.default)
       throw new Error(`Script "${scriptFile}" has not contain a default function`);
 
-    const mk = ScriptContext.create(this._project, variableMap);
+    const mk = ScriptContext.create(variableMap);
     module.default(mk);
   }
 

@@ -7,24 +7,20 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { ProjectContext } from "@/core/ProjectContext";
 import { VariableMap } from "@/core/Scope";
 import { GeneralContext, createContext } from "@/core/BaseContext";
 
-const GLOBAL = Symbol("GLOBAL");
 const SCOPE = Symbol("SCOPE");
 
 export class ScriptContext extends GeneralContext {
   [SCOPE]: VariableMap;
-  [GLOBAL]: ProjectContext;
 
-  constructor(global: ProjectContext, scope: VariableMap) {
+  constructor(scope: VariableMap) {
     super(scope);
     this[SCOPE] = scope;
-    this[GLOBAL] = global;
   }
 
-  public static create(global: ProjectContext, variableMap: VariableMap) {
-    return createContext(new ScriptContext(global, variableMap));
+  public static create(variableMap: VariableMap) {
+    return createContext(new ScriptContext(variableMap));
   }
 };

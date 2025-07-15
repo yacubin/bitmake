@@ -8,15 +8,13 @@
  */
 
 import fs from "node:fs";
-import url from "node:url";
 
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
 import { AbsolutePath } from "@/core/AbsolutePath";
-import { Path } from "@/utils/Path";
 import { fileExists, fileExistsSync } from "@/utils/FileSystem";
 import { TargetCollection } from "@/core/TargetCollection";
 import { ScriptCollection } from "@/core/ScriptCollection";
-import { GoalCollection } from "@/core/GoalCollection";
+import { GoalCollection, GoalTarget } from "@/core/GoalCollection";
 import { UserMakeContext } from "@/core/UserMakeContext";
 import { LocalMakeContext } from "@/core/LocalMakeContext";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, TargetCommand } from "@/core/Target";
@@ -29,7 +27,6 @@ import { ScriptContext } from "@/core/ScriptContext";
 import { ScopeHelper, VariableMap } from "./Scope";
 import { TargetFile } from "@/core/TargetFile";
 import { SourceFile } from "@/core/SourceFile";
-import { InterfaceTask } from "@/core/MakeInterfaces";
 import { ExecScriptTask } from "@/core/ExecScriptTask";
 import { SpawnSyncTask } from "@/core/SpawnSyncTask";
 import { FileInstallationTask } from "@/core/FileInstallationTask";
@@ -93,71 +90,6 @@ function resolveTargetCommand(project: ProjectContext, tcmd: TargetCommand): Exe
   const args = tcmd.args.map(i => resolveInstance(project, i));
   return {command, args};
 }
-
-export class GoalWorkerImpl {
-  private _message: string | undefined;
-  private _name: string | undefined;
-  private _output: string | undefined;
-  private _depends: string[];
-  private _tasks: InterfaceTask[];
-
-  constructor(name?: string) {
-    this._name = name;
-    this._depends = [];
-    this._tasks = [];
-  }
-
-  get message(): string | undefined {
-    return this._message;
-  }
-
-  set message(value: string) {
-    this._message = value;
-  }
-
-  get name(): string | undefined {
-    return this._name;
-  }
-
-  get output(): string | undefined {
-    return this._output;
-  }
-
-  set output(value: string) {
-    this._output = value;
-  }
-
-  get depends(): string[] {
-    return this._depends;
-  }
-
-  public addDependency(...value: string[]) {
-    this._depends.push(...value);
-  }
-
-  public addTask(task: InterfaceTask) {
-    this._tasks.push(task);
-  }
-
-  async doWork(): Promise<void> {
-    if (this._output)
-      await fs.promises.mkdir(Path.dirname(this._output), { recursive: true });
-
-    for (const task of this._tasks) {
-      const res = task.execute();
-      if (res instanceof Promise)
-        await res;
-    }
-  }
-
-  updateProgress(event: { loaded: number, total: number }): void {
-    if (this._message) {
-      const relationOfLength = Math.round((++event.loaded / event.total) * 100);
-      const percent = "[" + relationOfLength.toString().padStart(3, " ") + "%] ";
-      logger.notice(percent + this._message);
-    }
-  }
-};
 
 export class ProjectContext {
   private [TARGETS]: TargetCollection;
@@ -354,7 +286,7 @@ export class ProjectContext {
   }
 
   public createGoals(scope: SystemScope): GoalCollection {
-    const goalList = GoalCollection.create();
+    const goalList = new GoalCollection;
     for (const script of this[CUSTOM_SCRIPTS].ENTRIES) {   
       const depends = [];
 
@@ -373,12 +305,12 @@ export class ProjectContext {
       }
 
       const msg = "\x1b[36m" + "Generating " + script.binaryDir.relative(script.OUTPUT) + "\x1b[0m";
-      const worker = new GoalWorkerImpl(script.NAME);
-      worker.message = msg;
-      worker.output = script.OUTPUT.toString();
-      worker.addDependency(...depends);
-      worker.addTask(new ExecScriptTask(script.variableMap, scriptObj));
-      goalList.add(worker);
+      const ge = new GoalTarget(script.NAME);
+      ge.message = msg;
+      ge.output = script.OUTPUT.toString();
+      ge.addDependency(...depends);
+      ge.addTask(new ExecScriptTask(script.variableMap, scriptObj));
+      goalList.addTarget(ge);
     }
 
     const objectFiles = new Map<SourceFile, AbsolutePath>();
@@ -438,16 +370,16 @@ export class ProjectContext {
         const output = AbsolutePath.create(target.binaryDir.join(relativeObject));
         depends.push(output.toString());
 
-        const worker = new GoalWorkerImpl;
-        worker.message = msg;
-        worker.output = output.toString();
-        worker.addDependency(...headers);
-        worker.addDependency(s.FILE.toString());
-        worker.addTask(new SpawnSyncTask(command, args, target.binaryDir.toPath()));
-        goalList.add(worker);
+        const ge = new GoalTarget;
+        ge.message = msg;
+        ge.output = output.toString();
+        ge.addDependency(...headers);
+        ge.addDependency(s.FILE.toPath());
+        ge.addTask(new SpawnSyncTask(command, args, target.binaryDir.toPath()));
+        goalList.addTarget(ge);
       }
 
-      const generalGoal = new GoalWorkerImpl;
+      const generalGoal = new GoalTarget;
       for (const params of target.preBuildList) {
         const execStruct = resolveTargetCommand(this, params);
         generalGoal.addTask(new SpawnSyncTask(execStruct.command, execStruct.args, target.binaryDir.toString()));
@@ -519,16 +451,16 @@ export class ProjectContext {
         generalGoal.addTask(new SpawnSyncTask(execStruct.command, execStruct.args, target.binaryDir.toString()));
       }
       
-      goalList.add(generalGoal);
+      goalList.addTarget(generalGoal);
 
-      const worker = new GoalWorkerImpl(name);
+      const worker = new GoalTarget(name);
       worker.message = `Built target ${name}`;
-      worker.addDependency(target.getFile().toString());
-      goalList.add(worker);
+      worker.addDependency(target.getFile().toPath());
+      goalList.addTarget(worker);
     }
 
     if (this._installList.length) {
-      const worker = new GoalWorkerImpl(INSTALL_TARGET);
+      const worker = new GoalTarget(INSTALL_TARGET);
       const fileInstallationTask = new FileInstallationTask;
       for (const iter of this._installList) {
         let src: AbsolutePath, dest: AbsolutePath;
@@ -554,12 +486,12 @@ export class ProjectContext {
         fileInstallationTask.add(src, dest);
       }
       worker.addTask(fileInstallationTask);
-      goalList.add(worker);
+      goalList.addTarget(worker);
     }
 
-    const worker = new GoalWorkerImpl(ALL_TARGET);
-    Object.keys(this[TARGETS].ENTRIES).forEach(i => void worker.addDependency(i))
-    goalList.add(worker);
+    const ge = new GoalTarget(ALL_TARGET);
+    Object.keys(this[TARGETS].ENTRIES).forEach(i => void ge.addDependency(i))
+    goalList.addTarget(ge);
   
     return goalList;
   }

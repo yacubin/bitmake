@@ -135,3 +135,9 @@ export async function fetchBuffer(str: string): Promise<Buffer> {
   }
   return await fs.promises.readFile(getURLString(str));
 }
+
+export async function saveAsJSON(filename: string, value: any, options?: { pretty: boolean }) {
+  const content = JSON.stringify(value, null, options && options.pretty ? 2 : 0);
+  await fs.promises.mkdir(path.dirname(filename), { recursive: true });
+  await fs.promises.writeFile(filename, content, { encoding: "utf8" });
+}

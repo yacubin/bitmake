@@ -14,7 +14,7 @@ import { MakeServer } from "@/server/MakeServer";
 import { PluginContext } from "@/core/PluginContext";
 import { ScopeHelper } from "@/core/Scope";
 import { ToolchainContext } from "@/core/ToolchainContext";
-import { getPathString, getURLString }  from "@/utils/FileSystem";
+import { getPathString, getURLString, saveAsJSON }  from "@/utils/FileSystem";
 import { AbsolutePath } from "@/core/AbsolutePath";
 import { importModule }  from "@/utils/Module";
 import { determineCompiler }  from "@/core/DetermineCompiler";
@@ -124,27 +124,29 @@ export default async function(config: any, environment: any, settings: SettingsS
     logger.info("Configuring done");
 
     if (scope.GLOBAL_CONTEXT_JSON) {
-      const filename = scope.GLOBAL_CONTEXT_JSON.toString();
-      const content = JSON.stringify(server.project, null, 2);
-      await fs.promises.mkdir(Path.dirname(filename), { recursive: true });
-      await fs.promises.writeFile(filename, content, { encoding: "utf8" });
+      await saveAsJSON(scope.GLOBAL_CONTEXT_JSON.toPath(), server.project, { pretty: true });
     }
 
     const allGoalList = server.project.createGoals(scope);
     const goalList = allGoalList.getTargetList(INSTALL_TARGET);
 
     if (scope.TARGET_GOALS_JSON) {
-      const filename = scope.TARGET_GOALS_JSON.toString();
-      const content = JSON.stringify(goalList, null, 2);
-      await fs.promises.mkdir(Path.dirname(filename), { recursive: true });
-      await fs.promises.writeFile(filename, content, { encoding: "utf8" });
+      await saveAsJSON(scope.TARGET_GOALS_JSON.toPath(), goalList, { pretty: true });
     }
 
     let loaded = 0;
     const total = goalList.length;
-    for (const goal of goalList) {
-      goal.updateProgress({ loaded, total });
-      await goal.doWork();
+    for (const iter of goalList) {
+      if (iter.output) {
+        const outputDir = Path.dirname(iter.output);
+        await fs.promises.mkdir(outputDir, { recursive: true });
+      }
+      if (iter.message) {
+        const relationOfLength = Math.round(((loaded + 1) / total) * 100);
+        const percent = "[" + relationOfLength.toString().padStart(3, " ") + "%] ";
+        logger.notice(percent + iter.message);
+      }
+      await iter.doWork();
       loaded++;
     }
   });

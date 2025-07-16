@@ -12,11 +12,16 @@ import { TargetObjects } from "@/core/TargetObjects";
 import { TargetIncludes } from "@/core/TargetIncludes";
 import { VariantMap } from "@/core/Scope";
 import { AbsolutePath } from "@/core/AbsolutePath";
-import { SourceFileList } from "@/core/SourceFileList";
 import { SourceFile } from "@/core/SourceFile";
 
 export abstract class InterfaceTask {
   abstract execute(): Promise<void> | void;
+};
+
+export abstract class InterfaceSourceFiles {
+  abstract setLanguage(language: string): void;
+  abstract addDefinitions(...definitions: string[]): void;
+  abstract addCompileFlags(...flags: string[]): void;
 };
 
 export abstract class InterfaceTarget {
@@ -32,9 +37,9 @@ export abstract class InterfaceTarget {
   abstract addSources(...sources: Array<TargetObjects | SourceFile | AbsolutePath | string>): void;
   abstract addIncludes(...includes: Array<TargetIncludes | AbsolutePath | string>): void;
   abstract addLibraries(...libraries: any): void;
-  abstract addCompileOptions(...options: Array<string|string[]>): void;
+  abstract addCompileOptions(...options: Array<string | string[]>): void;
   abstract addLinkOptions(...options: Array<string|string[]>): void;
-  abstract getSourceFiles(...sources: any[]): SourceFileList;
+  abstract getSourceFiles(...sources: any[]): InterfaceSourceFiles;
   abstract addDefinitions(...definitions: any[]): void;
   abstract addPreBuild(command: any, args: any[]): void;
   abstract addPostBuild(command: any, args: any[]): void;

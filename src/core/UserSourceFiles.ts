@@ -7,16 +7,18 @@
  * under the MIT License. See LICENSE file for details.
  */
 
+import { InterfaceSourceFiles } from "@/core/MakeInterfaces";
 import { SourceFile } from "@/core/SourceFile";
 import { SystemScope } from "@/core/SystemScope";
 import { normalizeDefinitions } from "@/core/DefinitionHelper";
 
 const SOURCES = Symbol("SOURCES");
 
-export class SourceFileList {
+export class UserSourceFiles extends InterfaceSourceFiles {
   private [SOURCES]: SourceFile[];
 
   private constructor(scope: SystemScope, sources: SourceFile[]) {
+    super();
     this[SOURCES] = [];
     for (const iter of sources) {
       if (!(iter instanceof SourceFile))
@@ -26,7 +28,11 @@ export class SourceFileList {
   }
 
   public static create(scope: SystemScope, sources: SourceFile[]) {
-    return Object.seal(new SourceFileList(scope, sources));
+    return Object.seal(new UserSourceFiles(scope, sources));
+  }
+
+  public setLanguage(language: string): void {
+    throw new Error("Not Implemented");
   }
 
   public addDefinitions(...definitions: string[]) {

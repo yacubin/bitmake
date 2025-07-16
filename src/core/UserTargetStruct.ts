@@ -14,7 +14,7 @@ import { ensureString } from "@/utils/StrictType";
 import { TargetObjects } from "@/core/TargetObjects";
 import { AbsolutePath } from "@/core/AbsolutePath";
 import { SourceFile } from "@/core/SourceFile";
-import { SourceFileList } from "@/core/SourceFileList";
+import { UserSourceFiles } from "@/core/UserSourceFiles";
 import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
@@ -113,7 +113,7 @@ export class UserTargetStruct extends InterfaceTarget {
     }
   }
   
-  public getSourceFiles(...sources: any[]): SourceFileList {
+  public getSourceFiles(...sources: any[]): UserSourceFiles {
     const result = [];
     const scope = this[SCOPE];
     const sourceFiles = this[IMPL].getSourceFiles();
@@ -125,7 +125,7 @@ export class UserTargetStruct extends InterfaceTarget {
       result.push(src);
     }
     
-    return SourceFileList.create(scope, result.length ? result : sourceFiles);
+    return UserSourceFiles.create(scope, result.length ? result : sourceFiles);
   }
 
   public addIncludes(...includes: any[]): void {

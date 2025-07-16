@@ -19,6 +19,9 @@ import { SYSTEM_VARIABLE_GROUP } from "@/Constants";
 import { normalizeDefinitions } from "@/core/DefinitionHelper";
 import { SimpleObject } from "./SimpleObject";
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
+import { Logger } from "@/logger";
+
+const logger = Logger.create(import.meta.url);
 
 function normalizeIncludes(baseDir: AbsolutePath, ...includes: any[]): Array<AbsolutePath | TargetIncludes> {
   const result = [];
@@ -429,11 +432,18 @@ export interface TargetOptions extends BaseTargetOptions {
   linkOptions: Array<string | string[]>;
 };
 
+interface LanguageEntry {
+  language: string;
+  compiler: string;
+  flags: string[];
+};
+
 export class MainTarget extends BaseTarget {
-  protected _prefix: string;
-  protected _suffix: string;
-  protected _outputName: string;
-  protected _positionIndependentCode: boolean;
+  private _prefix: string;
+  private _suffix: string;
+  private _outputName: string;
+  private _positionIndependentCode: boolean;
+  private _languages = new Array<LanguageEntry>;
 
   protected constructor(variableMap: VariableMap, options: TargetOptions) {
     super(variableMap, options);
@@ -493,6 +503,35 @@ export class MainTarget extends BaseTarget {
 
   public setPositionIndependentCode(value: boolean) {
     this._positionIndependentCode = value;
+  }
+
+  public getLanguage(): string {
+    if (!this._languages.length)
+      throw new Error("No languages have been added");
+    return this._languages[this._languages.length - 1].language;
+  }
+
+  public getCompiler(language: string): string {
+    if (!this._languages.length)
+      throw new Error("No languages have been added");
+    const entry = this._languages.find(i => i.language === language);
+    return (entry || this._languages[this._languages.length - 1]).compiler;
+  }
+
+  public getCompilerFlags(language: string): string[] {
+    if (!this._languages.length)
+      throw new Error("No languages have been added");
+    const entry = this._languages.find(i => i.language === language);
+    return (entry || this._languages[this._languages.length - 1]).flags;
+  }
+
+  public setLanguageAndCompiler(language: string, compiler: string, compilerFlags: string[]) {
+    if (this._languages.find(i => i.language === language)) {
+      logger.warn(`${language} language has already been added to the target`);
+      return;
+    }
+    const flags = [ ...compilerFlags ];
+    this._languages.push({language, compiler, flags});
   }
 
   public postUpdate(target: PostTarget) {

@@ -258,6 +258,10 @@ export abstract class MakeContext extends GeneralContext {
       this._installList.push(entity);
     }
   }
+
+  public getVariableMap(): VariableMap {
+    return this._scope;
+  }
 };
 
 export function createContext<T extends IGeneralContext>(ctx: T): T & SystemScope {

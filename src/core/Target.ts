@@ -8,7 +8,6 @@
  */
 
 import { SourceFile } from "@/core/SourceFile";
-import { SourceFileList } from "@/core/SourceFileList";
 import { TargetName } from "@/core/TargetName";
 import { TargetFile } from "@/core/TargetFile";
 import { TargetIncludes } from "@/core/TargetIncludes";
@@ -274,34 +273,16 @@ export abstract class BaseTarget {
     return result;
   }
 
-  public getSources() {
+  public getAllSources() {
     return this._sources;
   }
 
-  public getSourceFileList(): SourceFile[] {
+  public getSourceFiles(): SourceFile[] {
     return this._sources.map(i => i.value).filter(i => i instanceof SourceFile);
   }
 
-  public getTargetObjectsList(): TargetObjects[] {
+  public getTargetObjects(): TargetObjects[] {
     return this._sources.map(i => i.value).filter(i => i instanceof TargetObjects);
-  }
-
-  public getSourceFiles(...sources: any[]): SourceFileList {
-    const result = [];
-    const scope = this[TARGET_SCOPE];
-    const sourceFiles = this.getSourceFileList();
-    for (const it of sources.flat()) {
-      const filename = scope.SOURCE_DIR.resolve(it).toString();
-      const src = sourceFiles.find(i => i.FILE.toString() === filename);
-      if (!src)
-        throw new Error(`Cannot find "${it}"`);
-      result.push(src);
-    }
-
-    if (result.length)
-      return SourceFileList.create(scope, result);
-
-    return SourceFileList.create(scope, sourceFiles);
   }
 
   public addSource(source: TargetObjects | SourceFile) {

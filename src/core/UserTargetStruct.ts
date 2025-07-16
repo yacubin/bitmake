@@ -14,6 +14,7 @@ import { ensureString } from "@/utils/StrictType";
 import { TargetObjects } from "@/core/TargetObjects";
 import { AbsolutePath } from "@/core/AbsolutePath";
 import { SourceFile } from "@/core/SourceFile";
+import { SourceFileList } from "@/core/SourceFileList";
 import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
@@ -111,6 +112,21 @@ export class UserTargetStruct extends InterfaceTarget {
         throw new Error(`Not support instance ${iter}`);
     }
   }
+  
+  public getSourceFiles(...sources: any[]): SourceFileList {
+    const result = [];
+    const scope = this[SCOPE];
+    const sourceFiles = this[IMPL].getSourceFiles();
+    for (const it of sources.flat()) {
+      const filename = scope.SOURCE_DIR.resolve(it).toPath();
+      const src = sourceFiles.find(i => i.FILE.toPath() === filename);
+      if (!src)
+        throw new Error(`Cannot find "${it}"`);
+      result.push(src);
+    }
+    
+    return SourceFileList.create(scope, result.length ? result : sourceFiles);
+  }
 
   public addIncludes(...includes: any[]): void {
     this[IMPL].addIncludes(...includes);
@@ -126,10 +142,6 @@ export class UserTargetStruct extends InterfaceTarget {
 
   public addLinkOptions(...options: any[]): void {
     this[IMPL].addLinkOptions(...options);
-  }
-
-  public getSourceFiles(...sources: any[]) {
-    return this[IMPL].getSourceFiles(...sources);
   }
 
   public addDefinitions(...definitions: any[]): void {

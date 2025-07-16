@@ -315,7 +315,7 @@ export class ProjectContext {
 
     const objectFiles = new Map<SourceFile, AbsolutePath>();
     for (const target of this[TARGETS].ENTRIES.values()) {
-      for (const it of target.getSourceFileList()) {
+      for (const it of target.getSourceFiles()) {
         if (!it.LANGUAGE)
           continue;
         const rfile1 = target.binaryDir.relative(it.FILE);
@@ -328,16 +328,16 @@ export class ProjectContext {
 
     for (const [name, target] of this[TARGETS].ENTRIES) {
       const depends = [];
-      for (const s of target.getTargetObjectsList()) {
+      for (const s of target.getTargetObjects()) {
         const t = this[TARGETS].get(s.targetName);
-        for (const f of t.getSourceFileList()) {
+        for (const f of t.getSourceFiles()) {
           const o = objectFiles.get(f);
           o && depends.push(o.toString());
         }
       }
   
       const headers = this[TARGETS].allHeadersOf(target);
-      for (const s of target.getSourceFileList()) {
+      for (const s of target.getSourceFiles()) {
         if (s.HEADER_FILE_ONLY)
           continue;
 

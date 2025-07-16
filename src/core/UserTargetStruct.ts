@@ -11,12 +11,42 @@ import { InterfaceTarget } from "@/core/MakeInterfaces";
 import { BaseTarget } from "@/core/Target";
 import { SystemScope } from "@/core/SystemScope";
 import { ensureString } from "@/utils/StrictType";
+import { TargetObjects } from "@/core/TargetObjects";
+import { AbsolutePath } from "@/core/AbsolutePath";
+import { SourceFile } from "@/core/SourceFile";
 import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
 
 const SCOPE = Symbol("SCOPE");
 const IMPL = Symbol("IMPL");
+
+const _languageExtensions = {
+  ASM: [ ".asm", ".s" ],
+  C:   [ ".c" ],
+  CXX: [".cpp", ".cc", ".cxx" ],
+};
+
+function isSupportLanguage(language: string) {
+  return _languageExtensions.hasOwnProperty(language);
+}
+
+function getFileLanguage(filename: string) {
+  const filenameLowerCase = filename.toLowerCase();
+  for (const [language, extensions] of Object.entries(_languageExtensions)) {
+    for (const iter of extensions) {
+      if (filenameLowerCase.endsWith(iter))
+        return language;
+    }
+  }
+  return "";
+}
+
+function makeLanguage(value: string) {
+  if (isSupportLanguage(value))
+    return value;
+  throw new Error(`Language "${value}" is not supported`);
+}
 
 export class UserTargetStruct extends InterfaceTarget {
   [IMPL]: BaseTarget;
@@ -60,8 +90,26 @@ export class UserTargetStruct extends InterfaceTarget {
     this[IMPL].setOutputName(ensureString(value));
   }
 
-  public addSources(...sources: any[]): void {
-    this[IMPL].addSources(...sources);
+  public addSources(...sources: Array<TargetObjects | SourceFile | AbsolutePath | string>): void {
+    const scope = this[SCOPE];
+    for (const iter of sources.flat()) {
+      if (typeof iter === "string" || iter instanceof AbsolutePath) {
+        const filename = scope.SOURCE_DIR.resolve(iter);
+        const language = getFileLanguage(filename.toPath());
+        const compileFlags = !language ? [] : [
+          ...(scope as any)[language + "_FLAGS"],
+          ...(scope as any)[language + "_FLAGS_" + scope.BUILD_TYPE.toUpperCase()],
+        ];
+        const source = SourceFile.create(filename, scope.SOURCE_DIR, language, compileFlags);
+        this[IMPL].addSource(source);
+      }
+      else if (iter instanceof TargetObjects)
+        this[IMPL].addSource(iter);
+      else if (iter instanceof SourceFile)
+        this[IMPL].addSource(iter);
+      else
+        throw new Error(`Not support instance ${iter}`);
+    }
   }
 
   public addIncludes(...includes: any[]): void {

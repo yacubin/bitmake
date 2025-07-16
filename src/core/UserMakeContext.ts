@@ -67,23 +67,31 @@ export class UserMakeContext extends GeneralContext implements IMakeContext {
   }
 
   public addObjectLibrary(name: any, ...sources: any[]): UserTargetStruct {
-    const target = this[IMPL].addObjectLibrary(name, ...sources);
-    return UserTargetStruct.create(target, this[SCOPE]);
+    const target = this[IMPL].addObjectLibrary(name);
+    const result = UserTargetStruct.create(target, this[SCOPE]);
+    result.addSources(...sources);
+    return result;
   }
 
   public addStaticLibrary(name: any, ...sources: any[]): UserTargetStruct {
-    const target = this[IMPL].addStaticLibrary(name, ...sources);
-    return UserTargetStruct.create(target, this[SCOPE]);
+    const target = this[IMPL].addStaticLibrary(name);
+    const result = UserTargetStruct.create(target, this[SCOPE]);
+    result.addSources(...sources);
+    return result;
   }
 
   public addSharedLibrary(name: any, ...sources: any[]): UserTargetStruct {
-    const target = this[IMPL].addSharedLibrary(name, ...sources);
-    return UserTargetStruct.create(target, this[SCOPE]);
+    const target = this[IMPL].addSharedLibrary(name);
+    const result = UserTargetStruct.create(target, this[SCOPE]);
+    result.addSources(...sources);
+    return result;
   }
 
   public addExecutable(name: any, ...sources: any[]): UserTargetStruct {
-    const target = this[IMPL].addExecutable(name, ...sources);
-    return UserTargetStruct.create(target, this[SCOPE]);
+    const target = this[IMPL].addExecutable(name);
+    const result = UserTargetStruct.create(target, this[SCOPE]);
+    result.addSources(...sources);
+    return result;
   }
 
   public executeScript(script: any, params: any): void {

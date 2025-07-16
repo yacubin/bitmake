@@ -167,47 +167,43 @@ export abstract class MakeContext extends GeneralContext {
     return target;
   }
 
-  public addObjectLibrary(name: any, ...sources: any[]): ObjectLibrary {
+  public addObjectLibrary(name: any): ObjectLibrary {
     if (this._targets.has(name))
       throw new Error(`Target "${name}" exists`);
 
     const options = makeObjectLibraryOptions(name, this._scope);
     const target = ObjectLibrary.create(this._scope, options);
     this._targets.set(name, target);
-    target.addSources(...sources);
     return target;
   }
 
-  public addStaticLibrary(name: any, ...sources: any[]): StaticLibrary {
+  public addStaticLibrary(name: any): StaticLibrary {
     if (this._targets.has(name))
       throw new Error(`Target "${name}" exists`);
 
     const options = makeStaticLibraryOptions(name, this._scope);
     const target = StaticLibrary.create(this._scope, options);
     this._targets.set(name, target);
-    target.addSources(...sources);
     return target;
   }
 
-  public addSharedLibrary(name: any, ...sources: any[]): SharedLibrary {
+  public addSharedLibrary(name: any): SharedLibrary {
     if (this._targets.has(name))
       throw new Error(`Target "${name}" exists`);
 
     const options = makeSharedLibraryOptions(name, this._scope);
     const target = SharedLibrary.create(this._scope, options);
     this._targets.set(name, target);
-    target.addSources(...sources);
     return target;
   }
 
-  public addExecutable(name: string, ...sources: any[]): Executable {
+  public addExecutable(name: string): Executable {
     if (this._targets.has(name))
       throw new Error(`Target "${name}" exists`);
 
     const options = makeExecutableOptions(name, this._scope);
     const target = Executable.create(this._scope, options);
     this._targets.set(name, target);
-    target.addSources(...sources);
     return target;
   }
 

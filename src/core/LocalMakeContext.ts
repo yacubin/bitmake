@@ -7,7 +7,6 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { IMakeContext } from "@/core/MakeInterfaces";
 import { MakeContext } from "@/core/BaseContext";
 import { fileExistsSync } from "@/utils/FileSystem";
 import { ProjectContext } from "@/core/ProjectContext";
@@ -19,7 +18,7 @@ import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
 
-export class LocalMakeContext extends MakeContext implements IMakeContext {
+export class LocalMakeContext extends MakeContext {
   private _project: ProjectContext;
 
   public constructor(scope: VariableMap, project: ProjectContext) {

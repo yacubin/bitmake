@@ -7,7 +7,6 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { InterfaceTarget } from "@/core/MakeInterfaces";
 import { SourceFile } from "@/core/SourceFile";
 import { SourceFileList } from "@/core/SourceFileList";
 import { TargetName } from "@/core/TargetName";
@@ -22,12 +21,6 @@ import { normalizeDefinitions } from "@/core/DefinitionHelper";
 import { SimpleObject } from "./SimpleObject";
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
 
-const _languageExtensions = {
-  ASM: [ ".asm", ".s" ],
-  C:   [ ".c" ],
-  CXX: [".cpp", ".cc", ".cxx" ],
-};
-
 function normalizeIncludes(baseDir: AbsolutePath, ...includes: any[]): Array<AbsolutePath | TargetIncludes> {
   const result = [];
   for (const iter of includes.flat()) {
@@ -41,44 +34,6 @@ function normalizeIncludes(baseDir: AbsolutePath, ...includes: any[]): Array<Abs
       throw new Error(`Not support instance ${iter}`);
   }
   return result;
-}
-
-function isSupportLanguage(language: string) {
-  return _languageExtensions.hasOwnProperty(language);
-}
-
-function getFileLanguage(filename: string) {
-  const filenameLowerCase = filename.toLowerCase();
-  for (const [language, extensions] of Object.entries(_languageExtensions)) {
-    for (const iter of extensions) {
-      if (filenameLowerCase.endsWith(iter))
-        return language;
-    }
-  }
-  return "";
-}
-
-function makeLanguage(value: string) {
-  if (isSupportLanguage(value))
-    return value;
-  throw new Error(`Language "${value}" is not supported`);
-}
-
-function createSources(scope: SystemScope, source: TargetObjects | SourceFile | AbsolutePath | string): TargetObjects | SourceFile {
-  if (source instanceof TargetObjects || source instanceof SourceFile)
-    return source;
-
-  if (typeof source === "string" || AbsolutePath.isAbsolute(source)) {
-    const filename = scope.SOURCE_DIR.resolve(source);
-    const language = getFileLanguage(filename.toString());
-    const compileFlags = !language ? [] : [
-      ...(scope as any)[language + "_FLAGS"],
-      ...(scope as any)[language + "_FLAGS_" + scope.BUILD_TYPE.toUpperCase()],
-    ];
-    return SourceFile.create(filename, scope.SOURCE_DIR, language, compileFlags);
-  }
-  
-  throw new Error(`Not support instance ${source}`);
 }
 
 export interface TargetCommand {
@@ -349,10 +304,8 @@ export abstract class BaseTarget {
     return SourceFileList.create(scope, sourceFiles);
   }
 
-  public addSources(...sources: Array<TargetObjects | SourceFile | AbsolutePath | string>) {
-    for (let it of sources.flat()) {
-      this._sources.push({publicOnly: false, value: createSources(this[TARGET_SCOPE], it)});
-    }
+  public addSource(source: TargetObjects | SourceFile) {
+    this._sources.push({publicOnly: false, value: source});
   }
 
   public get preBuildList() {

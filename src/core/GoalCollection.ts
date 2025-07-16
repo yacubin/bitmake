@@ -10,6 +10,7 @@
 import { SimpleObject } from "@/core/SimpleObject";
 import { InterfaceTask } from "@/core/MakeInterfaces";
 import { Logger } from "@/logger";
+import { AbsolutePath } from "./AbsolutePath";
 
 const logger = Logger.create(import.meta.url);
 
@@ -40,8 +41,8 @@ export class GoalTarget {
     return this._output;
   }
 
-  set output(value: string) {
-    this._output = value;
+  set output(value: AbsolutePath) {
+    this._output = value.toPath();
   }
 
   get depends(): string[] {

@@ -307,7 +307,7 @@ export class ProjectContext {
       const msg = "\x1b[36m" + "Generating " + script.binaryDir.relative(script.OUTPUT) + "\x1b[0m";
       const ge = new GoalTarget(script.NAME);
       ge.message = msg;
-      ge.output = script.OUTPUT.toString();
+      ge.output = script.OUTPUT;
       ge.addDependency(...depends);
       ge.addTask(new ExecScriptTask(script.variableMap, scriptObj));
       goalList.addTarget(ge);
@@ -372,7 +372,7 @@ export class ProjectContext {
 
         const ge = new GoalTarget;
         ge.message = msg;
-        ge.output = output.toString();
+        ge.output = output;
         ge.addDependency(...headers);
         ge.addDependency(s.FILE.toPath());
         ge.addTask(new SpawnSyncTask(command, args, target.binaryDir.toPath()));
@@ -396,7 +396,7 @@ export class ProjectContext {
             ...objs
           ];
           generalGoal.message = `Linking CXX object library ${target.getFileName()}`;
-          generalGoal.output = target.getFile().toString();
+          generalGoal.output = target.getFile();
           generalGoal.addDependency(...depends);
           generalGoal.addTask(new SpawnSyncTask(scope.LINKER, args, target.getFileDir().toString()));
         }
@@ -410,7 +410,7 @@ export class ProjectContext {
         if (objs.length) {
           const args = [ "rc", target.getFileName() , ...objs ];
           generalGoal.message = `Linking CXX static library ${target.getFileName()}`;
-          generalGoal.output = target.getFile().toString();
+          generalGoal.output = target.getFile();
           generalGoal.addDependency(...depends);
           generalGoal.addTask(new SpawnSyncTask(scope.AR, args, target.getFileDir().toString()));
         }
@@ -436,7 +436,7 @@ export class ProjectContext {
           ];
 
           generalGoal.message = `Linking CXX executable ${target.getFileName()}`;
-          generalGoal.output = target.getFile().toString();
+          generalGoal.output = target.getFile();
           generalGoal.addDependency(...depends);
           generalGoal.addDependency(...libs);
           generalGoal.addTask(new SpawnSyncTask(scope.CXX_COMPILER, args, target.getFileDir().toString()));

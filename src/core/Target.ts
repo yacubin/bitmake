@@ -13,9 +13,6 @@ import { TargetFile } from "@/core/TargetFile";
 import { TargetIncludes } from "@/core/TargetIncludes";
 import { TargetObjects } from "@/core/TargetObjects";
 import { AbsolutePath } from "@/core/AbsolutePath";
-import { ScopeHelper, VariableMap } from "@/core/Scope";
-import { SystemScope } from "@/core/SystemScope";
-import { SYSTEM_VARIABLE_GROUP } from "@/Constants";
 import { normalizeDefinitions } from "@/core/DefinitionHelper";
 import { SimpleObject } from "./SimpleObject";
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
@@ -85,8 +82,6 @@ export interface BaseTargetOptions {
 };
 
 export abstract class BaseTarget {
-  protected [TARGET_SCOPE]: SystemScope;
-
   protected _name: string;
   protected _sourceDir: AbsolutePath;
   protected _binaryDir: AbsolutePath;
@@ -98,8 +93,11 @@ export abstract class BaseTarget {
   protected _sources: TargetValueList<TargetObjects | SourceFile>;
   protected _preBuildList: TargetCommand[];
   protected _postBuildList: TargetCommand[];
+  protected _language = "";
+  protected _compilerPath = "";
+  protected _compilerFlags = new Array<string>;
 
-  constructor(variableMap: VariableMap, options: BaseTargetOptions) {
+  constructor(options: BaseTargetOptions) {
     const name = options.name;
     if (typeof name !== "string")
       throw new Error(`Target "${name}" is not string type`);
@@ -110,8 +108,6 @@ export abstract class BaseTarget {
     if ([ ALL_TARGET, INSTALL_TARGET ].includes(name))
       throw new Error(`Target "${name}" is reserved name`);
 
-    const variables = ScopeHelper.createVariableValues(variableMap, SYSTEM_VARIABLE_GROUP) as SystemScope;
-    this[TARGET_SCOPE] = variables;
     this._name = options.name;
     this._sourceDir = options.sourceDir;
     this._binaryDir = options.binaryDir;
@@ -308,6 +304,30 @@ export abstract class BaseTarget {
     this._postBuildList.push(makeTargetCommand(command, args));
   }
 
+  public get language(): string {
+    return this._language;
+  }
+
+  public set language(value: string) {
+    this._language = value;
+  }
+
+  public get compilerPath(): string {
+    return this._compilerPath;
+  }
+
+  public set compilerPath(value: string) {
+    this._compilerPath = value;
+  }
+
+  public get compilerFlags(): string[] {
+    return this._compilerFlags;
+  }
+
+  public set compilerFlags(value: string[]) {
+    this._compilerFlags = value;
+  }
+
   public toJSON(): object {
     return {
       name: this._name,
@@ -330,12 +350,12 @@ export class PostTarget extends BaseTarget {
   private _suffix?: string;
   private _positionIndependentCode?: boolean;
 
-  private constructor(variableMap: VariableMap, options: BaseTargetOptions) {
-    super(variableMap, options);
+  private constructor(options: BaseTargetOptions) {
+    super(options);
   }
 
-  public static create(variableMap: VariableMap, options: BaseTargetOptions) {
-    return Object.seal(new PostTarget(variableMap, options));
+  public static create(options: BaseTargetOptions) {
+    return Object.seal(new PostTarget(options));
   }
 
   public static ensureInstance(value: any) {
@@ -432,21 +452,14 @@ export interface TargetOptions extends BaseTargetOptions {
   linkOptions: Array<string | string[]>;
 };
 
-interface LanguageEntry {
-  language: string;
-  compiler: string;
-  flags: string[];
-};
-
 export class MainTarget extends BaseTarget {
   private _prefix: string;
   private _suffix: string;
   private _outputName: string;
   private _positionIndependentCode: boolean;
-  private _languages = new Array<LanguageEntry>;
 
-  protected constructor(variableMap: VariableMap, options: TargetOptions) {
-    super(variableMap, options);
+  protected constructor(options: TargetOptions) {
+    super(options);
 
     this._prefix = options.prefix;
     this._suffix = options.suffix;
@@ -493,45 +506,12 @@ export class MainTarget extends BaseTarget {
     this._outputName = value;
   }
 
-  public get TARGET_SCOPE() {
-    return this[TARGET_SCOPE];
-  }
-
   public get positionIndependentCode() {
     return this._positionIndependentCode;
   }
 
   public setPositionIndependentCode(value: boolean) {
     this._positionIndependentCode = value;
-  }
-
-  public getLanguage(): string {
-    if (!this._languages.length)
-      throw new Error("No languages have been added");
-    return this._languages[this._languages.length - 1].language;
-  }
-
-  public getCompiler(language: string): string {
-    if (!this._languages.length)
-      throw new Error("No languages have been added");
-    const entry = this._languages.find(i => i.language === language);
-    return (entry || this._languages[this._languages.length - 1]).compiler;
-  }
-
-  public getCompilerFlags(language: string): string[] {
-    if (!this._languages.length)
-      throw new Error("No languages have been added");
-    const entry = this._languages.find(i => i.language === language);
-    return (entry || this._languages[this._languages.length - 1]).flags;
-  }
-
-  public setLanguageAndCompiler(language: string, compiler: string, compilerFlags: string[]) {
-    if (this._languages.find(i => i.language === language)) {
-      logger.warn(`${language} language has already been added to the target`);
-      return;
-    }
-    const flags = [ ...compilerFlags ];
-    this._languages.push({language, compiler, flags});
   }
 
   public postUpdate(target: PostTarget) {
@@ -566,12 +546,12 @@ export class MainTarget extends BaseTarget {
 };
 
 export class ObjectLibrary extends MainTarget {
-  private constructor(variableMap: VariableMap, options: TargetOptions) {
-    super(variableMap, options);
+  private constructor(options: TargetOptions) {
+    super(options);
   }
 
-  public static create(variableMap: VariableMap, options: TargetOptions) {
-    return Object.seal(new ObjectLibrary(variableMap, options));
+  public static create(options: TargetOptions) {
+    return Object.seal(new ObjectLibrary(options));
   }
 
   public toJSON(): SimpleObject {
@@ -582,12 +562,12 @@ export class ObjectLibrary extends MainTarget {
 };
 
 export class StaticLibrary extends MainTarget {
-  private constructor(variableMap: VariableMap, options: TargetOptions) {
-    super(variableMap, options);
+  private constructor(options: TargetOptions) {
+    super(options);
   }
 
-  public static create(variableMap: VariableMap, options: TargetOptions) {
-    return Object.seal(new StaticLibrary(variableMap, options));
+  public static create(options: TargetOptions) {
+    return Object.seal(new StaticLibrary(options));
   }
 
   public toJSON(): SimpleObject {
@@ -598,12 +578,12 @@ export class StaticLibrary extends MainTarget {
 };
 
 export class SharedLibrary extends MainTarget {
-  private constructor(variableMap: VariableMap, options: TargetOptions) {
-    super(variableMap, options);
+  private constructor(options: TargetOptions) {
+    super(options);
   }
 
-  public static create(variableMap: VariableMap, options: TargetOptions) {
-    return Object.seal(new SharedLibrary(variableMap, options));
+  public static create(options: TargetOptions) {
+    return Object.seal(new SharedLibrary(options));
   }
 
   public toJSON(): SimpleObject {
@@ -614,12 +594,12 @@ export class SharedLibrary extends MainTarget {
 }
 
 export class Executable extends MainTarget {
-  private constructor(variableMap: VariableMap, options: TargetOptions) {
-    super(variableMap, options);
+  private constructor(options: TargetOptions) {
+    super(options);
   }
 
-  public static create(variableMap: VariableMap, options: TargetOptions) {
-    return Object.seal(new Executable(variableMap, options));
+  public static create(options: TargetOptions) {
+    return Object.seal(new Executable(options));
   }
 
   public toJSON(): SimpleObject {

@@ -97,11 +97,28 @@ export class UserTargetStruct extends InterfaceTarget {
       if (typeof iter === "string" || iter instanceof AbsolutePath) {
         const filename = scope.SOURCE_DIR.resolve(iter);
         const language = getFileLanguage(filename.toPath());
-        const compilerPath = (scope as any)[language + "_COMPILER"];
-        const compilerFlags = !language ? [] : [
-          ...(scope as any)[language + "_FLAGS"],
-          ...(scope as any)[language + "_FLAGS_" + scope.BUILD_TYPE.toUpperCase()],
-        ];
+        let compilerPath = "";
+        const compilerFlags = [];
+
+        if (language) {
+          compilerPath = (scope as any)[language + "_COMPILER"];
+          const COMPILER_FLAGS1 = (scope as any)[`${language}_FLAGS`]
+          if (COMPILER_FLAGS1) {
+            compilerFlags.push(...COMPILER_FLAGS1);
+          }
+
+          const COMPILER_FLAGS2 = (scope as any)[`${language}_FLAGS_${scope.BUILD_TYPE.toUpperCase()}`]
+          if (COMPILER_FLAGS2) {
+            compilerFlags.push(...COMPILER_FLAGS2);
+          }
+
+          if (!this[IMPL].language || (this[IMPL].language === "C" && language === "CXX")) {
+            this[IMPL].language = language;
+            this[IMPL].compilerPath = compilerPath;
+            this[IMPL].compilerFlags = [ ...compilerFlags ];
+          }
+        }
+
         const source = SourceFile.create(filename, scope.SOURCE_DIR, language, compilerPath, compilerFlags);
         this[IMPL].addSource(source);
       }
@@ -126,7 +143,7 @@ export class UserTargetStruct extends InterfaceTarget {
       result.push(src);
     }
     
-    return UserSourceFiles.create(scope, result.length ? result : sourceFiles);
+    return UserSourceFiles.create(this[IMPL], result.length ? result : sourceFiles);
   }
 
   public addIncludes(...includes: any[]): void {

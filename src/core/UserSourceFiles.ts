@@ -11,14 +11,18 @@ import { InterfaceSourceFiles } from "@/core/MakeInterfaces";
 import { SourceFile } from "@/core/SourceFile";
 import { SystemScope } from "@/core/SystemScope";
 import { normalizeDefinitions } from "@/core/DefinitionHelper";
+import { BaseTarget } from "@/core/Target";
 
+const TARGET = Symbol("TARGET");
 const SOURCES = Symbol("SOURCES");
 
 export class UserSourceFiles extends InterfaceSourceFiles {
+  private [TARGET]: BaseTarget;
   private [SOURCES]: SourceFile[];
 
-  private constructor(scope: SystemScope, sources: SourceFile[]) {
+  private constructor(target: BaseTarget, sources: SourceFile[]) {
     super();
+    this[TARGET] = target;
     this[SOURCES] = [];
     for (const iter of sources) {
       if (!(iter instanceof SourceFile))
@@ -27,8 +31,8 @@ export class UserSourceFiles extends InterfaceSourceFiles {
     }
   }
 
-  public static create(scope: SystemScope, sources: SourceFile[]) {
-    return Object.seal(new UserSourceFiles(scope, sources));
+  public static create(target: BaseTarget, sources: SourceFile[]) {
+    return Object.seal(new UserSourceFiles(target, sources));
   }
 
   public setLanguage(language: string): void {

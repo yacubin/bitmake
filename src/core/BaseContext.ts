@@ -161,7 +161,7 @@ export abstract class MakeContext extends GeneralContext {
     let target = this._postTargets.get(name);
     if (!target) {
       const options = makeBaseTargetOptions(name, this._scope);
-      target = PostTarget.create(this._scope, options)
+      target = PostTarget.create(options)
       this._postTargets.set(name, target);
     }
     return target;
@@ -172,7 +172,7 @@ export abstract class MakeContext extends GeneralContext {
       throw new Error(`Target "${name}" exists`);
 
     const options = makeObjectLibraryOptions(name, this._scope);
-    const target = ObjectLibrary.create(this._scope, options);
+    const target = ObjectLibrary.create(options);
     this._targets.set(name, target);
     return target;
   }
@@ -182,7 +182,7 @@ export abstract class MakeContext extends GeneralContext {
       throw new Error(`Target "${name}" exists`);
 
     const options = makeStaticLibraryOptions(name, this._scope);
-    const target = StaticLibrary.create(this._scope, options);
+    const target = StaticLibrary.create(options);
     this._targets.set(name, target);
     return target;
   }
@@ -192,7 +192,7 @@ export abstract class MakeContext extends GeneralContext {
       throw new Error(`Target "${name}" exists`);
 
     const options = makeSharedLibraryOptions(name, this._scope);
-    const target = SharedLibrary.create(this._scope, options);
+    const target = SharedLibrary.create(options);
     this._targets.set(name, target);
     return target;
   }
@@ -202,7 +202,7 @@ export abstract class MakeContext extends GeneralContext {
       throw new Error(`Target "${name}" exists`);
 
     const options = makeExecutableOptions(name, this._scope);
-    const target = Executable.create(this._scope, options);
+    const target = Executable.create(options);
     this._targets.set(name, target);
     return target;
   }

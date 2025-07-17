@@ -394,7 +394,7 @@ export class ProjectContext {
             "-o", target.getFileName(),
             ...objs
           ];
-          generalGoal.message = `Linking CXX object library ${target.getFileName()}`;
+          generalGoal.message = `Linking ${target.language} object library ${target.getFileName()}`;
           generalGoal.output = target.getFile();
           generalGoal.addDependency(...depends);
           generalGoal.addTask(new SpawnSyncTask(scope.LINKER, args, target.getFileDir().toString()));
@@ -408,7 +408,7 @@ export class ProjectContext {
         const objs = depends.filter(i => i.endsWith(".o") || i.endsWith(".obj")).map(i => target.getFileDir().relative(i));
         if (objs.length) {
           const args = [ "rc", target.getFileName() , ...objs ];
-          generalGoal.message = `Linking CXX static library ${target.getFileName()}`;
+          generalGoal.message = `Linking ${target.language} static library ${target.getFileName()}`;
           generalGoal.output = target.getFile();
           generalGoal.addDependency(...depends);
           generalGoal.addTask(new SpawnSyncTask(scope.AR, args, target.getFileDir().toString()));
@@ -427,18 +427,18 @@ export class ProjectContext {
         if (objs.length) {
           const libs = this[TARGETS].allLibrariesOf(target);
           const args = [
-            ...target.TARGET_SCOPE.CXX_FLAGS,
+            ...target.compilerFlags,
             ...linkOptions,
             ...objs,
             "-o", target.getFileName(),
             ...libs.map(i => target.getFileDir().relative(i)),
           ];
 
-          generalGoal.message = `Linking CXX executable ${target.getFileName()}`;
+          generalGoal.message = `Linking ${target.language} executable ${target.getFileName()}`;
           generalGoal.output = target.getFile();
           generalGoal.addDependency(...depends);
           generalGoal.addDependency(...libs);
-          generalGoal.addTask(new SpawnSyncTask(scope.CXX_COMPILER, args, target.getFileDir().toString()));
+          generalGoal.addTask(new SpawnSyncTask(target.compilerPath, args, target.getFileDir().toString()));
         }
         else {
           logger.info(`No objects for "${target.targetName}"`);

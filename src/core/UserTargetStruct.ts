@@ -97,11 +97,12 @@ export class UserTargetStruct extends InterfaceTarget {
       if (typeof iter === "string" || iter instanceof AbsolutePath) {
         const filename = scope.SOURCE_DIR.resolve(iter);
         const language = getFileLanguage(filename.toPath());
-        const compileFlags = !language ? [] : [
+        const compilerPath = (scope as any)[language + "_COMPILER"];
+        const compilerFlags = !language ? [] : [
           ...(scope as any)[language + "_FLAGS"],
           ...(scope as any)[language + "_FLAGS_" + scope.BUILD_TYPE.toUpperCase()],
         ];
-        const source = SourceFile.create(filename, scope.SOURCE_DIR, language, compileFlags);
+        const source = SourceFile.create(filename, scope.SOURCE_DIR, language, compilerPath, compilerFlags);
         this[IMPL].addSource(source);
       }
       else if (iter instanceof TargetObjects)

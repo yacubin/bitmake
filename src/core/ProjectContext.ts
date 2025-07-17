@@ -366,7 +366,6 @@ export class ProjectContext {
         args.push("-o", relativeObject);
         args.push("-c", s.FILE.toString());
   
-        const command = (target.TARGET_SCOPE as any)[s.LANGUAGE + "_COMPILER"].toString();
         const output = AbsolutePath.create(target.binaryDir.join(relativeObject));
         depends.push(output.toString());
 
@@ -375,7 +374,7 @@ export class ProjectContext {
         ge.output = output;
         ge.addDependency(...headers);
         ge.addDependency(s.FILE.toPath());
-        ge.addTask(new SpawnSyncTask(command, args, target.binaryDir.toPath()));
+        ge.addTask(new SpawnSyncTask(s.COMPILE_PATH.toString(), args, target.binaryDir.toPath()));
         goalList.addTarget(ge);
       }
 

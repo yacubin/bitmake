@@ -11,6 +11,7 @@ import { InterfaceTarget } from "@/core/MakeInterfaces";
 import { BaseTarget } from "@/core/Target";
 import { SystemScope } from "@/core/SystemScope";
 import { ensureString } from "@/utils/StrictType";
+import { TargetIncludes } from "@/core/TargetIncludes";
 import { TargetObjects } from "@/core/TargetObjects";
 import { AbsolutePath } from "@/core/AbsolutePath";
 import { SourceFile } from "@/core/SourceFile";
@@ -49,6 +50,23 @@ function makeLanguage(value: string) {
   throw new Error(`Language "${value}" is not supported`);
 }
 
+function addIncludeImpl(target: BaseTarget, sourceDir: AbsolutePath, publicOnly: boolean, include: TargetIncludes | AbsolutePath | string): void {
+  if (include instanceof TargetIncludes)
+    target.addInclude(publicOnly, include);
+  else if (typeof include === "string")
+    target.addInclude(publicOnly, AbsolutePath.create(sourceDir.resolve(include)));
+  else if (include instanceof AbsolutePath)
+    target.addInclude(publicOnly, AbsolutePath.create(include));
+  else
+    throw new Error(`Not support instance ${include}`);
+}
+
+function addIncludesImpl(target: BaseTarget, scope: SystemScope, publicOnly: boolean, ...includes: Array<TargetIncludes | AbsolutePath | string>): void {
+  const sourceDir = scope.SOURCE_DIR;
+  for (const iter of includes.flat())
+    addIncludeImpl(target, sourceDir, publicOnly, iter);
+}
+
 export class UserTargetStruct extends InterfaceTarget {
   [IMPL]: BaseTarget;
   [SCOPE]: SystemScope;
@@ -57,6 +75,10 @@ export class UserTargetStruct extends InterfaceTarget {
     super();
     this[IMPL] = impl;
     this[SCOPE] = scope;
+
+    this[IMPL].setPositionIndependentCode(scope.POSITION_INDEPENDENT_CODE);
+
+    addIncludesImpl(this[IMPL], this[SCOPE], false, ...this[SCOPE].INCLUDES);
   }
 
   public static create(impl: BaseTarget, scope: SystemScope) {
@@ -146,8 +168,8 @@ export class UserTargetStruct extends InterfaceTarget {
     return UserSourceFiles.create(this[IMPL], result.length ? result : sourceFiles);
   }
 
-  public addIncludes(...includes: any[]): void {
-    this[IMPL].addIncludes(...includes);
+  public addIncludes(...includes: Array<TargetIncludes | AbsolutePath | string>): void {
+    addIncludesImpl(this[IMPL], this[SCOPE], false, ...includes);
   }
 
   public addLibraries(...libraries: any[]): void {
@@ -178,8 +200,8 @@ export class UserTargetStruct extends InterfaceTarget {
     this[IMPL].setPositionIndependentCode(value);
   }
 
-  public addPublicIncludes(...includes: any[]): void {
-    this[IMPL].addPublicIncludes(...includes);
+  public addPublicIncludes(...includes: Array<TargetIncludes | AbsolutePath | string>): void {
+    addIncludesImpl(this[IMPL], this[SCOPE], true, ...includes);
   }
 
   public addPublicDefinitions(...definitions: any): void {

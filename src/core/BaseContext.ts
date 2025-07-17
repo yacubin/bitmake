@@ -74,8 +74,6 @@ function makeTargetOptions(name: string, scope: VariableMap): TargetOptions {
     prefix: "",
     suffix: "",
     linkOptions: [],
-    positionIndependentCode: ScopeHelper.get(scope, "POSITION_INDEPENDENT_CODE"),
-    includes: ScopeHelper.get(scope, "INCLUDES"),
     sourceDir: ScopeHelper.get(scope, "SOURCE_DIR"),
     binaryDir: ScopeHelper.get(scope, "BINARY_DIR"),
   };

@@ -20,21 +20,6 @@ import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
 
-function normalizeIncludes(baseDir: AbsolutePath, ...includes: any[]): Array<AbsolutePath | TargetIncludes> {
-  const result = [];
-  for (const iter of includes.flat()) {
-    if (iter instanceof TargetIncludes)
-      result.push(iter);
-    else if (typeof iter === "string")
-      result.push(AbsolutePath.create(baseDir.resolve(iter)));
-    else if (iter instanceof AbsolutePath)
-      result.push(AbsolutePath.create(iter));
-    else
-      throw new Error(`Not support instance ${iter}`);
-  }
-  return result;
-}
-
 export interface TargetCommand {
   command: string | AbsolutePath | TargetFile;
   args: Array<string | AbsolutePath | TargetFile>;
@@ -162,21 +147,8 @@ export abstract class BaseTarget {
     return this._includes.filter(i => i.publicOnly).map(i => i.value);
   }
 
-  public addIncludes(...includes: Array<TargetIncludes | AbsolutePath | string>): void {
-    this.addIncludesImpl(false, ...includes);
-  }
-
-  public addPublicIncludes(...includes: Array<TargetIncludes | AbsolutePath | string>): void {
-    this.addIncludesImpl(true, ...includes);
-  }
-
-  public addIncludeImpl(publicOnly: boolean, value: AbsolutePath | TargetIncludes): void {
+  public addInclude(publicOnly: boolean, value: AbsolutePath | TargetIncludes): void {
     this._includes.push({publicOnly, value});
-  }
-
-  public addIncludesImpl(publicOnly: boolean, ...includes: Array<TargetIncludes | AbsolutePath | string>): void {
-    for (const iter of normalizeIncludes(this._sourceDir, ...includes))
-      this.addIncludeImpl(publicOnly, iter);
   }
 
   public getDefinitions(): Array<string> {
@@ -447,8 +419,6 @@ export interface TargetOptions extends BaseTargetOptions {
   binaryDir: AbsolutePath;
   prefix: string;
   suffix: string;
-  positionIndependentCode: boolean;
-  includes: Array<TargetIncludes | AbsolutePath | string>;
   linkOptions: Array<string | string[]>;
 };
 
@@ -456,7 +426,7 @@ export class MainTarget extends BaseTarget {
   private _prefix: string;
   private _suffix: string;
   private _outputName: string;
-  private _positionIndependentCode: boolean;
+  private _positionIndependentCode = false;
 
   protected constructor(options: TargetOptions) {
     super(options);
@@ -464,9 +434,7 @@ export class MainTarget extends BaseTarget {
     this._prefix = options.prefix;
     this._suffix = options.suffix;
     this._outputName = options.name;
-    this._positionIndependentCode = options.positionIndependentCode;
 
-    this.addIncludesImpl(false, ...options.includes);
     this.addLinkOptionsImpl(false, ...options.linkOptions);
   }
 

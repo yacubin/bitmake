@@ -9,7 +9,6 @@
 
 import { InterfaceSourceFiles } from "@/core/MakeInterfaces";
 import { SourceFile } from "@/core/SourceFile";
-import { SystemScope } from "@/core/SystemScope";
 import { normalizeDefinitions } from "@/core/DefinitionHelper";
 import { BaseTarget } from "@/core/Target";
 

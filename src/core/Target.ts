@@ -15,7 +15,6 @@ import { TargetObjects } from "@/core/TargetObjects";
 import { AbsolutePath } from "@/core/AbsolutePath";
 import { normalizeDefinitions } from "@/core/DefinitionHelper";
 import { SimpleObject } from "./SimpleObject";
-import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
 import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
@@ -51,8 +50,6 @@ function makeTargetCommand(_command: any, _args: any[]): TargetCommand {
   return { command, args };
 }
 
-const TARGET_SCOPE = Symbol("TARGET_SCOPE");
-
 interface TargetValue<T> {
   value: T;
   publicOnly: boolean;
@@ -60,16 +57,8 @@ interface TargetValue<T> {
 
 type TargetValueList<T> = Array<TargetValue<T>>;
 
-export interface BaseTargetOptions {
-  name: string;
-  sourceDir: AbsolutePath;
-  binaryDir: AbsolutePath;
-};
-
 export abstract class BaseTarget {
   protected _name: string;
-  protected _sourceDir: AbsolutePath;
-  protected _binaryDir: AbsolutePath;
   protected _includes: TargetValueList<AbsolutePath | TargetIncludes>;
   protected _definitions: TargetValueList<string>;
   protected _compileOptions: TargetValueList<string | string[]>;
@@ -82,20 +71,8 @@ export abstract class BaseTarget {
   protected _compilerPath = "";
   protected _compilerFlags = new Array<string>;
 
-  constructor(options: BaseTargetOptions) {
-    const name = options.name;
-    if (typeof name !== "string")
-      throw new Error(`Target "${name}" is not string type`);
-
-    if (!name)
-      throw new Error(`A target with an empty name cannot exist`);
-
-    if ([ ALL_TARGET, INSTALL_TARGET ].includes(name))
-      throw new Error(`Target "${name}" is reserved name`);
-
-    this._name = options.name;
-    this._sourceDir = options.sourceDir;
-    this._binaryDir = options.binaryDir;
+  protected constructor(name: string) {
+    this._name = name;
     this._includes = [];
     this._definitions = [];
     this._compileOptions = [];
@@ -117,14 +94,6 @@ export abstract class BaseTarget {
 
   public get name() { // DELME
     return this._name;
-  }
-
-  public get sourceDir() {
-    return this._sourceDir;
-  }
-
-  public get binaryDir() {
-    return this._binaryDir;
   }
 
   public get includes(): TargetIncludes {
@@ -303,8 +272,6 @@ export abstract class BaseTarget {
   public toJSON(): object {
     return {
       name: this._name,
-      sourceDir: this._sourceDir,
-      binaryDir: this._binaryDir,
       preBuildList: this._preBuildList,
       postBuildList: this._postBuildList,
       includes: this._includes,
@@ -322,12 +289,12 @@ export class PostTarget extends BaseTarget {
   private _suffix?: string;
   private _positionIndependentCode?: boolean;
 
-  private constructor(options: BaseTargetOptions) {
-    super(options);
+  private constructor(name: string) {
+    super(name);
   }
 
-  public static create(options: BaseTargetOptions) {
-    return Object.seal(new PostTarget(options));
+  public static create(name: string) {
+    return Object.seal(new PostTarget(name));
   }
 
   public static ensureInstance(value: any) {
@@ -413,29 +380,75 @@ export class PostTarget extends BaseTarget {
   }
 };
 
-export interface TargetOptions extends BaseTargetOptions {
-  name: string;
-  sourceDir: AbsolutePath;
-  binaryDir: AbsolutePath;
-  prefix: string;
-  suffix: string;
-  linkOptions: Array<string | string[]>;
+export enum TargetType {
+  ObjectLibrary = 0,
+  StaticLibrary = 1,
+  SharedLibrary = 2,
+  Executable = 3,
 };
 
+export namespace TargetType {
+
+export function toString(type: TargetType) {
+  switch (type) {
+  case TargetType.ObjectLibrary:
+    return "ObjectLibrary";
+  case TargetType.StaticLibrary:
+    return "StaticLibrary";
+  case TargetType.SharedLibrary:
+    return "SharedLibrary";
+  case TargetType.Executable:
+    return "Executable";
+  }
+  throw new Error(`Uknown target type ${type}`);
+}
+
+} // namespace TargetType
+
 export class MainTarget extends BaseTarget {
-  private _prefix: string;
-  private _suffix: string;
+  private _targetType: TargetType;
+  private _sourceDir: AbsolutePath;
+  private _binaryDir: AbsolutePath;
+  private _prefix = "";
+  private _suffix = "";
   private _outputName: string;
   private _positionIndependentCode = false;
 
-  protected constructor(options: TargetOptions) {
-    super(options);
+  protected constructor(type: TargetType, name: string, sourceDir: AbsolutePath, binaryDir: AbsolutePath) {
+    super(name);
 
-    this._prefix = options.prefix;
-    this._suffix = options.suffix;
-    this._outputName = options.name;
+    this._sourceDir = sourceDir;
+    this._binaryDir = binaryDir;
+    this._targetType = type;
+    this._outputName = name;
+  }
 
-    this.addLinkOptionsImpl(false, ...options.linkOptions);
+  public static create(type: TargetType, name: string, sourceDir: AbsolutePath, binaryDir: AbsolutePath) {
+    return Object.seal(new MainTarget(type, name, sourceDir, binaryDir));
+  }
+
+  public get isObjectLibrary() {
+    return this._targetType === TargetType.ObjectLibrary;
+  }
+
+  public get isStaticLibrary() {
+    return this._targetType === TargetType.StaticLibrary;
+  }
+
+  public get isSharedLibrary() {
+    return this._targetType === TargetType.SharedLibrary;
+  }
+
+  public get isExecutable() {
+    return this._targetType === TargetType.Executable;
+  }
+
+  public get sourceDir() {
+    return this._sourceDir;
+  }
+
+  public get binaryDir() {
+    return this._binaryDir;
   }
 
   public getFileDir() {
@@ -501,78 +514,18 @@ export class MainTarget extends BaseTarget {
     this._postBuildList.push(...target.postBuildList);
   }
 
-  public toJSON(): object {
+  public toJSON(): SimpleObject {
     const result: any = super.toJSON();
 
+    result.type = BaseTarget.name;
+    result.targetType = TargetType.toString(this._targetType);
+    result.sourceDir = this._sourceDir;
+    result.binaryDir = this._binaryDir;
     result.prefix = this._prefix;
     result.outputName = this._outputName;
     result.suffix = this._suffix;
     result.positionIndependentCode = this._positionIndependentCode;
 
-    return result;
-  }
-};
-
-export class ObjectLibrary extends MainTarget {
-  private constructor(options: TargetOptions) {
-    super(options);
-  }
-
-  public static create(options: TargetOptions) {
-    return Object.seal(new ObjectLibrary(options));
-  }
-
-  public toJSON(): SimpleObject {
-    const result: any = super.toJSON();
-    result.type = ObjectLibrary.name;
-    return result;
-  }
-};
-
-export class StaticLibrary extends MainTarget {
-  private constructor(options: TargetOptions) {
-    super(options);
-  }
-
-  public static create(options: TargetOptions) {
-    return Object.seal(new StaticLibrary(options));
-  }
-
-  public toJSON(): SimpleObject {
-    const result: any = super.toJSON();
-    result.type = StaticLibrary.name;
-    return result;
-  }
-};
-
-export class SharedLibrary extends MainTarget {
-  private constructor(options: TargetOptions) {
-    super(options);
-  }
-
-  public static create(options: TargetOptions) {
-    return Object.seal(new SharedLibrary(options));
-  }
-
-  public toJSON(): SimpleObject {
-    const result: any = super.toJSON();
-    result.type = SharedLibrary.name;
-    return result;
-  }
-}
-
-export class Executable extends MainTarget {
-  private constructor(options: TargetOptions) {
-    super(options);
-  }
-
-  public static create(options: TargetOptions) {
-    return Object.seal(new Executable(options));
-  }
-
-  public toJSON(): SimpleObject {
-    const result: any = super.toJSON();
-    result.type = Executable.name;
     return result;
   }
 };

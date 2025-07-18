@@ -76,13 +76,15 @@ export class UserTargetStruct extends InterfaceTarget {
     this[IMPL] = impl;
     this[SCOPE] = scope;
 
-    this[IMPL].setPositionIndependentCode(scope.POSITION_INDEPENDENT_CODE);
+    this[IMPL].setPositionIndependentCode(this[SCOPE].POSITION_INDEPENDENT_CODE);
 
     addIncludesImpl(this[IMPL], this[SCOPE], false, ...this[SCOPE].INCLUDES);
   }
 
-  public static create(impl: BaseTarget, scope: SystemScope) {
-    return Object.seal(new UserTargetStruct(impl, scope));
+  public static create(impl: BaseTarget, scope: SystemScope, ...sources: any[]) {
+    const target = Object.seal(new UserTargetStruct(impl, scope));
+    target.addSources(...sources);
+    return target;
   }
 
   public get targetName() {

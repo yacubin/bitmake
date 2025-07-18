@@ -11,13 +11,33 @@ import { IMakeContext, InterfaceScript } from "@/core/MakeInterfaces";
 import { VariantMap, VariableMap, ScopeHelper } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
 import { GeneralContext, MakeContext, createContext } from "@/core/BaseContext";
+import { TargetType, MainTarget } from "@/core/Target";
 import { UserTargetStruct } from "@/core/UserTargetStruct";
+import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
 import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
 
 const SCOPE = Symbol("SCOPE");
 const IMPL = Symbol("IMPL");
+
+function createMainTargetImpl(ctx: MakeContext, scope: SystemScope, type: TargetType, name: string) {
+  if (typeof name !== "string")
+    throw new Error(`Target "${name}" is not string type`);
+
+  if (!name)
+    throw new Error(`A target with an empty name cannot exist`);
+
+  if (ctx.hasMainTarget(name))
+    throw new Error(`Target "${name}" exists`);
+
+  if ([ ALL_TARGET, INSTALL_TARGET ].includes(name))
+    throw new Error(`Target "${name}" is reserved name`);
+
+  const target = MainTarget.create(type, name, scope.SOURCE_DIR, scope.BINARY_DIR);
+  ctx.addMainTarget(name, target);
+  return target;
+}
 
 export class UserMakeContext extends GeneralContext implements IMakeContext {
   [IMPL]: MakeContext;
@@ -54,8 +74,7 @@ export class UserMakeContext extends GeneralContext implements IMakeContext {
   }
 
   public target(name: string): UserTargetStruct {
-    const target = this[IMPL].target(name);
-    return UserTargetStruct.create(target, this[SCOPE]);
+    return UserTargetStruct.create(this[IMPL].getPostTarget(name), this[SCOPE]);
   }
 
   public script(name: string): InterfaceScript {
@@ -66,32 +85,39 @@ export class UserMakeContext extends GeneralContext implements IMakeContext {
     this[IMPL].install(value, params);
   }
 
-  public addObjectLibrary(name: any, ...sources: any[]): UserTargetStruct {
-    const target = this[IMPL].addObjectLibrary(name);
-    const result = UserTargetStruct.create(target, this[SCOPE]);
-    result.addSources(...sources);
-    return result;
+  public addObjectLibrary(name: string, ...sources: any[]): UserTargetStruct {
+    const target = createMainTargetImpl(this[IMPL], this[SCOPE], TargetType.ObjectLibrary, name);
+    target.setPrefix(this[SCOPE].OBJECT_LIBRARY_PREFIX);
+    target.setSuffix(this[SCOPE].OBJECT_LIBRARY_SUFFIX);
+    target.addLinkOptions(...this[SCOPE].OBJECT_LINKER_FLAGS);
+
+    return UserTargetStruct.create(target, this[SCOPE], ...sources);
   }
 
   public addStaticLibrary(name: any, ...sources: any[]): UserTargetStruct {
-    const target = this[IMPL].addStaticLibrary(name);
-    const result = UserTargetStruct.create(target, this[SCOPE]);
-    result.addSources(...sources);
-    return result;
+    const target = createMainTargetImpl(this[IMPL], this[SCOPE], TargetType.StaticLibrary, name);
+    target.setPrefix(this[SCOPE].STATIC_LIBRARY_PREFIX);
+    target.setSuffix(this[SCOPE].STATIC_LIBRARY_SUFFIX);
+    target.addLinkOptions(...this[SCOPE].STATIC_LINKER_FLAGS);
+
+    return UserTargetStruct.create(target, this[SCOPE], ...sources);
   }
 
   public addSharedLibrary(name: any, ...sources: any[]): UserTargetStruct {
-    const target = this[IMPL].addSharedLibrary(name);
-    const result = UserTargetStruct.create(target, this[SCOPE]);
-    result.addSources(...sources);
-    return result;
+    const target = createMainTargetImpl(this[IMPL], this[SCOPE], TargetType.SharedLibrary, name);
+    target.setPrefix(this[SCOPE].SHARED_LIBRARY_PREFIX);
+    target.setSuffix(this[SCOPE].SHARED_LIBRARY_SUFFIX);
+    target.addLinkOptions(...this[SCOPE].SHARED_LINKER_FLAGS);
+
+    return UserTargetStruct.create(target, this[SCOPE], ...sources);
   }
 
   public addExecutable(name: any, ...sources: any[]): UserTargetStruct {
-    const target = this[IMPL].addExecutable(name);
-    const result = UserTargetStruct.create(target, this[SCOPE]);
-    result.addSources(...sources);
-    return result;
+    const target = createMainTargetImpl(this[IMPL], this[SCOPE], TargetType.Executable, name);
+    target.setPrefix(this[SCOPE].EXECUTABLE_SUFFIX);
+    target.addLinkOptions(...this[SCOPE].EXE_LINKER_FLAGS);
+
+    return UserTargetStruct.create(target, this[SCOPE], ...sources);
   }
 
   public executeScript(script: any, params: any): void {

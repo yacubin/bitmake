@@ -10,16 +10,16 @@
 import { IGeneralContext, InterfaceTarget } from "@/core/MakeInterfaces";
 import { findProgramSync } from "@/core/FindProgram";
 import { ScopeHelper, VariableMap, VariantMap } from "@/core/Scope";
-import { Logger } from "@/logger";
 import { SystemScope } from "@/core/SystemScope";
 import { AbsolutePath } from "@/core/AbsolutePath";
 import { importModule } from "@/utils/Module";
-import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, MainTarget, PostTarget, TargetOptions, BaseTargetOptions } from "@/core/Target";
+import { MainTarget, PostTarget } from "@/core/Target";
 import { CUSTOM_VARIABLE_GROUP } from "@/Constants";
 import { CustomScript, PostCustomScript } from "@/core/CustomScript";
 import { InstallEntity } from "@/core/InstallEntity";
 import { ScriptCollection } from "@/core/ScriptCollection";
 import { TargetName } from "@/core/TargetName";
+import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
 
@@ -59,56 +59,6 @@ export abstract class GeneralContext implements IGeneralContext {
     return Object.keys(this._scope);
   }
 };
-
-function makeBaseTargetOptions(name: string, scope: VariableMap): BaseTargetOptions {
-  return {
-    name,
-    sourceDir: ScopeHelper.get(scope, "SOURCE_DIR"),
-    binaryDir: ScopeHelper.get(scope, "BINARY_DIR"),
-  };
-}
-
-function makeTargetOptions(name: string, scope: VariableMap): TargetOptions {
-  return {
-    name,
-    prefix: "",
-    suffix: "",
-    linkOptions: [],
-    sourceDir: ScopeHelper.get(scope, "SOURCE_DIR"),
-    binaryDir: ScopeHelper.get(scope, "BINARY_DIR"),
-  };
-}
-
-function makeObjectLibraryOptions(name: string, scope: VariableMap): TargetOptions {
-  const options = makeTargetOptions(name, scope);
-  options.prefix = ScopeHelper.get(scope, "OBJECT_LIBRARY_PREFIX");
-  options.suffix = ScopeHelper.get(scope, "OBJECT_LIBRARY_SUFFIX");
-  options.linkOptions = ScopeHelper.get(scope, "OBJECT_LINKER_FLAGS");
-  return options;
-}
-
-function makeStaticLibraryOptions(name: string, scope: VariableMap): TargetOptions {
-  const options = makeTargetOptions(name, scope);
-  options.prefix = ScopeHelper.get(scope, "STATIC_LIBRARY_PREFIX");
-  options.suffix = ScopeHelper.get(scope, "STATIC_LIBRARY_SUFFIX");
-  options.linkOptions = ScopeHelper.get(scope, "STATIC_LINKER_FLAGS");
-  return options;
-}
-
-function makeSharedLibraryOptions(name: string, scope: VariableMap): TargetOptions {
-  const options = makeTargetOptions(name, scope);
-  options.prefix = ScopeHelper.get(scope, "SHARED_LIBRARY_PREFIX");
-  options.suffix = ScopeHelper.get(scope, "SHARED_LIBRARY_SUFFIX");
-  options.linkOptions = ScopeHelper.get(scope, "SHARED_LINKER_FLAGS");
-  return options;
-}
-
-function makeExecutableOptions(name: string, scope: VariableMap): TargetOptions {
-  const options = makeTargetOptions(name, scope);
-  options.suffix = ScopeHelper.get(scope, "EXECUTABLE_SUFFIX");
-  options.linkOptions = ScopeHelper.get(scope, "EXE_LINKER_FLAGS");
-  return options;
-}
 
 export abstract class MakeContext extends GeneralContext {
   private _targets = new Map<string, MainTarget>();
@@ -155,54 +105,21 @@ export abstract class MakeContext extends GeneralContext {
       ScopeHelper.get(this._scope, "INCLUDES").push(sourceDir.resolve(iter));
   }
 
-  public target(name: string): PostTarget {
+  public getPostTarget(name: string): PostTarget {
     let target = this._postTargets.get(name);
     if (!target) {
-      const options = makeBaseTargetOptions(name, this._scope);
-      target = PostTarget.create(options)
+      target = PostTarget.create(name)
       this._postTargets.set(name, target);
     }
     return target;
   }
 
-  public addObjectLibrary(name: any): ObjectLibrary {
-    if (this._targets.has(name))
-      throw new Error(`Target "${name}" exists`);
-
-    const options = makeObjectLibraryOptions(name, this._scope);
-    const target = ObjectLibrary.create(options);
-    this._targets.set(name, target);
-    return target;
+  public hasMainTarget(name: string) {
+    return this._targets.has(name);
   }
 
-  public addStaticLibrary(name: any): StaticLibrary {
-    if (this._targets.has(name))
-      throw new Error(`Target "${name}" exists`);
-
-    const options = makeStaticLibraryOptions(name, this._scope);
-    const target = StaticLibrary.create(options);
+  public addMainTarget(name: string, target: MainTarget) {
     this._targets.set(name, target);
-    return target;
-  }
-
-  public addSharedLibrary(name: any): SharedLibrary {
-    if (this._targets.has(name))
-      throw new Error(`Target "${name}" exists`);
-
-    const options = makeSharedLibraryOptions(name, this._scope);
-    const target = SharedLibrary.create(options);
-    this._targets.set(name, target);
-    return target;
-  }
-
-  public addExecutable(name: string): Executable {
-    if (this._targets.has(name))
-      throw new Error(`Target "${name}" exists`);
-
-    const options = makeExecutableOptions(name, this._scope);
-    const target = Executable.create(options);
-    this._targets.set(name, target);
-    return target;
   }
 
   public script(name: string): PostCustomScript {

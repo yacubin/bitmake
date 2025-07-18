@@ -17,7 +17,7 @@ import { ScriptCollection } from "@/core/ScriptCollection";
 import { GoalCollection, GoalTarget } from "@/core/GoalCollection";
 import { UserMakeContext } from "@/core/UserMakeContext";
 import { LocalMakeContext } from "@/core/LocalMakeContext";
-import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, TargetCommand } from "@/core/Target";
+import { TargetCommand } from "@/core/Target";
 import { SystemScope } from "@/core/SystemScope";
 import { requireSync } from "@/utils/Module";
 import { Logger } from "@/logger";
@@ -385,7 +385,7 @@ export class ProjectContext {
       }
 
       const linkOptions = this[TARGETS].allLinkOptionsOf(target);
-      if (target instanceof ObjectLibrary) {
+      if (target.isObjectLibrary) {
         const objs = depends.filter(i => i.endsWith(".o") || i.endsWith(".obj")).map(i => target.getFileDir().relative(i));
         if (objs.length) {
           const args = [
@@ -404,7 +404,7 @@ export class ProjectContext {
         }
       }
   
-      if (target instanceof StaticLibrary) {
+      if (target.isStaticLibrary) {
         const objs = depends.filter(i => i.endsWith(".o") || i.endsWith(".obj")).map(i => target.getFileDir().relative(i));
         if (objs.length) {
           const args = [ "rc", target.getFileName() , ...objs ];
@@ -418,11 +418,11 @@ export class ProjectContext {
         }
       }
   
-      if (target instanceof SharedLibrary) {
+      if (target.isSharedLibrary) {
         throw new Error("Not implemented");
       }
 
-      if (target instanceof Executable) {
+      if (target.isExecutable) {
         const objs = depends.filter(i => i.endsWith(".o") || i.endsWith(".obj")).map(i => target.getFileDir().relative(i));
         if (objs.length) {
           const libs = this[TARGETS].allLibrariesOf(target);

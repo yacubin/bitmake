@@ -68,7 +68,7 @@ export class CustomScript extends InterfaceScript {
   private constructor(options: CustomScript.Options) {
     super();
     this[SCOPE] = options.variableMap;
-    this[NAME] = options.name || "";
+    this[NAME] = options.name;
     this[INPUT] = options.input;
     this._scriptModule = options.scriptModule;
     this[OUTPUT] = options.output;
@@ -133,7 +133,7 @@ export namespace CustomScript {
 
 export interface Options {
   variableMap: VariableMap,
-  name?: string,
+  name: string,
   scriptModule: string | AbsolutePath,
   input?: AbsolutePath,
   output: AbsolutePath,

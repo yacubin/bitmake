@@ -13,7 +13,6 @@ import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
 import { AbsolutePath } from "@/core/AbsolutePath";
 import { fileExists, fileExistsSync } from "@/utils/FileSystem";
 import { TargetCollection } from "@/core/TargetCollection";
-import { ScriptCollection } from "@/core/ScriptCollection";
 import { GoalCollection, GoalTarget } from "@/core/GoalCollection";
 import { UserMakeContext } from "@/core/UserMakeContext";
 import { LocalMakeContext } from "@/core/LocalMakeContext";
@@ -30,6 +29,7 @@ import { SourceFile } from "@/core/SourceFile";
 import { ExecScriptTask } from "@/core/ExecScriptTask";
 import { SpawnSyncTask } from "@/core/SpawnSyncTask";
 import { FileInstallationTask } from "@/core/FileInstallationTask";
+import { CustomScript } from "@/core/CustomScript";
 import { performContext, createVariableMapForDirectory } from "@/core/BaseContext";
 
 import BuildinScripts from "@/core/BuildinScripts";
@@ -37,7 +37,6 @@ import BuildinScripts from "@/core/BuildinScripts";
 const logger = Logger.create(import.meta.url);
 
 const TARGETS = Symbol("TARGETS");
-const CUSTOM_SCRIPTS = Symbol("CUSTOM_SCRIPTS");
 const CACHE = Symbol("CACHE");
 const BUILTIN_SCRIPTS = Symbol("BUILTIN_SCRIPTS");
 
@@ -93,7 +92,7 @@ function resolveTargetCommand(project: ProjectContext, tcmd: TargetCommand): Exe
 
 export class ProjectContext {
   private [TARGETS]: TargetCollection;
-  private [CUSTOM_SCRIPTS]: ScriptCollection;
+  private _customScripts = new Map<string, CustomScript>;
   private [CACHE]: CacheVariableDescriptors;
   private _installList: InstallEntity[];
   private _processedVariableMap: any;
@@ -103,7 +102,6 @@ export class ProjectContext {
 
   private constructor() {
     this[TARGETS] = TargetCollection.create();
-    this[CUSTOM_SCRIPTS] = ScriptCollection.create();
     this[CACHE] = {};
     this._installList = [];
     this._processedVariableMap = {};
@@ -264,8 +262,8 @@ export class ProjectContext {
     for (const ctx of contextList) {
       for (const [name, target] of ctx.targets)
         this[TARGETS].set(name, target);
-      for (const iter of ctx.scriptCollection.ENTRIES)
-        this[CUSTOM_SCRIPTS].add(iter, iter.NAME);
+      for (const [name, script] of ctx.mainScripts.entries())
+        this._customScripts.set(name, script);
       this._installList.push(...ctx.installList);
     }
 
@@ -277,7 +275,7 @@ export class ProjectContext {
         target.postUpdate(postTarget);
       }
       for (const [name, postScript] of ctx.postScripts) {
-        const script = this[CUSTOM_SCRIPTS].get(name);
+        const script = this._customScripts.get(name);
         if (!script)
           throw new Error(`There is no CustomScript named ${name}`);
         script.postUpdate(postScript);
@@ -287,7 +285,7 @@ export class ProjectContext {
 
   public createGoals(scope: SystemScope): GoalCollection {
     const goalList = new GoalCollection;
-    for (const script of this[CUSTOM_SCRIPTS].ENTRIES) {   
+    for (const [name, script] of this._customScripts.entries()) {   
       const depends = [];
 
       let scriptObj: AbsolutePath | Function;
@@ -305,7 +303,7 @@ export class ProjectContext {
       }
 
       const msg = "\x1b[36m" + "Generating " + script.binaryDir.relative(script.OUTPUT) + "\x1b[0m";
-      const ge = new GoalTarget(script.NAME);
+      const ge = new GoalTarget(name);
       ge.message = msg;
       ge.output = script.OUTPUT;
       ge.addDependency(...depends);
@@ -498,7 +496,7 @@ export class ProjectContext {
   public toJSON() {
     return {
       TARGETS: this.TARGETS,
-      CUSTOM_SCRIPTS: this[CUSTOM_SCRIPTS],
+      customScripts: this._customScripts,
       CACHE: this.CACHE,
       installList: this._installList,
       processedVariableMap: this._processedVariableMap,

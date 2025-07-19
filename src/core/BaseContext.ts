@@ -17,8 +17,8 @@ import { MainTarget, PostTarget } from "@/core/Target";
 import { CUSTOM_VARIABLE_GROUP } from "@/Constants";
 import { CustomScript, PostCustomScript } from "@/core/CustomScript";
 import { InstallEntity } from "@/core/InstallEntity";
-import { ScriptCollection } from "@/core/ScriptCollection";
 import { TargetName } from "@/core/TargetName";
+import { randCIdentifer } from "@/utils/Random";
 import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
@@ -61,10 +61,10 @@ export abstract class GeneralContext implements IGeneralContext {
 };
 
 export abstract class MakeContext extends GeneralContext {
-  private _targets = new Map<string, MainTarget>();
-  private _postTargets = new Map<string, PostTarget>();
-  private _scriptCollection = ScriptCollection.create();
-  private _postScripts = new Map<string, PostCustomScript>();
+  private _targets = new Map<string, MainTarget>;
+  private _postTargets = new Map<string, PostTarget>;
+  private _mainScripts = new Map<string, CustomScript>;
+  private _postScripts = new Map<string, PostCustomScript>;
   private _installList = new Array<InstallEntity>();
 
   protected constructor(scope: VariableMap) {
@@ -83,8 +83,8 @@ export abstract class MakeContext extends GeneralContext {
     return this._postTargets;
   }
 
-  public get scriptCollection() {
-    return this._scriptCollection;
+  public get mainScripts() {
+    return this._mainScripts;
   }
 
   public get postScripts() {
@@ -151,7 +151,7 @@ export abstract class MakeContext extends GeneralContext {
 
     const options: CustomScript.Options = {
       variableMap,
-      name: ScopeHelper.get(variableMap, "SCRIPT_NAME"),
+      name: ScopeHelper.get(variableMap, "SCRIPT_NAME") || randCIdentifer(16),
       scriptModule,
       output: outputFile,
       input: inputFile,
@@ -160,7 +160,7 @@ export abstract class MakeContext extends GeneralContext {
     };
 
     const target = CustomScript.create(options);
-    this._scriptCollection.add(target, options.name);
+    this._mainScripts.set(options.name, target);
 
     return target;
   }

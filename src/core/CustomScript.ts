@@ -26,6 +26,10 @@ export class PostCustomScript extends InterfaceScript {
     return Object.seal(new PostCustomScript(name, variables));
   }
 
+  public get name() {
+    return this._name;
+  }
+
   public get variables() {
     return this._variables;
   }
@@ -51,27 +55,22 @@ export class PostCustomScript extends InterfaceScript {
   }
 };
 
-const SCOPE        = Symbol("SCOPE");
-const NAME         = Symbol("NAME");
-const INPUT        = Symbol("INPUT");
-const OUTPUT       = Symbol("OUTPUT");
-
 export class CustomScript extends InterfaceScript {
-  private [SCOPE]: VariableMap;
-  private [NAME]: string;
+  private _name: string;
   private _scriptModule: string | AbsolutePath;
-  private [INPUT]: AbsolutePath | undefined;
-  private [OUTPUT]: AbsolutePath;
+  private _input?: AbsolutePath;
+  private _output: AbsolutePath;
   private _sourceDir: AbsolutePath;
   private _binaryDir: AbsolutePath;
+  private _variableMap: VariableMap;
 
   private constructor(options: CustomScript.Options) {
     super();
-    this[SCOPE] = options.variableMap;
-    this[NAME] = options.name;
-    this[INPUT] = options.input;
+    this._variableMap = options.variableMap;
+    this._name = options.name;
+    this._input = options.input;
     this._scriptModule = options.scriptModule;
-    this[OUTPUT] = options.output;
+    this._output = options.output;
     this._sourceDir = options.sourceDir;
     this._binaryDir = options.binaryDir;
   }
@@ -81,11 +80,11 @@ export class CustomScript extends InterfaceScript {
   }
 
   public mergeVariables(variables: VariantMap) {
-    ScopeHelper.mergeVariableMap(this[SCOPE], variables);
+    ScopeHelper.mergeVariableMap(this._variableMap, variables);
   }
 
   public get NAME() {
-    return this[NAME];
+    return this._name;
   }
 
   public get scriptModule() {
@@ -93,11 +92,11 @@ export class CustomScript extends InterfaceScript {
   }
 
   public get INPUT(): AbsolutePath | undefined {
-    return this[INPUT];
+    return this._input;
   }
 
   public get OUTPUT(): AbsolutePath {
-    return this[OUTPUT];
+    return this._output;
   }
 
   public get sourceDir(): AbsolutePath {
@@ -109,36 +108,55 @@ export class CustomScript extends InterfaceScript {
   }
 
   public get variableMap() {
-    return this[SCOPE];
+    return this._variableMap;
   }
 
   public postUpdate(script: PostCustomScript) {
     this.mergeVariables(script.variables);
   }
 
-  public toJSON(): object {
-    return {
-      variableMap: this[SCOPE],
-      NAME: this[NAME],
-      scriptModule: this._scriptModule,
-      INPUT: this.INPUT,
-      OUTPUT: this.OUTPUT,
-      sourceDir: this._sourceDir,
-      binaryDir: this._binaryDir,
+  public static fromJSON(json: any) {
+    const options: CustomScript.Options = {
+      variableMap: ScopeHelper.fromJSON(json.variableMap),
+      name: json.name,
+      scriptModule: AbsolutePath.isAbsolute(json.scriptModule) ? AbsolutePath.create(json.scriptModule) : json.scriptModule,
+      output: AbsolutePath.create(json.output),
+      sourceDir: AbsolutePath.create(json.sourceDir),
+      binaryDir: AbsolutePath.create(json.binaryDir),
+    };
+    if (json.input) {
+      options.input = AbsolutePath.create(json.input);
     }
+    return CustomScript.create(options);
+  }
+
+  public toJSON(): SimpleObject {
+    const result: SimpleObject = {
+      type: CustomScript.name,
+      name: this._name,
+      scriptModule: this._scriptModule,
+      output: this._output.toURLString(),
+      sourceDir: this._sourceDir.toURLString(),
+      binaryDir: this._binaryDir.toURLString(),
+      variableMap: ScopeHelper.toJSON(this._variableMap),
+    };
+    if (this._input) {
+      result.input = this._input.toURLString();
+    }
+    return result;
   }
 };
 
 export namespace CustomScript {
 
 export interface Options {
-  variableMap: VariableMap,
   name: string,
   scriptModule: string | AbsolutePath,
   input?: AbsolutePath,
   output: AbsolutePath,
   sourceDir: AbsolutePath,
   binaryDir: AbsolutePath,
+  variableMap: VariableMap,
 };
 
 } // namespace CustomScript

@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { PostCustomScript } from "@/core/CustomScript";
+import { CustomScript, PostCustomScript } from "@/core/CustomScript";
 import { FileInstallationTask } from "@/core/FileInstallationTask";
 import { SpawnSyncTask } from "@/core/SpawnSyncTask";
 import { TargetFile } from "@/core/TargetFile";
@@ -23,6 +23,7 @@ import { SimpleObject } from "@/core/SimpleObject";
 
 export function runScriptInit() { 
   SimpleObject.registerParser(PostCustomScript.name, PostCustomScript.fromJSON);
+  SimpleObject.registerParser(CustomScript.name, CustomScript.fromJSON);
   SimpleObject.registerParser(FileInstallationTask.name, FileInstallationTask.fromJSON);
   SimpleObject.registerParser(SpawnSyncTask.name, SpawnSyncTask.fromJSON);
   SimpleObject.registerParser(TargetFile.name, TargetFile.fromJSON);

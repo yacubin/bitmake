@@ -93,7 +93,7 @@ export class SourceFile {
       if (this._definitions.length)
         json.definitions = [ ...this._definitions ];
       if (this._compilePath)
-        json.compilePath = [ ...this._compilePath ];
+        json.compilePath = this._compilePath;
       if (this._compileOptions.length)
         json.compileOptions = [ ...this._compileOptions ];
     }

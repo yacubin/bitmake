@@ -93,6 +93,7 @@ function resolveTargetCommand(project: ProjectContext, tcmd: TargetCommand): Exe
 export class ProjectContext {
   private [TARGETS]: TargetCollection;
   private _customScripts = new Map<string, CustomScript>;
+
   private [CACHE]: CacheVariableDescriptors;
   private _installList: InstallEntity[];
   private _processedVariableMap: any;
@@ -260,22 +261,22 @@ export class ProjectContext {
     }
 
     for (const ctx of contextList) {
-      for (const [name, target] of ctx.targets)
-        this[TARGETS].set(name, target);
-      for (const [name, script] of ctx.mainScripts.entries())
-        this._customScripts.set(name, script);
+      for (const target of ctx.targets.values())
+        this[TARGETS].set(target.targetName, target);
+      for (const script of ctx.mainScripts.values())
+        this._customScripts.set(script.NAME, script);
       this._installList.push(...ctx.installList);
     }
 
     for (const ctx of contextList) {
-      for (const [name, postTarget] of ctx.postTargets) {
-        const target = this[TARGETS].get(name);
+      for (const postTarget of ctx.postTargets.values()) {
+        const target = this[TARGETS].get(postTarget.name);
         if (!target)
           throw new Error(`There is no Target named ${name}`);
         target.postUpdate(postTarget);
       }
-      for (const [name, postScript] of ctx.postScripts) {
-        const script = this._customScripts.get(name);
+      for (const postScript of ctx.postScripts.values()) {
+        const script = this._customScripts.get(postScript.name);
         if (!script)
           throw new Error(`There is no CustomScript named ${name}`);
         script.postUpdate(postScript);

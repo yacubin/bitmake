@@ -81,6 +81,8 @@ export class AbsolutePath {
   public static isAbsolute(filepath: AbsolutePath | string) {
     if (filepath instanceof AbsolutePath)
       return true;
+    if (filepath.startsWith(FILE_SCHEME))
+      return true;
     return Path.isAbsolute(filepath);
   }
 

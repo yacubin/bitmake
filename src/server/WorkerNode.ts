@@ -14,6 +14,7 @@ import { UserMakeContext } from "@/core/UserMakeContext";
 import { performContext } from "@/core/BaseContext";
 import { MainTarget, PostTarget } from "@/core/Target";
 import { SimpleObject } from "@/core/SimpleObject";
+import { PostCustomScript, CustomScript } from "@/core/CustomScript";
 import { InstallEntity } from "@/core/InstallEntity";
 import { ScopeHelper } from "@/core/Scope";
 
@@ -21,6 +22,8 @@ export class WorkerNode {
   private _transport: JsonRpcRequestSync;
   private _mainTargets = new Array<MainTarget>;
   private _postTargets = new Array<PostTarget>;
+  private _mainScripts = new Array<CustomScript>;
+  private _postScripts = new Array<PostCustomScript>;
   private _installEntries = new Array<InstallEntity>;
 
   public constructor(requestSync: IRequestSync) {
@@ -36,6 +39,8 @@ export class WorkerNode {
 
     this._mainTargets = Array.from(ctx.targets.values());
     this._postTargets = Array.from(ctx.postTargets.values());
+    this._mainScripts = Array.from(ctx.mainScripts.values());
+    this._postScripts = Array.from(ctx.postScripts.values());
     this._installEntries = Array.from(ctx.installList);
   }
 
@@ -45,6 +50,14 @@ export class WorkerNode {
 
   public postTargets(params: any): PostTarget[] {
     return SimpleObject.toJSON(this._postTargets);
+  }
+
+  public mainScripts(params: any): CustomScript[] {
+    return SimpleObject.toJSON(this._mainScripts);
+  }
+
+  public postScripts(params: any): PostCustomScript[] {
+    return SimpleObject.toJSON(this._postScripts);
   }
 
   public installEntries(params: any): PostTarget[] {

@@ -22,6 +22,8 @@ import { MAINNODE_EXECUTESCRIPT } from "@/server/RemoteMethods";
 import { WORKERNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
 import { WORKERNODE_MAINTARGETS } from "@/server/RemoteMethods";
 import { WORKERNODE_POSTTARGETS } from "@/server/RemoteMethods";
+import { WORKERNODE_MAINSCRIPTS } from "@/server/RemoteMethods";
+import { WORKERNODE_POSTSCRIPTS } from "@/server/RemoteMethods";
 import { WORKERNODE_INSTALLENTRIES } from "@/server/RemoteMethods";
 import { Logger } from "@/logger";
 import { SimpleObject } from "@/core/SimpleObject";
@@ -129,8 +131,13 @@ export class MakeServer {
     const _mainTargets = SimpleObject.fromJSON(mainTargets);
     const postTargets = await client.request(WORKERNODE_POSTTARGETS, null);
     const _postTargets = SimpleObject.fromJSON(postTargets);
+    const mainScripts = await client.request(WORKERNODE_MAINSCRIPTS, null);
+    const _mainScripts = SimpleObject.fromJSON(mainScripts);
+    const postScripts = await client.request(WORKERNODE_POSTSCRIPTS, null);
+    const _postScripts = SimpleObject.fromJSON(postScripts);
     const installEntries = await client.request(WORKERNODE_INSTALLENTRIES, null);
     const _installEntries = SimpleObject.fromJSON(installEntries);
+
     return true;
   }
 

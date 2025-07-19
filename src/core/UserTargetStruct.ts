@@ -156,7 +156,7 @@ export class UserTargetStruct extends InterfaceTarget {
           }
         }
 
-        const source = SourceFile.create(filename, scope.SOURCE_DIR, language, compilerPath, compilerFlags);
+        const source = SourceFile.create(filename, scope.SOURCE_DIR, !language, language, compilerPath, compilerFlags);
         this[IMPL].addSource(source);
       }
       else if (iter instanceof TargetObjects)

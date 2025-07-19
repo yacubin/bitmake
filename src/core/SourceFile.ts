@@ -19,18 +19,18 @@ export class SourceFile {
   private _compilePath: string;
   private _compileOptions: Array<string | string[]>;
 
-  private constructor(filename: AbsolutePath, baseDir: AbsolutePath, language: string, compilerPath: string, compileFlags: Array<string | string[]>) {
+  private constructor(filename: AbsolutePath, baseDir: AbsolutePath, headerOnly: boolean, language: string, compilerPath: string, compileFlags: Array<string | string[]>) {
     this._filename = filename;
     this._baseDir = baseDir;
+    this._headerOnly = headerOnly;
     this._language = language;
-    this._headerOnly = !language;
     this._definitions = [];
     this._compilePath = compilerPath;
     this._compileOptions = [ ...compileFlags ];
   }
 
-  public static create(filename: AbsolutePath, baseDir: AbsolutePath, language: string, compilerPath: string, compileFlags: Array<string | string[]>) {
-    return Object.seal(new SourceFile(filename, baseDir, language, compilerPath, compileFlags));
+  public static create(filename: AbsolutePath, baseDir: AbsolutePath, headerOnly: boolean, language: string, compilerPath: string, compileFlags: Array<string | string[]>) {
+    return new SourceFile(filename, baseDir, headerOnly, language, compilerPath, compileFlags);
   }
 
   public get LANGUAGE(): string {
@@ -69,23 +69,33 @@ export class SourceFile {
     return this._filename.basename();
   }
 
+  public static fromJSON(json: any): SourceFile {
+    const filename = AbsolutePath.create(json.filename);
+    const baseDir = AbsolutePath.create(json.baseDir);
+    const headerOnly = json.headerOnly || false;
+    const language = json.language || "";
+    const compilerPath = json.compilerPath || "";
+    const compileFlags = json.compileFlags || [];
+    return new SourceFile(filename, baseDir, headerOnly, language, compilerPath, compileFlags);
+  }
+
   public toJSON(): SimpleObject {
     const json: SimpleObject = {
       type: SourceFile.name,
-      filename: this._filename,
-      baseDir: this._baseDir,
+      filename: this._filename.toURLString(),
+      baseDir: this._baseDir.toURLString(),
     };
     if (this._headerOnly)
-      json.headerOnly = this._headerOnly;
+      json.headerOnly = true;
     else {
       if (this._language)
         json.language = this._language;
       if (this._definitions.length)
-        json.definitions = this._definitions;
+        json.definitions = [ ...this._definitions ];
       if (this._compilePath)
-        json.compilePath = this._compilePath;
+        json.compilePath = [ ...this._compilePath ];
       if (this._compileOptions.length)
-        json.compileOptions = this._compileOptions;
+        json.compileOptions = [ ...this._compileOptions ];
     }
     return json;
   }

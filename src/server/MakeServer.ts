@@ -23,6 +23,7 @@ import { WORKERNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
 import { WORKERNODE_MAINTARGETS } from "@/server/RemoteMethods";
 import { WORKERNODE_POSTTARGETS } from "@/server/RemoteMethods";
 import { Logger } from "@/logger";
+import { SimpleObject } from "@/core/SimpleObject";
 
 const logger = Logger.create(import.meta.url);
 
@@ -124,7 +125,9 @@ export class MakeServer {
     process.chdir(cwdSave);
 
     const mainTargets = await client.request(WORKERNODE_MAINTARGETS, null);
+    const _mainTargets = SimpleObject.fromJSON(mainTargets);
     const postTargets = await client.request(WORKERNODE_POSTTARGETS, null);
+    const _postTargets = SimpleObject.fromJSON(postTargets);
     return true;
   }
 
@@ -132,14 +135,14 @@ export class MakeServer {
     const sourceDir = ScopeHelper.get(this._rootVariableMap, "PROJECT_SOURCE_DIR");
     const binaryDir = ScopeHelper.get(this._rootVariableMap, "PROJECT_BINARY_DIR");
 
-    /*const variableMap = createVariableMapForDirectory(this._rootVariableMap, sourceDir, binaryDir);
+    const variableMap = createVariableMapForDirectory(this._rootVariableMap, sourceDir, binaryDir);
     if (!await this.runMakeScript(variableMap))
       throw Error("Can't prepear ScriptFile");
 
-    this.onConfigureEnd();*/
+    this.onConfigureEnd();
 
-    this._project.addSubdirectory(this._rootVariableMap, sourceDir, binaryDir);
-    this._project.doSubdirectory().then(() => this.onConfigureEnd());
+    /*this._project.addSubdirectory(this._rootVariableMap, sourceDir, binaryDir);
+    this._project.doSubdirectory().then(() => this.onConfigureEnd());*/
   }
 
   private async onConfigureEnd() {

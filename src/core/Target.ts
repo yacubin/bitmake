@@ -52,6 +52,21 @@ class TargetElements<T> {
     return this._list.filter(i => i.isPublic).map(i => i.value);
   }
 
+  public static fromJSON<U>(json: any[]) {
+    const result = new TargetElements<U>;
+    for (const iter of json) {
+      let isPublic = false;
+      let value = iter.private;
+      if (!value) {
+        value = iter.public;
+        isPublic = true;
+      }
+      value = SimpleObject.fromJSON(value);
+      result._list.push({value, isPublic});
+    }
+    return result;
+  }
+
   public toJSON() {
     const result: any = [];
     for (const iter of this._list) {
@@ -70,16 +85,14 @@ export abstract class BaseTarget {
   protected _linkOptions = new TargetElements<string | string[]>;
   protected _libraries = new TargetElements<TargetName>;
   protected _sources = new Array<TargetObjects | SourceFile>;
-  protected _preBuildList: TargetCommand[];
-  protected _postBuildList: TargetCommand[];
+  protected _preBuildList = new Array<TargetCommand>;
+  protected _postBuildList = new Array<TargetCommand>;
   protected _language = "";
   protected _compilerPath = "";
   protected _compilerFlags = new Array<string>;
 
   protected constructor(name: string) {
     this._name = name;
-    this._preBuildList = [];
-    this._postBuildList = [];
   }
 
   abstract setPrefix(value: string) : void;
@@ -265,18 +278,33 @@ export abstract class BaseTarget {
     this._postBuildList.push(...target._postBuildList);
   }
 
-  protected toJSON(): SimpleObject {
-    return {
-      type: BaseTarget.name,
-      name: this._name,
-      preBuildList: SimpleObject.toJSON(this._preBuildList),
-      postBuildList: SimpleObject.toJSON(this._postBuildList),
-      includes: this._includes.toJSON(),
-      compileOptions: this._compileOptions.toJSON(),
-      linkOptions: this._linkOptions.toJSON(),
-      sources: SimpleObject.toJSON(this._sources),
-      libraries: this._libraries.toJSON(),
-    }
+  protected putFromJSON(json: any) {
+    this._includes = TargetElements.fromJSON<DirPath | TargetIncludes>(json.includes);
+    this._definitions = TargetElements.fromJSON<string>(json.definitions);
+    this._compileOptions = TargetElements.fromJSON<string | string[]>(json.compileOptions);
+    this._linkOptions = TargetElements.fromJSON<string | string[]>(json.linkOptions);
+    this._libraries = TargetElements.fromJSON<TargetName>(json.libraries);
+    this._sources = SimpleObject.fromJSON(json.sources);
+    this._preBuildList = SimpleObject.fromJSON(json.preBuildList);
+    this._postBuildList = SimpleObject.fromJSON(json.postBuildList);
+    this._language = SimpleObject.fromJSON(json.language);
+    this._compilerPath = SimpleObject.fromJSON(json.compilerPath);
+    this._compilerFlags = SimpleObject.fromJSON(json.compilerFlags);
+  }
+
+  protected copyToJSON(json: any) {
+    json.name = this._name;
+    json.includes = this._includes.toJSON();
+    json.definitions = this._definitions.toJSON();
+    json.compileOptions = this._compileOptions.toJSON();
+    json.linkOptions = this._linkOptions.toJSON();
+    json.libraries = this._libraries.toJSON();
+    json.sources = SimpleObject.toJSON(this._sources);
+    json.preBuildList = SimpleObject.toJSON(this._preBuildList);
+    json.postBuildList = SimpleObject.toJSON(this._postBuildList);
+    json.language = this._language;
+    json.compilerPath = this._compilerPath;
+    json.compilerFlags = this._compilerFlags;
   }
 };
 
@@ -342,11 +370,33 @@ export class PostTarget extends BaseTarget {
     return this._sources;
   }
 
-  public toJSON(): SimpleObject {
-    const result = super.toJSON();
+  public static fromJSON(json: any): PostTarget {
+    const target = new PostTarget(json.name);
 
-    result.type = PostTarget.name;
-    
+    target.putFromJSON(json);
+
+    if (json.prefix !== undefined)
+      target._prefix = json.prefix;
+
+    if (json.outputName !== undefined)
+      target._outputName = json.outputName;
+
+    if (json.suffix !== undefined)
+      target._suffix = json.suffix;
+
+    if (json.positionIndependentCode !== undefined)
+      target._positionIndependentCode = json.positionIndependentCode;
+
+    return target;
+  }
+
+  public toJSON(): SimpleObject {
+    const result: SimpleObject = {
+      type: PostTarget.name
+    };
+
+    super.copyToJSON(result);
+
     if (this._prefix !== undefined)
       result.prefix = this._prefix;
 
@@ -452,26 +502,34 @@ export abstract class MainTarget extends BaseTarget {
 
     if (target.prefix !== undefined)
       this._prefix = target.prefix;
-    if (target.outputName !== undefined)
-      this._outputName = target.outputName;
     if (target.suffix !== undefined)
       this._suffix = target.suffix;
+    if (target.outputName !== undefined)
+      this._outputName = target.outputName;
     if (target.positionIndependentCode !== undefined)
       this._positionIndependentCode = target.positionIndependentCode;
   }
 
-  protected toJSON(): SimpleObject {
-    const result = super.toJSON();
+  protected putFromJSON(json: any) {
+    super.putFromJSON(json);
 
-    result.type = BaseTarget.name;
-    result.sourceDir = this._sourceDir;
-    result.binaryDir = this._binaryDir;
-    result.prefix = this._prefix;
-    result.suffix = this._suffix;
-    result.outputName = this._outputName;
-    result.positionIndependentCode = this._positionIndependentCode;
+    this._prefix = json.prefix;
+    this._outputName = json.outputName;
+    this._suffix = json.suffix;
+    this._positionIndependentCode = json.positionIndependentCode;
+  }
 
-    return result;
+  protected copyToJSON(json: any) {
+    super.copyToJSON(json);
+
+    json.sourceDir = this._sourceDir.toURLString();
+    json.binaryDir = this._binaryDir.toURLString();
+    json.prefix = this._prefix;
+    json.suffix = this._suffix;
+    json.outputName = this._outputName;
+    json.positionIndependentCode = this._positionIndependentCode;
+
+    return json;
   }
 };
 
@@ -484,9 +542,17 @@ export class ObjectLibrary extends MainTarget {
     return true;
   }
 
+  public static fromJSON(json: any): ObjectLibrary {
+    const target = new ObjectLibrary(json.name, AbsolutePath.create(json.sourceDir), AbsolutePath.create(json.binaryDir));
+    target.putFromJSON(json);
+    return target;
+  }
+
   public toJSON(): SimpleObject {
-    const result = super.toJSON();
-    result.type = ObjectLibrary.name;
+    const result: SimpleObject = {
+      type: ObjectLibrary.name,
+    };
+    super.copyToJSON(result);
     return result;
   }
 };
@@ -500,9 +566,17 @@ export class StaticLibrary extends MainTarget {
     return true;
   }
 
+  public static fromJSON(json: any): StaticLibrary {
+    const target = new StaticLibrary(json.name, AbsolutePath.create(json.sourceDir), AbsolutePath.create(json.binaryDir));
+    target.putFromJSON(json);
+    return target;
+  }
+
   public toJSON(): SimpleObject {
-    const result = super.toJSON();
-    result.type = StaticLibrary.name;
+    const result: SimpleObject = {
+      type: StaticLibrary.name,
+    };
+    super.copyToJSON(result);
     return result;
   }
 };
@@ -516,9 +590,17 @@ export class SharedLibrary extends MainTarget {
     return true;
   }
 
+  public static fromJSON(json: any): SharedLibrary {
+    const target = new SharedLibrary(json.name, AbsolutePath.create(json.sourceDir), AbsolutePath.create(json.binaryDir));
+    target.putFromJSON(json);
+    return target;
+  }
+
   public toJSON(): SimpleObject {
-    const result = super.toJSON();
-    result.type = SharedLibrary.name;
+    const result: SimpleObject = {
+      type: SharedLibrary.name,
+    };
+    super.copyToJSON(result);
     return result;
   }
 };
@@ -532,9 +614,17 @@ export class Executable extends MainTarget {
     return true;
   }
 
+  public static fromJSON(json: any): Executable {
+    const target = new Executable(json.name, AbsolutePath.create(json.sourceDir), AbsolutePath.create(json.binaryDir));
+    target.putFromJSON(json);
+    return target;
+  }
+
   public toJSON(): SimpleObject {
-    const result = super.toJSON();
-    result.type = Executable.name;
+    const result: SimpleObject = {
+      type: Executable.name,
+    };
+    super.copyToJSON(result);
     return result;
   }
 };

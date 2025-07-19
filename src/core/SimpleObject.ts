@@ -25,6 +25,8 @@ export function registerParser(name: string, func: InstanceCreateFunction) {
 }
 
 export function fromJSON(value: SimpleObject): any {
+  if (value === undefined)
+    throw new Error("Not support undefined value");
   if (value && typeof value === "object") {
     if (typeof value.type === "string") {
       const func = _creators.get(value.type);

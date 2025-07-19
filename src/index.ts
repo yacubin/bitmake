@@ -9,14 +9,13 @@
 
 /// <reference path="global.d.ts" />
 
-import { isEntryPoint } from "@/utils/Module";
 import * as cxx from "@/cxx";
 import { CMakeProcess, CTestProcess, ScriptModeOptions, getProjectInfo } from "@/cmake";
 
 import { spawnAsync } from "@/utils/ChildProcess";
 import { requestGet, downloadFile } from "@/utils/HttpRequest";
 import { Path } from "@/utils/Path";
-import { runScript } from "@/RunScript";
+import { runScript } from "@/app/RunScript";
 
 export default {
   cxx,
@@ -39,6 +38,4 @@ export default {
   path: Path,
 };
 
-if (isEntryPoint()) {
-  runScript();
-}
+runScript();

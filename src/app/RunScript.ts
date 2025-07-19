@@ -7,23 +7,14 @@
  * under the MIT License. See LICENSE file for details.
  */
 
+import { isEntryPoint } from "@/utils/Module";
 import { isMainThread, parentPort, workerData } from "node:worker_threads";
 import { Args }  from "@/utils/Args";
 import commands from "@/commands";
 import { Logger } from "@/logger";
+import { runScriptInit } from "@/app/RunScriptInit";
 import { MessagePortSender } from "@/server/MessagePortSender";
 import { WorkerLooper } from "@/server/WorkerLooper";
-
-import { PostCustomScript } from "@/core/CustomScript";
-import { FileInstallationTask } from "@/core/FileInstallationTask";
-import { SpawnSyncTask } from "@/core/SpawnSyncTask";
-import { TargetFile } from "@/core/TargetFile";
-import { TargetIncludes } from "@/core/TargetIncludes";
-import { TargetObjects } from "@/core/TargetObjects";
-import { TargetName } from "@/core/TargetName";
-import { DirPath, FilePath } from "@/core/AbsolutePath";
-
-import { SimpleObject } from "@/core/SimpleObject";
 
 const logger = Logger.create(import.meta.url);
 
@@ -79,15 +70,10 @@ export async function runWorkerScript() {
 }
 
 export function runScript() {
-  SimpleObject.registerParser(PostCustomScript.name, PostCustomScript.fromJSON);
-  SimpleObject.registerParser(FileInstallationTask.name, FileInstallationTask.fromJSON);
-  SimpleObject.registerParser(SpawnSyncTask.name, SpawnSyncTask.fromJSON);
-  SimpleObject.registerParser(TargetFile.name, TargetFile.fromJSON);
-  SimpleObject.registerParser(TargetIncludes.name, TargetIncludes.fromJSON);
-  SimpleObject.registerParser(TargetObjects.name, TargetObjects.fromJSON);
-  SimpleObject.registerParser(TargetName.name, TargetName.fromJSON);
-  SimpleObject.registerParser(DirPath.name, DirPath.fromJSON);
-  SimpleObject.registerParser(FilePath.name, FilePath.fromJSON);
+  if (!isEntryPoint())
+    return;
+
+  runScriptInit();
 
   if (!isMainThread) {
     runWorkerScript();

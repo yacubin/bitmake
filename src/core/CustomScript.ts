@@ -26,16 +26,16 @@ export class PostCustomScript extends InterfaceScript {
     return Object.seal(new PostCustomScript(name, variables));
   }
 
-  public static fromJSON(object: SimpleObject) {
-    return PostCustomScript.create(object.name as string, object.variables as VariantMap);
-  }
-
   public get variables() {
     return this._variables;
   }
 
   public mergeVariables(variables: VariantMap) {
     ScopeHelper.mergeVariables(this._variables, variables);
+  }
+
+  public static fromJSON(json: any) {
+    return PostCustomScript.create(json.name, json.variables);
   }
 
   public toJSON(): SimpleObject {

@@ -194,7 +194,7 @@ export abstract class MakeContext extends GeneralContext {
         throw new Error(`Not supportet value of ${iter}`);
       }
 
-      const entity = new InstallEntity(iter, AbsolutePath.create(scope.INSTALL_PREFIX.resolve(destination)), baseDir ? AbsolutePath.create(baseDir) : undefined);
+      const entity = new InstallEntity(iter, AbsolutePath.create(scope.INSTALL_PREFIX.resolve(destination)), baseDir);
       this._installList.push(entity);
     }
   }

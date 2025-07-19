@@ -14,6 +14,7 @@ import { WorkerNode } from "@/server/WorkerNode";
 import { WORKERNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
 import { WORKERNODE_MAINTARGETS } from "@/server/RemoteMethods";
 import { WORKERNODE_POSTTARGETS } from "@/server/RemoteMethods";
+import { WORKERNODE_INSTALLENTRIES } from "@/server/RemoteMethods";
 import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
@@ -31,6 +32,7 @@ export class WorkerLooper implements IMessageEmitter {
     this._jsonrpcServer.registerCallback(WORKERNODE_STARTMAKESCRIPT, params => workerNode.execMakeScript(params));
     this._jsonrpcServer.registerCallback(WORKERNODE_MAINTARGETS, params => workerNode.mainTargets(params));
     this._jsonrpcServer.registerCallback(WORKERNODE_POSTTARGETS, params => workerNode.postTargets(params));
+    this._jsonrpcServer.registerCallback(WORKERNODE_INSTALLENTRIES, params => workerNode.installEntries(params));
   }
 
   public emitMessage(sender: IMessageSender, message: any): void {

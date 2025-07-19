@@ -461,21 +461,21 @@ export class ProjectContext {
       const fileInstallationTask = new FileInstallationTask;
       for (const iter of this._installList) {
         let src: AbsolutePath, dest: AbsolutePath;
-        if (iter.VALUE instanceof AbsolutePath) {
+        if (iter.value instanceof AbsolutePath) {
           if (scope.PREVENT_INSTALL_FILES)
             continue;
-          src = iter.VALUE;
-          const rfile = (iter.BASE_DIR as any).relative(iter.VALUE);
-          dest = iter.DESTINATION.join(rfile);
+          src = iter.value;
+          const rfile = (iter.baseDir as any).relative(iter.value);
+          dest = iter.destination.join(rfile);
         }
-        else if (iter.VALUE instanceof TargetName) {
-          const targetName = iter.VALUE.targetName;
+        else if (iter.value instanceof TargetName) {
+          const targetName = iter.value.targetName;
           const target = this[TARGETS].get(targetName);
           src = target.getFile();
-          dest = iter.DESTINATION.join(target.getFileName());
+          dest = iter.destination.join(target.getFileName());
         }
         else {
-          throw new Error(`Can not install ${iter.VALUE}`)
+          throw new Error(`Can not install ${iter.value}`)
         }
         if (scope.DESTDIR)
           dest = scope.DESTDIR.join(dest);

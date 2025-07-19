@@ -8,40 +8,51 @@
  */
 
 import { TargetName } from "@/core/TargetName";
-import { AbsolutePath } from "@/core/AbsolutePath";
+import { FilePath, AbsolutePath } from "@/core/AbsolutePath";
 import { SimpleObject } from "@/core/SimpleObject";
 
 export class InstallEntity {
-  private _value: AbsolutePath | TargetName;
+  private _value: FilePath | TargetName;
   private _destination: AbsolutePath;
   private _baseDir?: AbsolutePath;
 
-  public constructor(value: AbsolutePath | TargetName, destination: AbsolutePath, baseDir?: AbsolutePath) {
+  public constructor(value: FilePath | TargetName, destination: AbsolutePath, baseDir?: AbsolutePath) {
     this._value = value;
     this._destination = destination;
     this._baseDir = baseDir;
   }
 
-  public get VALUE () {
+  public static create(value: FilePath | TargetName, destination: AbsolutePath, baseDir?: AbsolutePath) {
+    return new InstallEntity(value, destination, baseDir);
+  }
+
+  public get value () {
     return this._value;
   }
 
-  public get DESTINATION () {
+  public get destination () {
     return this._destination;
   }
 
-  public get BASE_DIR () {
+  public get baseDir () {
     return this._baseDir;
   }
 
+  public static fromJSON(json: any) {
+    const value = SimpleObject.fromJSON(json.value);
+    const destination = AbsolutePath.create(json.destination);
+    const baseDir = json.baseDir ? AbsolutePath.create(json.baseDir) : undefined;
+    return new InstallEntity(value, destination, baseDir);
+  }
+
   public toJSON(): SimpleObject {
-    const json: SimpleObject = {
+    const result: SimpleObject = {
       type: InstallEntity.name,
-      value: this._value,
-      destination: this._destination,
+      value: this._value.toJSON(),
+      destination: this._destination.toURLString(),
     };
     if (this._baseDir)
-      json.baseDir = this._baseDir;
-    return json;
+      result.baseDir = this._baseDir.toURLString();
+    return result;
   }
 };

@@ -14,12 +14,14 @@ import { UserMakeContext } from "@/core/UserMakeContext";
 import { performContext } from "@/core/BaseContext";
 import { MainTarget, PostTarget } from "@/core/Target";
 import { SimpleObject } from "@/core/SimpleObject";
+import { InstallEntity } from "@/core/InstallEntity";
 import { ScopeHelper } from "@/core/Scope";
 
 export class WorkerNode {
   private _transport: JsonRpcRequestSync;
   private _mainTargets = new Array<MainTarget>;
   private _postTargets = new Array<PostTarget>;
+  private _installEntries = new Array<InstallEntity>;
 
   public constructor(requestSync: IRequestSync) {
     this._transport = new JsonRpcRequestSync(requestSync);
@@ -34,6 +36,7 @@ export class WorkerNode {
 
     this._mainTargets = Array.from(ctx.targets.values());
     this._postTargets = Array.from(ctx.postTargets.values());
+    this._installEntries = Array.from(ctx.installList);
   }
 
   public mainTargets(params: any): MainTarget[] {
@@ -42,5 +45,9 @@ export class WorkerNode {
 
   public postTargets(params: any): PostTarget[] {
     return SimpleObject.toJSON(this._postTargets);
+  }
+
+  public installEntries(params: any): PostTarget[] {
+    return SimpleObject.toJSON(this._installEntries);
   }
 };

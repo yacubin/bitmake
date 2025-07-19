@@ -21,6 +21,7 @@ import { TargetFile } from "@/core/TargetFile";
 import { TargetIncludes } from "@/core/TargetIncludes";
 import { TargetObjects } from "@/core/TargetObjects";
 import { TargetName } from "@/core/TargetName";
+import { DirPath, FilePath } from "@/core/AbsolutePath";
 
 import { SimpleObject } from "@/core/SimpleObject";
 
@@ -85,6 +86,8 @@ export function runScript() {
   SimpleObject.registerParser(TargetIncludes.name, TargetIncludes.fromJSON);
   SimpleObject.registerParser(TargetObjects.name, TargetObjects.fromJSON);
   SimpleObject.registerParser(TargetName.name, TargetName.fromJSON);
+  SimpleObject.registerParser(DirPath.name, DirPath.fromJSON);
+  SimpleObject.registerParser(FilePath.name, FilePath.fromJSON);
 
   if (!isMainThread) {
     runWorkerScript();

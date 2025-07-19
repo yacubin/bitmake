@@ -7,10 +7,12 @@
  * under the MIT License. See LICENSE file for details.
  */
 
+import path from "node:path";
 import url from "node:url";
+
 import { Path } from "@/utils/Path";
 import { FILE_SCHEME } from "@/utils/UrlScheme";
-import path from "node:path";
+import { SimpleObject } from "@/core/SimpleObject";
 
 const PATH = Symbol("PATH");
 
@@ -68,7 +70,11 @@ export class AbsolutePath {
     return url.fileURLToPath(this[PATH]);
   }
 
-  public toJSON() {
+  public toURLString() {
+    return this[PATH];
+  }
+
+  public toJSON(): any {
     return this[PATH];
   }
 
@@ -89,5 +95,39 @@ export class AbsolutePath {
       return path;
 
     return Object.seal(new AbsolutePath(path));
+  }
+};
+
+export class DirPath extends AbsolutePath {
+  constructor(dirname: string) {
+    super(dirname);
+  }
+
+  public static fromJSON(object: SimpleObject) {
+    return new DirPath(object.url as string);
+  }
+
+  public toJSON(): SimpleObject {
+    return {
+      type: DirPath.name,
+      url: this.toURLString(),
+    };
+  }
+};
+
+export class FilePath extends AbsolutePath {
+  constructor(filepath: string) {
+    super(filepath);
+  }
+
+  public static fromJSON(object: SimpleObject) {
+    return new FilePath(object.url as string);
+  }
+
+  public toJSON(): SimpleObject {
+    return {
+      type: FilePath.name,
+      url: this.toURLString(),
+    };
   }
 };

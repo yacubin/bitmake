@@ -12,7 +12,7 @@ import { TargetName } from "@/core/TargetName";
 import { TargetFile } from "@/core/TargetFile";
 import { TargetIncludes } from "@/core/TargetIncludes";
 import { TargetObjects } from "@/core/TargetObjects";
-import { AbsolutePath } from "@/core/AbsolutePath";
+import { DirPath, AbsolutePath } from "@/core/AbsolutePath";
 import { SimpleObject } from "./SimpleObject";
 import { Logger } from "@/logger";
 
@@ -32,7 +32,7 @@ type TargetValueList<T> = Array<TargetValue<T>>;
 
 export abstract class BaseTarget {
   protected _name: string;
-  protected _includes: TargetValueList<AbsolutePath | TargetIncludes>;
+  protected _includes: TargetValueList<DirPath | TargetIncludes>;
   protected _definitions: TargetValueList<string>;
   protected _compileOptions: TargetValueList<string | string[]>;
   protected _linkOptions: TargetValueList<string | string[]>;
@@ -81,15 +81,15 @@ export abstract class BaseTarget {
     return TargetFile.create(this._name);
   }
 
-  public getIncludes(): Array<AbsolutePath | TargetIncludes> {
+  public getIncludes(): Array<DirPath | TargetIncludes> {
     return this._includes.map(i => i.value);
   }
 
-  public getPublicIncludes(): Array<AbsolutePath | TargetIncludes> {
+  public getPublicIncludes(): Array<DirPath | TargetIncludes> {
     return this._includes.filter(i => i.publicOnly).map(i => i.value);
   }
 
-  public addInclude(publicOnly: boolean, value: AbsolutePath | TargetIncludes): void {
+  public addInclude(publicOnly: boolean, value: DirPath | TargetIncludes): void {
     this._includes.push({publicOnly, value});
   }
 
@@ -233,7 +233,18 @@ export abstract class BaseTarget {
     this._compilerFlags = value;
   }
 
-  public toJSON(): SimpleObject {
+  public postUpdate(target: BaseTarget) {
+    this._includes.push(...target._includes);
+    this._definitions.push(...target._definitions);
+    this._compileOptions.push(...target._compileOptions);
+    this._linkOptions.push(...target._linkOptions);
+    this._libraries.push(...target._libraries);
+    this._sources.push(...target._sources);
+    this._preBuildList.push(...target._preBuildList);
+    this._postBuildList.push(...target._postBuildList);
+  }
+
+  protected toJSON(): SimpleObject {
     return {
       type: BaseTarget.name,
       name: this._name,
@@ -292,14 +303,6 @@ export class PostTarget extends BaseTarget {
 
   public setPositionIndependentCode(value: boolean) {
     this._positionIndependentCode = value;
-  }
-
-  public get INCLUDES() {
-    return this._includes;
-  }
-
-  public get DEFINITIONS() {
-    return this._definitions;
   }
 
   public get COMPILE_OPTIONS() {
@@ -424,6 +427,8 @@ export abstract class MainTarget extends BaseTarget {
   }
 
   public postUpdate(target: PostTarget) {
+    super.postUpdate(target);
+
     if (target.prefix !== undefined)
       this._prefix = target.prefix;
     if (target.outputName !== undefined)
@@ -432,17 +437,9 @@ export abstract class MainTarget extends BaseTarget {
       this._suffix = target.suffix;
     if (target.positionIndependentCode !== undefined)
       this._positionIndependentCode = target.positionIndependentCode;
-    this._includes.push(...target.INCLUDES);
-    this._definitions.push(...target.DEFINITIONS);
-    this._compileOptions.push(...target.COMPILE_OPTIONS);
-    this._linkOptions.push(...target.LINK_OPTIONS);
-    this._libraries.push(...target.LIBRARIES);
-    this._sources.push(...target.SOURCES);
-    this._preBuildList.push(...target.preBuildList);
-    this._postBuildList.push(...target.postBuildList);
   }
 
-  public toJSON(): SimpleObject {
+  protected toJSON(): SimpleObject {
     const result = super.toJSON();
 
     result.type = BaseTarget.name;

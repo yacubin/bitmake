@@ -13,7 +13,7 @@ import { SystemScope } from "@/core/SystemScope";
 import { ensureString } from "@/utils/StrictType";
 import { TargetIncludes } from "@/core/TargetIncludes";
 import { TargetObjects } from "@/core/TargetObjects";
-import { AbsolutePath } from "@/core/AbsolutePath";
+import { DirPath, AbsolutePath } from "@/core/AbsolutePath";
 import { SourceFile } from "@/core/SourceFile";
 import { UserSourceFiles } from "@/core/UserSourceFiles";
 import { TargetFile } from "@/core/TargetFile";
@@ -56,9 +56,9 @@ function addIncludeImpl(target: BaseTarget, sourceDir: AbsolutePath, publicOnly:
   if (include instanceof TargetIncludes)
     target.addInclude(publicOnly, include);
   else if (typeof include === "string")
-    target.addInclude(publicOnly, AbsolutePath.create(sourceDir.resolve(include)));
+    target.addInclude(publicOnly, new DirPath(sourceDir.resolve(include).toURLString()));
   else if (include instanceof AbsolutePath)
-    target.addInclude(publicOnly, AbsolutePath.create(include));
+    target.addInclude(publicOnly, new DirPath(include.toURLString()));
   else
     throw new Error(`Not support instance ${include}`);
 }

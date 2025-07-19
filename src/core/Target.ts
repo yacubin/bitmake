@@ -23,21 +23,53 @@ export interface TargetCommand {
   args: Array<string | AbsolutePath | TargetFile>;
 };
 
-interface TargetValue<T> {
+interface TargetElement<T> {
   value: T;
-  publicOnly: boolean;
+  isPublic?: boolean;
 };
 
-type TargetValueList<T> = Array<TargetValue<T>>;
+class TargetElements<T> {
+  private _list = new Array<TargetElement<T>>;
+
+  public add(value: T, isPublic?: boolean) {
+    this._list.push({value, isPublic});
+  }
+
+  public concat(other: TargetElements<T>) {
+    const result = new TargetElements<T>;
+    for (const iter of this._list)
+      result._list.push(iter);
+    for (const iter of other._list)
+      result._list.push(iter);
+    return result;
+  }
+
+  public getAllValues(): T[] {
+    return this._list.map(i => i.value);
+  }
+
+  public getPublicValues() {
+    return this._list.filter(i => i.isPublic).map(i => i.value);
+  }
+
+  public toJSON() {
+    const result: any = [];
+    for (const iter of this._list) {
+      const name = iter.isPublic ? "public" : "private";
+      result.push({ [name] : iter.value});
+    }
+    return result;
+  }
+};
 
 export abstract class BaseTarget {
   protected _name: string;
-  protected _includes: TargetValueList<DirPath | TargetIncludes>;
-  protected _definitions: TargetValueList<string>;
-  protected _compileOptions: TargetValueList<string | string[]>;
-  protected _linkOptions: TargetValueList<string | string[]>;
-  protected _libraries: TargetValueList<TargetName>;
-  protected _sources: TargetValueList<TargetObjects | SourceFile>;
+  protected _includes = new TargetElements<DirPath | TargetIncludes>;
+  protected _definitions = new TargetElements<string>;
+  protected _compileOptions = new TargetElements<string | string[]>;
+  protected _linkOptions = new TargetElements<string | string[]>;
+  protected _libraries = new TargetElements<TargetName>;
+  protected _sources = new Array<TargetObjects | SourceFile>;
   protected _preBuildList: TargetCommand[];
   protected _postBuildList: TargetCommand[];
   protected _language = "";
@@ -46,12 +78,6 @@ export abstract class BaseTarget {
 
   protected constructor(name: string) {
     this._name = name;
-    this._includes = [];
-    this._definitions = [];
-    this._compileOptions = [];
-    this._linkOptions = [];
-    this._libraries = [];
-    this._sources = [];
     this._preBuildList = [];
     this._postBuildList = [];
   }
@@ -82,35 +108,35 @@ export abstract class BaseTarget {
   }
 
   public getIncludes(): Array<DirPath | TargetIncludes> {
-    return this._includes.map(i => i.value);
+    return this._includes.getAllValues();
   }
 
   public getPublicIncludes(): Array<DirPath | TargetIncludes> {
-    return this._includes.filter(i => i.publicOnly).map(i => i.value);
+    return this._includes.getPublicValues();
   }
 
   public addInclude(publicOnly: boolean, value: DirPath | TargetIncludes): void {
-    this._includes.push({publicOnly, value});
+    this._includes.add(value, publicOnly);
   }
 
   public getDefinitions(): Array<string> {
-    return this._definitions.map(i => i.value);
+    return this._definitions.getAllValues();
   }
 
   public getPublicDefinitions(): Array<string> {
-    return this._definitions.filter(i => i.publicOnly).map(i => i.value);
+    return this._definitions.getPublicValues();
   }
 
   public addDefinition(publicOnly: boolean, value: string): void {
-    this._definitions.push({publicOnly, value});
+    this._definitions.add(value, publicOnly);
   }
 
   public getCompileOptions(): Array<string | string[]> {
-    return this._compileOptions.map(i => i.value);
+    return this._compileOptions.getAllValues();
   }
   
   public getPublicCompileOptions(): Array<string|string[]> {
-    return this._compileOptions.filter(i => i.publicOnly).map(i => i.value);
+    return this._compileOptions.getPublicValues();
   }
 
   public addCompileOptions(...options: Array<string | string[]>): void {
@@ -123,15 +149,15 @@ export abstract class BaseTarget {
 
   public addCompileOptionsImpl(publicOnly: boolean, ...options: Array<string | string[]>): void {
     for (const value of options.flat())
-      this._compileOptions.push({publicOnly, value});
+      this._compileOptions.add(value, publicOnly);
   }
 
   public getLinkOptions(): Array<string | string[]> {
-    return this._linkOptions.map(i => i.value);
+    return this._linkOptions.getAllValues();
   }
 
   public getPublicLinkOptions(): Array<string | string[]> {
-    return this._linkOptions.filter(i => i.publicOnly).map(i => i.value);
+    return this._linkOptions.getPublicValues();
   }
 
   public addLinkOptions(...options: Array<string | string[]>) {
@@ -144,15 +170,15 @@ export abstract class BaseTarget {
 
   public addLinkOptionsImpl(publicOnly: boolean, ...options: Array<string | string[]>) {
     for (const value of options.flat())
-      this._linkOptions.push({publicOnly, value});
+      this._linkOptions.add(value, publicOnly);
   }
 
   public getLibraries() {
-    return this._libraries.map(i => i.value);
+    return this._libraries.getAllValues()
   }
 
   public getPublicLibraries() {
-    return this._libraries.filter(i => i.publicOnly).map(i => i.value);
+    return this._libraries.getPublicValues();
   }
 
   public addLibraries(...libraries: PostTarget[]) {
@@ -165,16 +191,11 @@ export abstract class BaseTarget {
 
   public addLibrariesImpl(publicOnly: boolean, ...libraries: PostTarget[]) {
     for (const iter of libraries.flat())
-      this._libraries.push({publicOnly, value: TargetName.create(iter.targetName)});
+      this._libraries.add(TargetName.create(iter.targetName), publicOnly);
   }
 
   public getHeaders(): SourceFile[] {
-    const result = new Array<SourceFile>;
-    for (const iter of this._sources) {
-      if (iter.value instanceof SourceFile && iter.value.HEADER_FILE_ONLY)
-        result.push(iter.value);
-    }
-    return result;
+    return this.getSourceFiles().filter(i => i.HEADER_FILE_ONLY);
   }
 
   public getAllSources() {
@@ -182,15 +203,15 @@ export abstract class BaseTarget {
   }
 
   public getSourceFiles(): SourceFile[] {
-    return this._sources.map(i => i.value).filter(i => i instanceof SourceFile);
+    return this._sources.filter(i => i instanceof SourceFile);
   }
 
   public getTargetObjects(): TargetObjects[] {
-    return this._sources.map(i => i.value).filter(i => i instanceof TargetObjects);
+    return this._sources.filter(i => i instanceof TargetObjects);
   }
 
   public addSource(source: TargetObjects | SourceFile) {
-    this._sources.push({publicOnly: false, value: source});
+    this._sources.push(source);
   }
 
   public get preBuildList() {
@@ -234,11 +255,11 @@ export abstract class BaseTarget {
   }
 
   public postUpdate(target: BaseTarget) {
-    this._includes.push(...target._includes);
-    this._definitions.push(...target._definitions);
-    this._compileOptions.push(...target._compileOptions);
-    this._linkOptions.push(...target._linkOptions);
-    this._libraries.push(...target._libraries);
+    this._includes = this._includes.concat(target._includes);
+    this._definitions = this._definitions.concat(target._definitions);
+    this._compileOptions = this._compileOptions.concat(target._compileOptions);
+    this._linkOptions = this._linkOptions.concat(target._linkOptions);
+    this._libraries = this._libraries.concat(target._libraries);
     this._sources.push(...target._sources);
     this._preBuildList.push(...target._preBuildList);
     this._postBuildList.push(...target._postBuildList);
@@ -250,11 +271,11 @@ export abstract class BaseTarget {
       name: this._name,
       preBuildList: SimpleObject.toJSON(this._preBuildList),
       postBuildList: SimpleObject.toJSON(this._postBuildList),
-      includes: SimpleObject.toJSON(this._includes),
-      compileOptions: SimpleObject.toJSON(this._compileOptions),
-      linkOptions: SimpleObject.toJSON(this._linkOptions),
+      includes: this._includes.toJSON(),
+      compileOptions: this._compileOptions.toJSON(),
+      linkOptions: this._linkOptions.toJSON(),
       sources: SimpleObject.toJSON(this._sources),
-      libraries: SimpleObject.toJSON(this._libraries),
+      libraries: this._libraries.toJSON(),
     }
   }
 };

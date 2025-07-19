@@ -11,7 +11,7 @@ import { IMakeContext, InterfaceScript } from "@/core/MakeInterfaces";
 import { VariantMap, VariableMap, ScopeHelper } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
 import { GeneralContext, MakeContext, createContext } from "@/core/BaseContext";
-import { TargetType, MainTarget } from "@/core/Target";
+import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, MainTarget } from "@/core/Target";
 import { UserTargetStruct } from "@/core/UserTargetStruct";
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
 import { Logger } from "@/logger";
@@ -21,7 +21,7 @@ const logger = Logger.create(import.meta.url);
 const SCOPE = Symbol("SCOPE");
 const IMPL = Symbol("IMPL");
 
-function createMainTargetImpl(ctx: MakeContext, scope: SystemScope, type: TargetType, name: string) {
+function createTargetImpl<T extends MainTarget>(TargetCtor: new (...args: any[]) => T, ctx: MakeContext, scope: SystemScope, name: string) {
   if (typeof name !== "string")
     throw new Error(`Target "${name}" is not string type`);
 
@@ -34,7 +34,7 @@ function createMainTargetImpl(ctx: MakeContext, scope: SystemScope, type: Target
   if ([ ALL_TARGET, INSTALL_TARGET ].includes(name))
     throw new Error(`Target "${name}" is reserved name`);
 
-  const target = MainTarget.create(type, name, scope.SOURCE_DIR, scope.BINARY_DIR);
+  const target = new TargetCtor(name, scope.SOURCE_DIR, scope.BINARY_DIR);
   ctx.addMainTarget(name, target);
   return target;
 }
@@ -86,7 +86,7 @@ export class UserMakeContext extends GeneralContext implements IMakeContext {
   }
 
   public addObjectLibrary(name: string, ...sources: any[]): UserTargetStruct {
-    const target = createMainTargetImpl(this[IMPL], this[SCOPE], TargetType.ObjectLibrary, name);
+    const target = createTargetImpl(ObjectLibrary, this[IMPL], this[SCOPE], name);
     target.setPrefix(this[SCOPE].OBJECT_LIBRARY_PREFIX);
     target.setSuffix(this[SCOPE].OBJECT_LIBRARY_SUFFIX);
     target.addLinkOptions(...this[SCOPE].OBJECT_LINKER_FLAGS);
@@ -95,7 +95,7 @@ export class UserMakeContext extends GeneralContext implements IMakeContext {
   }
 
   public addStaticLibrary(name: any, ...sources: any[]): UserTargetStruct {
-    const target = createMainTargetImpl(this[IMPL], this[SCOPE], TargetType.StaticLibrary, name);
+    const target = createTargetImpl(StaticLibrary, this[IMPL], this[SCOPE], name);
     target.setPrefix(this[SCOPE].STATIC_LIBRARY_PREFIX);
     target.setSuffix(this[SCOPE].STATIC_LIBRARY_SUFFIX);
     target.addLinkOptions(...this[SCOPE].STATIC_LINKER_FLAGS);
@@ -104,7 +104,7 @@ export class UserMakeContext extends GeneralContext implements IMakeContext {
   }
 
   public addSharedLibrary(name: any, ...sources: any[]): UserTargetStruct {
-    const target = createMainTargetImpl(this[IMPL], this[SCOPE], TargetType.SharedLibrary, name);
+    const target = createTargetImpl(SharedLibrary, this[IMPL], this[SCOPE], name);
     target.setPrefix(this[SCOPE].SHARED_LIBRARY_PREFIX);
     target.setSuffix(this[SCOPE].SHARED_LIBRARY_SUFFIX);
     target.addLinkOptions(...this[SCOPE].SHARED_LINKER_FLAGS);
@@ -113,7 +113,7 @@ export class UserMakeContext extends GeneralContext implements IMakeContext {
   }
 
   public addExecutable(name: any, ...sources: any[]): UserTargetStruct {
-    const target = createMainTargetImpl(this[IMPL], this[SCOPE], TargetType.Executable, name);
+    const target = createTargetImpl(Executable, this[IMPL], this[SCOPE], name);
     target.setPrefix(this[SCOPE].EXECUTABLE_SUFFIX);
     target.addLinkOptions(...this[SCOPE].EXE_LINKER_FLAGS);
 

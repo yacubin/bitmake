@@ -18,17 +18,35 @@ const _creators = new Map<string, InstanceCreateFunction>();
 
 export namespace SimpleObject {
 
-export function registerInstanceCreator(name: string, func: InstanceCreateFunction) {
+export function registerParser(name: string, func: InstanceCreateFunction) {
   if (!name && _creators.has(name))
     throw new Error(`Name "${name}" is wrong or registered`);
   _creators.set(name, func);
 }
 
-export function createInstance(object: SimpleObject): any {
-  const func = _creators.get(object.type);
-  if (!func)
-    throw new Error(`Uknown object type: ${JSON.stringify(object)}`);
-  return func(object);
+export function fromJSON(value: SimpleObject): any {
+  if (value && typeof value === "object") {
+    if (typeof value.type === "string") {
+      const func = _creators.get(value.type);
+      if (func)
+        return func(value);
+      throw new Error(`Uknown object type: ${JSON.stringify(value)}`);
+    }
+    else if (Array.isArray(value)) {
+      return value.map(i => fromJSON(i));
+    }
+  }
+  return value;
+}
+
+export function toJSON(value: any): any {
+  if (value && typeof value === "object") {
+    if (typeof value.toJSON === "function")
+      return value.toJSON();
+    else if (Array.isArray(value))
+      return value.map(i => toJSON(i));
+  }
+  return value;
 }
 
 } // namespace SimpleObject

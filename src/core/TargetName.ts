@@ -41,5 +41,3 @@ export class TargetName {
     }
   }
 };
-
-SimpleObject.registerInstanceCreator(TargetName.name, TargetName.fromJSON);

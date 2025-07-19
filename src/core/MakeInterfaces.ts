@@ -14,6 +14,7 @@ import { VariantMap } from "@/core/Scope";
 import { AbsolutePath } from "@/core/AbsolutePath";
 import { SourceFile } from "@/core/SourceFile";
 
+export type Definition = string | object;
 export type CompileOption = string | string[];
 export type LinkOption = string | string[];
 
@@ -43,13 +44,13 @@ export abstract class InterfaceTarget {
   abstract addCompileOptions(...options: CompileOption[]): void;
   abstract addLinkOptions(...options: LinkOption[]): void;
   abstract getSourceFiles(...sources: any[]): InterfaceSourceFiles;
-  abstract addDefinitions(...definitions: any[]): void;
+  abstract addDefinitions(...definitions: Definition[]): void;
   abstract addPreBuild(command: any, args: any[]): void;
   abstract addPostBuild(command: any, args: any[]): void;
 
   abstract setPositionIndependentCode(value: boolean): void;
   abstract addPublicIncludes(...includes: Array<TargetIncludes | AbsolutePath | string>): void;
-  abstract addPublicDefinitions(...definitions: any): void;
+  abstract addPublicDefinitions(...definitions: Definition[]): void;
   abstract addPublicLibraries(...libraries: any[]): void;
   abstract addPublicCompileOptions(...options: CompileOption[]): void;
   abstract addPublicLinkOptions(...options: LinkOption[]): void;

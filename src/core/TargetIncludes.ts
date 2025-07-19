@@ -47,5 +47,3 @@ export class TargetIncludes {
     throw new Error(`The '${value}' is not a TargetIncludes`);
   }
 };
-
-SimpleObject.registerInstanceCreator(TargetIncludes.name, TargetIncludes.fromJSON);

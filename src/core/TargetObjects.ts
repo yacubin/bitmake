@@ -47,5 +47,3 @@ export class TargetObjects {
     }
   }
 };
-
-SimpleObject.registerInstanceCreator(TargetObjects.name, TargetObjects.fromJSON);

@@ -41,5 +41,3 @@ export class TargetFile {
     }
   }
 };
-
-SimpleObject.registerInstanceCreator(TargetFile.name, TargetFile.fromJSON);

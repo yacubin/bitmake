@@ -20,6 +20,8 @@ import { MAINNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
 import { MAINNODE_LOADJSON } from "@/server/RemoteMethods";
 import { MAINNODE_EXECUTESCRIPT } from "@/server/RemoteMethods";
 import { WORKERNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
+import { WORKERNODE_MAINTARGETS } from "@/server/RemoteMethods";
+import { WORKERNODE_POSTTARGETS } from "@/server/RemoteMethods";
 import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
@@ -121,6 +123,8 @@ export class MakeServer {
     await client.request(WORKERNODE_STARTMAKESCRIPT, ScopeHelper.toJSON(variableMap));
     process.chdir(cwdSave);
 
+    const mainTargets = await client.request(WORKERNODE_MAINTARGETS, null);
+    const postTargets = await client.request(WORKERNODE_POSTTARGETS, null);
     return true;
   }
 

@@ -233,16 +233,17 @@ export abstract class BaseTarget {
     this._compilerFlags = value;
   }
 
-  public toJSON(): object {
+  public toJSON(): SimpleObject {
     return {
+      type: BaseTarget.name,
       name: this._name,
-      preBuildList: this._preBuildList,
-      postBuildList: this._postBuildList,
-      includes: this._includes,
-      compileOptions: this._compileOptions,
-      linkOptions: this._linkOptions,
-      sources: this._sources,
-      libraries: this._libraries,
+      preBuildList: SimpleObject.toJSON(this._preBuildList),
+      postBuildList: SimpleObject.toJSON(this._postBuildList),
+      includes: SimpleObject.toJSON(this._includes),
+      compileOptions: SimpleObject.toJSON(this._compileOptions),
+      linkOptions: SimpleObject.toJSON(this._linkOptions),
+      sources: SimpleObject.toJSON(this._sources),
+      libraries: SimpleObject.toJSON(this._libraries),
     }
   }
 };
@@ -318,7 +319,7 @@ export class PostTarget extends BaseTarget {
   }
 
   public toJSON(): SimpleObject {
-    const result: any = super.toJSON();
+    const result = super.toJSON();
 
     result.type = PostTarget.name;
     
@@ -338,33 +339,7 @@ export class PostTarget extends BaseTarget {
   }
 };
 
-export enum TargetType {
-  ObjectLibrary = 0,
-  StaticLibrary = 1,
-  SharedLibrary = 2,
-  Executable = 3,
-};
-
-export namespace TargetType {
-
-export function toString(type: TargetType) {
-  switch (type) {
-  case TargetType.ObjectLibrary:
-    return "ObjectLibrary";
-  case TargetType.StaticLibrary:
-    return "StaticLibrary";
-  case TargetType.SharedLibrary:
-    return "SharedLibrary";
-  case TargetType.Executable:
-    return "Executable";
-  }
-  throw new Error(`Uknown target type ${type}`);
-}
-
-} // namespace TargetType
-
-export class MainTarget extends BaseTarget {
-  private _targetType: TargetType;
+export abstract class MainTarget extends BaseTarget {
   private _sourceDir: AbsolutePath;
   private _binaryDir: AbsolutePath;
   private _prefix = "";
@@ -372,33 +347,28 @@ export class MainTarget extends BaseTarget {
   private _outputName: string;
   private _positionIndependentCode = false;
 
-  protected constructor(type: TargetType, name: string, sourceDir: AbsolutePath, binaryDir: AbsolutePath) {
+  protected constructor(name: string, sourceDir: AbsolutePath, binaryDir: AbsolutePath) {
     super(name);
 
     this._sourceDir = sourceDir;
     this._binaryDir = binaryDir;
-    this._targetType = type;
     this._outputName = name;
   }
 
-  public static create(type: TargetType, name: string, sourceDir: AbsolutePath, binaryDir: AbsolutePath) {
-    return Object.seal(new MainTarget(type, name, sourceDir, binaryDir));
+  public get isObjectLibrary(): boolean {
+    return false;
   }
 
-  public get isObjectLibrary() {
-    return this._targetType === TargetType.ObjectLibrary;
+  public get isStaticLibrary(): boolean {
+    return false;
   }
 
-  public get isStaticLibrary() {
-    return this._targetType === TargetType.StaticLibrary;
+  public get isSharedLibrary(): boolean {
+    return false;
   }
 
-  public get isSharedLibrary() {
-    return this._targetType === TargetType.SharedLibrary;
-  }
-
-  public get isExecutable() {
-    return this._targetType === TargetType.Executable;
+  public get isExecutable(): boolean {
+    return false;
   }
 
   public get sourceDir() {
@@ -473,10 +443,9 @@ export class MainTarget extends BaseTarget {
   }
 
   public toJSON(): SimpleObject {
-    const result: any = super.toJSON();
+    const result = super.toJSON();
 
     result.type = BaseTarget.name;
-    result.targetType = TargetType.toString(this._targetType);
     result.sourceDir = this._sourceDir;
     result.binaryDir = this._binaryDir;
     result.prefix = this._prefix;
@@ -484,6 +453,70 @@ export class MainTarget extends BaseTarget {
     result.outputName = this._outputName;
     result.positionIndependentCode = this._positionIndependentCode;
 
+    return result;
+  }
+};
+
+export class ObjectLibrary extends MainTarget {
+  public constructor(name: string, sourceDir: AbsolutePath, binaryDir: AbsolutePath) {
+    super(name, sourceDir, binaryDir);
+  }
+
+  public get isObjectLibrary(): boolean {
+    return true;
+  }
+
+  public toJSON(): SimpleObject {
+    const result = super.toJSON();
+    result.type = ObjectLibrary.name;
+    return result;
+  }
+};
+
+export class StaticLibrary extends MainTarget {
+  public constructor(name: string, sourceDir: AbsolutePath, binaryDir: AbsolutePath) {
+    super(name, sourceDir, binaryDir);
+  }
+
+  public get isStaticLibrary(): boolean {
+    return true;
+  }
+
+  public toJSON(): SimpleObject {
+    const result = super.toJSON();
+    result.type = StaticLibrary.name;
+    return result;
+  }
+};
+
+export class SharedLibrary extends MainTarget {
+  public constructor(name: string, sourceDir: AbsolutePath, binaryDir: AbsolutePath) {
+    super(name, sourceDir, binaryDir);
+  }
+
+  public get isSharedLibrary(): boolean {
+    return true;
+  }
+
+  public toJSON(): SimpleObject {
+    const result = super.toJSON();
+    result.type = SharedLibrary.name;
+    return result;
+  }
+};
+
+export class Executable extends MainTarget {
+  public constructor(name: string, sourceDir: AbsolutePath, binaryDir: AbsolutePath) {
+    super(name, sourceDir, binaryDir);
+  }
+
+  public get isExecutable(): boolean {
+    return true;
+  }
+
+  public toJSON(): SimpleObject {
+    const result = super.toJSON();
+    result.type = Executable.name;
     return result;
   }
 };

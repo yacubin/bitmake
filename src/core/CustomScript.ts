@@ -142,5 +142,3 @@ export interface Options {
 };
 
 } // namespace CustomScript
-
-SimpleObject.registerInstanceCreator(PostCustomScript.name, PostCustomScript.fromJSON);

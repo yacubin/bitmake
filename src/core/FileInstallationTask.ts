@@ -55,5 +55,3 @@ export class FileInstallationTask extends InterfaceTask {
     }
   }
 };
-
-SimpleObject.registerInstanceCreator(FileInstallationTask.name, FileInstallationTask.fromJSON);

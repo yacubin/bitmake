@@ -77,5 +77,3 @@ export class SpawnSyncTask extends InterfaceTask {
     }
   }
 };
-
-SimpleObject.registerInstanceCreator(SpawnSyncTask.name, SpawnSyncTask.fromJSON);

@@ -14,6 +14,16 @@ import { Logger } from "@/logger";
 import { MessagePortSender } from "@/server/MessagePortSender";
 import { WorkerLooper } from "@/server/WorkerLooper";
 
+import { PostCustomScript } from "@/core/CustomScript";
+import { FileInstallationTask } from "@/core/FileInstallationTask";
+import { SpawnSyncTask } from "@/core/SpawnSyncTask";
+import { TargetFile } from "@/core/TargetFile";
+import { TargetIncludes } from "@/core/TargetIncludes";
+import { TargetObjects } from "@/core/TargetObjects";
+import { TargetName } from "@/core/TargetName";
+
+import { SimpleObject } from "@/core/SimpleObject";
+
 const logger = Logger.create(import.meta.url);
 
 export async function runMainScript() {
@@ -54,7 +64,7 @@ export async function runMainScript() {
   }
 }
 
-export function runWorkerScript() {
+export async function runWorkerScript() {
   logger.debug("Worker thread started", workerData);
 
   if (!parentPort) {
@@ -68,16 +78,24 @@ export function runWorkerScript() {
 }
 
 export function runScript() {
-  if (isMainThread) {
-    runMainScript().then(() => process.exit(0)).catch((e) => {
-      if (e instanceof Error)
-        logger.fatal(e.stack);
-      else
-        logger.fatal(e);
-      process.exit(1);
-    });
-  }
-  else {
+  SimpleObject.registerParser(PostCustomScript.name, PostCustomScript.fromJSON);
+  SimpleObject.registerParser(FileInstallationTask.name, FileInstallationTask.fromJSON);
+  SimpleObject.registerParser(SpawnSyncTask.name, SpawnSyncTask.fromJSON);
+  SimpleObject.registerParser(TargetFile.name, TargetFile.fromJSON);
+  SimpleObject.registerParser(TargetIncludes.name, TargetIncludes.fromJSON);
+  SimpleObject.registerParser(TargetObjects.name, TargetObjects.fromJSON);
+  SimpleObject.registerParser(TargetName.name, TargetName.fromJSON);
+
+  if (!isMainThread) {
     runWorkerScript();
+    return;
   }
+
+  runMainScript().then(() => process.exit(0)).catch((e) => {
+    if (e instanceof Error)
+      logger.fatal(e.stack);
+    else
+      logger.fatal(e);
+    process.exit(1);
+  });
 }

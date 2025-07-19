@@ -10,69 +10,38 @@
 import { TargetName } from "@/core/TargetName";
 import { AbsolutePath } from "@/core/AbsolutePath";
 import { SimpleObject } from "@/core/SimpleObject";
-import { SystemScope } from "@/core/SystemScope";
-
-const VALUE       = Symbol("VALUE");
-const DESTINATION = Symbol("DESTINATION");
-const BASE_DIR    = Symbol("BASE_DIR");
 
 export class InstallEntity {
-  private [VALUE]: AbsolutePath | TargetName;
-  private [DESTINATION]: AbsolutePath;
-  private [BASE_DIR]: AbsolutePath | null;
+  private _value: AbsolutePath | TargetName;
+  private _destination: AbsolutePath;
+  private _baseDir?: AbsolutePath;
 
-  private constructor(scope: SystemScope, value: string | AbsolutePath | TargetName, params: string | any) {
-    let destination: string | AbsolutePath | undefined;
-    let baseDir;
-    if (typeof params === "string")
-      destination = params;
-    else if (params) {
-      destination = params.destination;
-      baseDir = params.baseDir;
-    }
-
-    if (!destination)
-      throw new Error(`Parameter destination is not specified`);
-  
-    if (baseDir)
-      baseDir = scope.SOURCE_DIR.resolve(baseDir);
-  
-    if (typeof value === "string" || value instanceof AbsolutePath) {
-      value = scope.SOURCE_DIR.resolve(value.toString()) as AbsolutePath;
-      value = AbsolutePath.create(value);
-      baseDir = baseDir || value.dirname();
-    }
-    else if (!(value instanceof TargetName)) {
-      throw new Error(`Not supportet value of ${value}`);
-    }
-  
-    this[VALUE] = value;
-    this[DESTINATION] = AbsolutePath.create(scope.INSTALL_PREFIX.resolve(destination.toString()).toString());
-    this[BASE_DIR] = baseDir ? AbsolutePath.create(baseDir.toString()) : null;
-  }
-  
-  public static create(scope: any, value: string | AbsolutePath | TargetName, params: string | any) {
-    return Object.seal(new InstallEntity(scope, value, params));
+  public constructor(value: AbsolutePath | TargetName, destination: AbsolutePath, baseDir?: AbsolutePath) {
+    this._value = value;
+    this._destination = destination;
+    this._baseDir = baseDir;
   }
 
   public get VALUE () {
-    return this[VALUE];
+    return this._value;
   }
 
   public get DESTINATION () {
-    return this[DESTINATION];
+    return this._destination;
   }
 
   public get BASE_DIR () {
-    return this[BASE_DIR];
+    return this._baseDir;
   }
 
   public toJSON(): SimpleObject {
-    return {
+    const json: SimpleObject = {
       type: InstallEntity.name,
-      VALUE: this.VALUE,
-      DESTINATION: this.DESTINATION,
-      BASE_DIR: this.BASE_DIR,
+      value: this._value,
+      destination: this._destination,
     };
+    if (this._baseDir)
+      json.baseDir = this._baseDir;
+    return json;
   }
 };

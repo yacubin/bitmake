@@ -130,9 +130,9 @@ export class MakeServer {
 
     /*const variableMap = createVariableMapForDirectory(this._rootVariableMap, sourceDir, binaryDir);
     if (!await this.runMakeScript(variableMap))
-      throw Error("Can't prepear ScriptFile");*/
+      throw Error("Can't prepear ScriptFile");
 
-    // this.onConfigureEnd();
+    this.onConfigureEnd();*/
 
     this._project.addSubdirectory(this._rootVariableMap, sourceDir, binaryDir);
     this._project.doSubdirectory().then(() => this.onConfigureEnd());

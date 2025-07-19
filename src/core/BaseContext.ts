@@ -168,8 +168,33 @@ export abstract class MakeContext extends GeneralContext {
   public install(value: any, params: any): void {
     const scope = ScopeHelper.createVariableValues(this._scope);
     for (const it of [ value ].flat()) {
-      const iter = (it instanceof InterfaceTarget) ? TargetName.create(it.targetName) : it;
-      const entity = InstallEntity.create(scope, iter, params);
+      let iter = (it instanceof InterfaceTarget) ? TargetName.create(it.targetName) : it;
+
+      let destination: string | AbsolutePath | undefined;
+      let baseDir;
+      if (typeof params === "string")
+        destination = params;
+      else if (params) {
+        destination = params.destination;
+        baseDir = params.baseDir;
+      }
+
+      if (!destination)
+        throw new Error(`Parameter destination is not specified`);
+    
+      if (baseDir)
+        baseDir = scope.SOURCE_DIR.resolve(baseDir);
+
+      if (typeof iter === "string" || iter instanceof AbsolutePath) {
+        iter = scope.SOURCE_DIR.resolve(iter.toString()) as AbsolutePath;
+        iter = AbsolutePath.create(iter);
+        baseDir = baseDir || iter.dirname();
+      }
+      else if (!(iter instanceof TargetName)) {
+        throw new Error(`Not supportet value of ${iter}`);
+      }
+
+      const entity = new InstallEntity(iter, AbsolutePath.create(scope.INSTALL_PREFIX.resolve(destination)), baseDir ? AbsolutePath.create(baseDir) : undefined);
       this._installList.push(entity);
     }
   }

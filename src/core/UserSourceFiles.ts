@@ -9,7 +9,7 @@
 
 import { InterfaceSourceFiles } from "@/core/MakeInterfaces";
 import { SourceFile } from "@/core/SourceFile";
-import { normalizeDefinitions } from "@/core/DefinitionHelper";
+import { TargetHelper } from "@/core/TargetHelper";
 import { BaseTarget } from "@/core/Target";
 
 const TARGET = Symbol("TARGET");
@@ -22,12 +22,7 @@ export class UserSourceFiles extends InterfaceSourceFiles {
   private constructor(target: BaseTarget, sources: SourceFile[]) {
     super();
     this[TARGET] = target;
-    this[SOURCES] = [];
-    for (const iter of sources) {
-      if (!(iter instanceof SourceFile))
-        throw new Error(`Item ${iter} is not SourceFile`);
-      this[SOURCES].push(iter);
-    }
+    this[SOURCES] = [ ...sources ];
   }
 
   public static create(target: BaseTarget, sources: SourceFile[]) {
@@ -39,21 +34,13 @@ export class UserSourceFiles extends InterfaceSourceFiles {
   }
 
   public addDefinitions(...definitions: string[]) {
-    for (const iter of normalizeDefinitions(...definitions))
-      this[SOURCES].forEach(i => i.DEFINES.push(iter));
+    for (const iter of TargetHelper.normalizeDefinitions(definitions.flat()))
+      this[SOURCES].forEach(i => i.addDefinition(iter));
   }
 
   public addCompileFlags(...flags: string[]) {
     for (const iter of flags.flat())
       this[SOURCES].forEach(i => i.COMPILE_FLAGS.push(iter));
-  }
-
-  public sourceAt(index: number): SourceFile {
-    return this[SOURCES][index];
-  }
-
-  public sourceCount(index: number): number {
-    return this[SOURCES].length;
   }
 
   public toJSON(): object {

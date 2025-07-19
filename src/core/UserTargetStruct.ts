@@ -16,6 +16,8 @@ import { TargetObjects } from "@/core/TargetObjects";
 import { AbsolutePath } from "@/core/AbsolutePath";
 import { SourceFile } from "@/core/SourceFile";
 import { UserSourceFiles } from "@/core/UserSourceFiles";
+import { TargetFile } from "@/core/TargetFile";
+import { TargetHelper } from "@/core/TargetHelper";
 import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
@@ -65,6 +67,17 @@ function addIncludesImpl(target: BaseTarget, scope: SystemScope, publicOnly: boo
   const sourceDir = scope.SOURCE_DIR;
   for (const iter of includes.flat())
     addIncludeImpl(target, sourceDir, publicOnly, iter);
+}
+
+function ensureCmdValue(value: any): string | AbsolutePath | TargetFile {
+  if (typeof value === "string")
+    return value;
+  else if (value instanceof TargetFile)
+    return value;
+  else if (value instanceof AbsolutePath)
+    return value;
+  else
+    throw new TypeError(`Wrong type ${value} for command`);
 }
 
 export class UserTargetStruct extends InterfaceTarget {
@@ -187,15 +200,16 @@ export class UserTargetStruct extends InterfaceTarget {
   }
 
   public addDefinitions(...definitions: any[]): void {
-    this[IMPL].addDefinitions(...definitions);
+    for (const iter of TargetHelper.normalizeDefinitions(definitions.flat()))
+      this[IMPL].addDefinition(false, iter);
   }
 
   public addPreBuild(command: any, args: any[]): void {
-    this[IMPL].addPreBuild(command, args);
+    this[IMPL].addPreBuild(ensureCmdValue(command), args.map(i => ensureCmdValue(i)));
   }
 
   public addPostBuild(command: any, args: any[]): void {
-    this[IMPL].addPostBuild(command, args);
+    this[IMPL].addPostBuild(ensureCmdValue(command), args.map(i => ensureCmdValue(i)));
   }
 
   public setPositionIndependentCode(value: boolean): void {
@@ -207,7 +221,8 @@ export class UserTargetStruct extends InterfaceTarget {
   }
 
   public addPublicDefinitions(...definitions: any): void {
-    this[IMPL].addPublicDefinitions(...definitions);
+    for (const iter of TargetHelper.normalizeDefinitions(definitions.flat()))
+      this[IMPL].addDefinition(true, iter);
   }
 
   public addPublicLibraries(...libraries: any[]): void {

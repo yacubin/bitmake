@@ -27,7 +27,7 @@ export class SourceFile {
   private [COMPILE_PATH]: string;
   private [COMPILE_FLAGS]: Array<string|string[]>;
 
-  private constructor(filename: AbsolutePath, baseDir: AbsolutePath, language: string, compilerPath: string, compileFlags: Array<string|string[]>) {
+  private constructor(filename: AbsolutePath, baseDir: AbsolutePath, language: string, compilerPath: string, compileFlags: Array<string | string[]>) {
     this[FILE] = filename;
     this[BASE_DIR] = baseDir;
     this[LANGUAGE] = language;
@@ -37,7 +37,7 @@ export class SourceFile {
     this[COMPILE_FLAGS] = [ ...compileFlags ];
   }
 
-  public static create(filename: AbsolutePath, baseDir: AbsolutePath, language: string, compilerPath: string, compileFlags: Array<string|string[]>) {
+  public static create(filename: AbsolutePath, baseDir: AbsolutePath, language: string, compilerPath: string, compileFlags: Array<string | string[]>) {
     return Object.seal(new SourceFile(filename, baseDir, language, compilerPath, compileFlags));
   }
 
@@ -55,6 +55,10 @@ export class SourceFile {
 
   public get DEFINES(): string[] {
     return this[DEFINES]
+  }
+
+  public addDefinition(definition: string) {
+    this[DEFINES].push(definition);
   }
 
   public get COMPILE_PATH(): string {

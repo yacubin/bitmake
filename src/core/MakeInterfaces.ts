@@ -14,6 +14,9 @@ import { VariantMap } from "@/core/Scope";
 import { AbsolutePath } from "@/core/AbsolutePath";
 import { SourceFile } from "@/core/SourceFile";
 
+export type CompileOption = string | string[];
+export type LinkOption = string | string[];
+
 export abstract class InterfaceTask {
   abstract execute(): Promise<void> | void;
 };
@@ -37,8 +40,8 @@ export abstract class InterfaceTarget {
   abstract addSources(...sources: Array<TargetObjects | SourceFile | AbsolutePath | string>): void;
   abstract addIncludes(...includes: Array<TargetIncludes | AbsolutePath | string>): void;
   abstract addLibraries(...libraries: any): void;
-  abstract addCompileOptions(...options: Array<string | string[]>): void;
-  abstract addLinkOptions(...options: Array<string|string[]>): void;
+  abstract addCompileOptions(...options: CompileOption[]): void;
+  abstract addLinkOptions(...options: LinkOption[]): void;
   abstract getSourceFiles(...sources: any[]): InterfaceSourceFiles;
   abstract addDefinitions(...definitions: any[]): void;
   abstract addPreBuild(command: any, args: any[]): void;
@@ -48,8 +51,8 @@ export abstract class InterfaceTarget {
   abstract addPublicIncludes(...includes: Array<TargetIncludes | AbsolutePath | string>): void;
   abstract addPublicDefinitions(...definitions: any): void;
   abstract addPublicLibraries(...libraries: any[]): void;
-  abstract addPublicCompileOptions(...options: Array<string|string[]>): void;
-  abstract addPublicLinkOptions(...options: Array<string|string[]>): void;
+  abstract addPublicCompileOptions(...options: CompileOption[]): void;
+  abstract addPublicLinkOptions(...options: LinkOption[]): void;
 };
 
 export abstract class InterfaceScript {

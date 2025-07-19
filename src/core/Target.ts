@@ -13,7 +13,6 @@ import { TargetFile } from "@/core/TargetFile";
 import { TargetIncludes } from "@/core/TargetIncludes";
 import { TargetObjects } from "@/core/TargetObjects";
 import { AbsolutePath } from "@/core/AbsolutePath";
-import { normalizeDefinitions } from "@/core/DefinitionHelper";
 import { SimpleObject } from "./SimpleObject";
 import { Logger } from "@/logger";
 
@@ -23,32 +22,6 @@ export interface TargetCommand {
   command: string | AbsolutePath | TargetFile;
   args: Array<string | AbsolutePath | TargetFile>;
 };
-
-function makeTargetCommand(_command: any, _args: any[]): TargetCommand {
-  let command: string | AbsolutePath | TargetFile;
-  if (typeof _command === "string")
-    command = _command;
-  else if (_command instanceof TargetFile)
-    command = _command;
-  else if (_command instanceof AbsolutePath)
-    command = _command;
-  else
-    throw new TypeError(`Wrong type ${_command} for command`);
-
-  const args = new Array<string | AbsolutePath | TargetFile>;
-  for (const iter of _args) {
-    if (typeof iter === "string")
-      args.push(iter);
-    else if (iter instanceof TargetFile)
-      args.push(iter);
-    else if (iter instanceof AbsolutePath)
-      args.push(iter);
-    else
-      throw new TypeError(`Wrong type ${iter} for argument`);
-  }
-
-  return { command, args };
-}
 
 interface TargetValue<T> {
   value: T;
@@ -128,17 +101,8 @@ export abstract class BaseTarget {
     return this._definitions.filter(i => i.publicOnly).map(i => i.value);
   }
 
-  public addDefinitions(...definitions: any): void {
-    this.addDefinitionsImpl(false, ...definitions);
-  }
-
-  public addPublicDefinitions(...definitions: any): void {
-    this.addDefinitionsImpl(true, ...definitions);
-  }
-
-  public addDefinitionsImpl(publicOnly: boolean, ...definitions: Array<string | object>): void {
-    for (const value of normalizeDefinitions(...definitions))
-      this._definitions.push({publicOnly, value});
+  public addDefinition(publicOnly: boolean, value: string): void {
+    this._definitions.push({publicOnly, value});
   }
 
   public getCompileOptions(): Array<string | string[]> {
@@ -233,16 +197,16 @@ export abstract class BaseTarget {
     return this._preBuildList;
   }
 
-  public addPreBuild(command: any, args: any[]) {
-    this._preBuildList.push(makeTargetCommand(command, args));
+  public addPreBuild(command: string | AbsolutePath | TargetFile, args: Array<string | AbsolutePath | TargetFile>) {
+    this._preBuildList.push({command, args});
   }
 
   public get postBuildList() {
     return this._postBuildList;
   }
 
-  public addPostBuild(command: any, args: any[]) {
-    this._postBuildList.push(makeTargetCommand(command, args));
+  public addPostBuild(command: string | AbsolutePath | TargetFile, args: Array<string | AbsolutePath | TargetFile>) {
+    this._postBuildList.push({command, args});
   }
 
   public get language(): string {
@@ -295,12 +259,6 @@ export class PostTarget extends BaseTarget {
 
   public static create(name: string) {
     return Object.seal(new PostTarget(name));
-  }
-
-  public static ensureInstance(value: any) {
-    if (value instanceof PostTarget)
-      return value;
-    throw new Error(`The '${value}' is not a PostTarget`);
   }
 
   public get prefix() {
@@ -522,8 +480,8 @@ export class MainTarget extends BaseTarget {
     result.sourceDir = this._sourceDir;
     result.binaryDir = this._binaryDir;
     result.prefix = this._prefix;
-    result.outputName = this._outputName;
     result.suffix = this._suffix;
+    result.outputName = this._outputName;
     result.positionIndependentCode = this._positionIndependentCode;
 
     return result;

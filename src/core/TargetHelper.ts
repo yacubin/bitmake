@@ -7,6 +7,12 @@
  * under the MIT License. See LICENSE file for details.
  */
 
+import { Logger } from "@/logger";
+
+const logger = Logger.create(import.meta.url);
+
+export namespace TargetHelper {
+
 function convertValueToDefinition(value: any): string {
   if (value === undefined)
     throw `Definition undefined`;
@@ -15,17 +21,13 @@ function convertValueToDefinition(value: any): string {
   return value.toString();
 }
 
-export function normalizeDefinitions(...definitions: any[]): string[] {
+export function normalizeDefinitions(definitions: any[]): string[] {
   const result = [];
   for (const iter of definitions) {
     if (typeof iter === "string")
       result.push(iter);
     else if (!iter)
       throw new Error(`Defenition ${iter} not supported`)
-    else if (Array.isArray(iter)) {
-      for (const val of iter)
-        result.push(convertValueToDefinition(val));
-    }
     else if (typeof iter === "object") {
       for (const [key, val] of Object.entries(iter))
         result.push(`${key}=${convertValueToDefinition(val)}`);
@@ -35,3 +37,5 @@ export function normalizeDefinitions(...definitions: any[]): string[] {
   }
   return result;
 }
+
+} // namespace namespace

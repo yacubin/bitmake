@@ -56,9 +56,9 @@ function addIncludeImpl(target: BaseTarget, sourceDir: AbsolutePath, publicOnly:
   if (include instanceof TargetIncludes)
     target.addInclude(publicOnly, include);
   else if (typeof include === "string")
-    target.addInclude(publicOnly, new DirPath(sourceDir.resolve(include).toURLString()));
+    target.addInclude(publicOnly, DirPath.create(sourceDir.resolve(include)));
   else if (include instanceof AbsolutePath)
-    target.addInclude(publicOnly, new DirPath(include.toURLString()));
+    target.addInclude(publicOnly, DirPath.create(include));
   else
     throw new Error(`Not support instance ${include}`);
 }
@@ -69,13 +69,13 @@ function addIncludesImpl(target: BaseTarget, scope: SystemScope, publicOnly: boo
     addIncludeImpl(target, sourceDir, publicOnly, iter);
 }
 
-function ensureCmdValue(value: any): string | AbsolutePath | TargetFile {
+function ensureCmdValue(value: any): string | TargetFile {
   if (typeof value === "string")
     return value;
   else if (value instanceof TargetFile)
     return value;
   else if (value instanceof AbsolutePath)
-    return value;
+    return value.toPath();
   else
     throw new TypeError(`Wrong type ${value} for command`);
 }

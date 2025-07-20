@@ -19,14 +19,7 @@ import { createVariableMapForDirectory } from "@/core/BaseContext";
 import { MAINNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
 import { MAINNODE_LOADJSON } from "@/server/RemoteMethods";
 import { MAINNODE_EXECUTESCRIPT } from "@/server/RemoteMethods";
-import { WORKERNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
-import { WORKERNODE_MAINTARGETS } from "@/server/RemoteMethods";
-import { WORKERNODE_POSTTARGETS } from "@/server/RemoteMethods";
-import { WORKERNODE_MAINSCRIPTS } from "@/server/RemoteMethods";
-import { WORKERNODE_POSTSCRIPTS } from "@/server/RemoteMethods";
-import { WORKERNODE_INSTALLENTRIES } from "@/server/RemoteMethods";
 import { Logger } from "@/logger";
-import { SimpleObject } from "@/core/SimpleObject";
 
 const logger = Logger.create(import.meta.url);
 
@@ -53,8 +46,7 @@ export class MakeServer {
   private _project = ProjectContext.create();
   private _listeners: { [name: string]: Function[] };
   private _jsonRpcServer = new JsonRpcServer;
-  private _clients = new Map<string, MakeClient>;
-  private _clientIdCounter = 1;
+  private _clients = new Array<MakeClient>;
 
   public constructor() {
     this._listeners = {
@@ -72,13 +64,6 @@ export class MakeServer {
 
   public get project() {
     return this._project;
-  }
-
-  public createClient() {
-    const name = "mkc" + this._clientIdCounter++;
-    const client = new MakeClient(this._jsonRpcServer);
-    this._clients.set(name, client);
-    return client;
   }
 
   public async startMakeScript(params: any): Promise<void> {
@@ -119,40 +104,38 @@ export class MakeServer {
     if (!await this._project.prepearScriptFile(variableMap))
       return false;
 
-    const client = this.createClient();
+    const client = new MakeClient(this._jsonRpcServer);
+    this._clients.push(client);
 
-    const cwdSave = process.cwd();
-    const scriptDir = ScopeHelper.get(variableMap, "SCRIPT_DIR");
-    process.chdir(scriptDir.toString());
-    await client.request(WORKERNODE_STARTMAKESCRIPT, ScopeHelper.toJSON(variableMap));
-    process.chdir(cwdSave);
-
-    const mainTargets = await client.request(WORKERNODE_MAINTARGETS, null);
-    const _mainTargets = SimpleObject.fromJSON(mainTargets);
-    const postTargets = await client.request(WORKERNODE_POSTTARGETS, null);
-    const _postTargets = SimpleObject.fromJSON(postTargets);
-    const mainScripts = await client.request(WORKERNODE_MAINSCRIPTS, null);
-    const _mainScripts = SimpleObject.fromJSON(mainScripts);
-    const postScripts = await client.request(WORKERNODE_POSTSCRIPTS, null);
-    const _postScripts = SimpleObject.fromJSON(postScripts);
-    const installEntries = await client.request(WORKERNODE_INSTALLENTRIES, null);
-    const _installEntries = SimpleObject.fromJSON(installEntries);
-
+    await client.execMakeScript(variableMap);
     return true;
+  }
+
+  public combineResults() {
+    for (const ctx of this._clients) {
+      this._project.applyMainTargets(ctx.mainTargets);
+      this._project.applyMainScripts(ctx.mainScripts);
+      this._project.applyInstallEntities(ctx.installEntries);
+    }
+    for (const ctx of this._clients) {
+      this._project.applPostTargets(ctx.postTargets);
+      this._project.applPostScripts(ctx.postScripts);
+    }
   }
 
   public async start() {
     const sourceDir = ScopeHelper.get(this._rootVariableMap, "PROJECT_SOURCE_DIR");
     const binaryDir = ScopeHelper.get(this._rootVariableMap, "PROJECT_BINARY_DIR");
 
-    /*const variableMap = createVariableMapForDirectory(this._rootVariableMap, sourceDir, binaryDir);
+    const variableMap = createVariableMapForDirectory(this._rootVariableMap, sourceDir, binaryDir);
     if (!await this.runMakeScript(variableMap))
       throw Error("Can't prepear ScriptFile");
 
-    this.onConfigureEnd();*/
+    this.combineResults();
+    this.onConfigureEnd();
 
-    this._project.addSubdirectory(this._rootVariableMap, sourceDir, binaryDir);
-    this._project.doSubdirectory().then(() => this.onConfigureEnd());
+    /*this._project.addSubdirectory(this._rootVariableMap, sourceDir, binaryDir);
+    this._project.doSubdirectory().then(() => this.onConfigureEnd());*/
   }
 
   private async onConfigureEnd() {

@@ -13,9 +13,9 @@ import { RemoteMakeContext } from "@/server/RemoteMakeContext";
 import { UserMakeContext } from "@/core/UserMakeContext";
 import { performContext } from "@/core/BaseContext";
 import { MainTarget, PostTarget } from "@/core/Target";
-import { SimpleObject } from "@/core/SimpleObject";
 import { PostCustomScript, CustomScript } from "@/core/CustomScript";
 import { InstallEntity } from "@/core/InstallEntity";
+import { SimpleObject } from "@/core/SimpleObject";
 import { ScopeHelper } from "@/core/Scope";
 
 export class WorkerNode {
@@ -62,5 +62,9 @@ export class WorkerNode {
 
   public installEntries(params: any): PostTarget[] {
     return SimpleObject.toJSON(this._installEntries);
+  }
+
+  public processExit(params: any): void {
+    setTimeout(() => process.exit(params), 0);
   }
 };

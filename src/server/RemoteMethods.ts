@@ -13,6 +13,7 @@ export const WORKERNODE_POSTTARGETS = "WorkerNode.postTargets";
 export const WORKERNODE_MAINSCRIPTS = "WorkerNode.mainScripts";
 export const WORKERNODE_POSTSCRIPTS = "WorkerNode.postScripts";
 export const WORKERNODE_INSTALLENTRIES = "WorkerNode.installEntries";
+export const WORKERNODE_PROCESSEXIT = "WorkerNode.processExit";
 
 export const MAINNODE_LOADJSON = "MainNode.loadJSON";
 export const MAINNODE_EXECUTESCRIPT = "MainNode.executeScript";

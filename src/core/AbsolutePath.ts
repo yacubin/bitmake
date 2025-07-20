@@ -16,6 +16,14 @@ import { SimpleObject } from "@/core/SimpleObject";
 
 const PATH = Symbol("PATH");
 
+function toPathString(pth: string | AbsolutePath) {
+  if (typeof pth !== "string")
+    return pth.toPath();
+  if (pth.startsWith(FILE_SCHEME))
+    return url.fileURLToPath(pth);
+  return pth;
+}
+
 export class AbsolutePath {
   private [PATH]: string;
 
@@ -32,7 +40,7 @@ export class AbsolutePath {
   }
 
   public join(...paths: Array<AbsolutePath | string>) {
-    const filepath = Path.join(url.fileURLToPath(this[PATH]), ...paths.map(i => i.toString()));
+    const filepath = Path.join(this.toPath(), ...paths.map(i => toPathString(i)));
     return AbsolutePath.create(filepath);
   }
 
@@ -45,11 +53,11 @@ export class AbsolutePath {
   }
 
   public relative(to: AbsolutePath | string) {
-    return Path.relative(url.fileURLToPath(this[PATH]), AbsolutePath.create(to).toString());
+    return Path.relative(this.toPath(), toPathString(to));
   }
 
   public resolve(...paths: Array<AbsolutePath | string>) {
-    return AbsolutePath.create(Path.resolve(url.fileURLToPath(this[PATH]), ...paths.map(i => i.toString())));
+    return AbsolutePath.create(Path.resolve(this.toPath(), ...paths.map(i => toPathString(i))));
   }
 
   public match(regexp: RegExp) {
@@ -101,8 +109,14 @@ export class AbsolutePath {
 };
 
 export class DirPath extends AbsolutePath {
-  constructor(dirname: string) {
+  private constructor(dirname: string) {
     super(dirname);
+  }
+
+  public static create(dirname: DirPath | AbsolutePath | string): DirPath {
+    if (typeof dirname !== "string")
+      dirname = dirname.toURLString();
+    return new DirPath(dirname);
   }
 
   public static fromJSON(object: SimpleObject) {
@@ -118,8 +132,14 @@ export class DirPath extends AbsolutePath {
 };
 
 export class FilePath extends AbsolutePath {
-  constructor(filepath: string) {
+  private constructor(filepath: string) {
     super(filepath);
+  }
+
+  public static create(filepath: FilePath | AbsolutePath | string): FilePath {
+    if (typeof filepath !== "string")
+      filepath = filepath.toURLString();
+    return new FilePath(filepath);
   }
 
   public static fromJSON(object: SimpleObject) {

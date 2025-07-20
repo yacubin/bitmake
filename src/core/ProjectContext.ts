@@ -21,6 +21,7 @@ import { SystemScope } from "@/core/SystemScope";
 import { requireSync } from "@/utils/Module";
 import { Logger } from "@/logger";
 import { TargetName } from "@/core/TargetName";
+import { MainTarget, PostTarget } from "@/core/Target";
 import { InstallEntity } from "@/core/InstallEntity";
 import { ScriptContext } from "@/core/ScriptContext";
 import { ScopeHelper, VariableMap } from "./Scope";
@@ -29,7 +30,7 @@ import { SourceFile } from "@/core/SourceFile";
 import { ExecScriptTask } from "@/core/ExecScriptTask";
 import { SpawnSyncTask } from "@/core/SpawnSyncTask";
 import { FileInstallationTask } from "@/core/FileInstallationTask";
-import { CustomScript } from "@/core/CustomScript";
+import { CustomScript, PostCustomScript } from "@/core/CustomScript";
 import { performContext, createVariableMapForDirectory } from "@/core/BaseContext";
 
 import BuildinScripts from "@/core/BuildinScripts";
@@ -239,6 +240,39 @@ export class ProjectContext {
     return this[BUILTIN_SCRIPTS][name];
   }
 
+  public applyMainTargets(targets: MainTarget[]) {
+    for (const iter of targets)
+      this[TARGETS].set(iter.targetName, iter);
+  }
+
+  public applyMainScripts(scripts: CustomScript[]) {
+    for (const iter of scripts)
+        this._customScripts.set(iter.NAME, iter);
+  }
+
+  public applyInstallEntities(entries: InstallEntity[]) {
+    for (const iter of entries)
+        this._installList.push(iter);
+  }
+
+  public applPostTargets(targets: PostTarget[]) {
+    for (const postTarget of targets) {
+      const target = this[TARGETS].get(postTarget.name);
+      if (!target)
+        throw new Error(`There is no Target named ${name}`);
+      target.postUpdate(postTarget);
+    }
+  }
+
+  public applPostScripts(scripts: PostCustomScript[]) {
+    for (const postScript of scripts) {
+      const script = this._customScripts.get(postScript.name);
+      if (!script)
+        throw new Error(`There is no CustomScript named ${name}`);
+      script.postUpdate(postScript);
+    }
+  }
+
   public async doSubdirectory() {
     const contextList = new Array<LocalMakeContext>();
 
@@ -261,26 +295,14 @@ export class ProjectContext {
     }
 
     for (const ctx of contextList) {
-      for (const target of ctx.targets.values())
-        this[TARGETS].set(target.targetName, target);
-      for (const script of ctx.mainScripts.values())
-        this._customScripts.set(script.NAME, script);
-      this._installList.push(...ctx.installList);
+      this.applyMainTargets(Array.from(ctx.targets.values()));
+      this.applyMainScripts(Array.from(ctx.mainScripts.values()));
+      this.applyInstallEntities(ctx.installList);
     }
 
     for (const ctx of contextList) {
-      for (const postTarget of ctx.postTargets.values()) {
-        const target = this[TARGETS].get(postTarget.name);
-        if (!target)
-          throw new Error(`There is no Target named ${name}`);
-        target.postUpdate(postTarget);
-      }
-      for (const postScript of ctx.postScripts.values()) {
-        const script = this._customScripts.get(postScript.name);
-        if (!script)
-          throw new Error(`There is no CustomScript named ${name}`);
-        script.postUpdate(postScript);
-      }
+      this.applPostTargets(Array.from(ctx.postTargets.values()));
+      this.applPostScripts(Array.from(ctx.postScripts.values()));
     }
   }
 

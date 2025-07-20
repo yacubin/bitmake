@@ -12,15 +12,15 @@ import { TargetName } from "@/core/TargetName";
 import { TargetFile } from "@/core/TargetFile";
 import { TargetIncludes } from "@/core/TargetIncludes";
 import { TargetObjects } from "@/core/TargetObjects";
-import { DirPath, AbsolutePath } from "@/core/AbsolutePath";
+import { DirPath, FilePath, AbsolutePath } from "@/core/AbsolutePath";
 import { SimpleObject } from "./SimpleObject";
 import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
 
 export interface TargetCommand {
-  command: string | AbsolutePath | TargetFile;
-  args: Array<string | AbsolutePath | TargetFile>;
+  command: string | TargetFile;
+  args: Array<string | TargetFile>;
 };
 
 interface TargetElement<T> {
@@ -71,7 +71,8 @@ class TargetElements<T> {
     const result: any = [];
     for (const iter of this._list) {
       const name = iter.isPublic ? "public" : "private";
-      result.push({ [name] : iter.value});
+      const value = SimpleObject.toJSON(iter.value);
+      result.push({ [name] : value });
     }
     return result;
   }
@@ -231,7 +232,7 @@ export abstract class BaseTarget {
     return this._preBuildList;
   }
 
-  public addPreBuild(command: string | AbsolutePath | TargetFile, args: Array<string | AbsolutePath | TargetFile>) {
+  public addPreBuild(command: string | TargetFile, args: Array<string | TargetFile>) {
     this._preBuildList.push({command, args});
   }
 
@@ -239,7 +240,7 @@ export abstract class BaseTarget {
     return this._postBuildList;
   }
 
-  public addPostBuild(command: string | AbsolutePath | TargetFile, args: Array<string | AbsolutePath | TargetFile>) {
+  public addPostBuild(command: string | TargetFile, args: Array<string | TargetFile>) {
     this._postBuildList.push({command, args});
   }
 

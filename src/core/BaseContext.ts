@@ -11,7 +11,7 @@ import { IGeneralContext, InterfaceTarget } from "@/core/MakeInterfaces";
 import { findProgramSync } from "@/core/FindProgram";
 import { ScopeHelper, VariableMap, VariantMap } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
-import { AbsolutePath } from "@/core/AbsolutePath";
+import { FilePath, AbsolutePath } from "@/core/AbsolutePath";
 import { importModule } from "@/utils/Module";
 import { MainTarget, PostTarget } from "@/core/Target";
 import { CUSTOM_VARIABLE_GROUP } from "@/Constants";
@@ -186,8 +186,8 @@ export abstract class MakeContext extends GeneralContext {
         baseDir = scope.SOURCE_DIR.resolve(baseDir);
 
       if (typeof iter === "string" || iter instanceof AbsolutePath) {
-        iter = scope.SOURCE_DIR.resolve(iter.toString()) as AbsolutePath;
-        iter = AbsolutePath.create(iter);
+        iter = scope.SOURCE_DIR.resolve(iter.toString());
+        iter = FilePath.create(iter);
         baseDir = baseDir || iter.dirname();
       }
       else if (!(iter instanceof TargetName)) {

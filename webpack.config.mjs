@@ -36,7 +36,7 @@ export default async (env, argv) => {
     PROJECT_HOMEPAGE_URL: pkg.homepage || "",
     HOST_SOURCE_URL: url.pathToFileURL(sourceDir),
     LOGGER_DEBUG: [
-      "*:5",
+      "*:4",
     ],
   };
 

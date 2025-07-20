@@ -192,7 +192,8 @@ export class UserTargetStruct extends InterfaceTarget {
   }
 
   public addCompileOptions(...options: any[]): void {
-    this[IMPL].addCompileOptions(...options);
+    for (const iter of TargetHelper.normalizeCompileOptions(options.flat()))
+      this[IMPL].addCompileOption(false, iter);
   }
 
   public addLinkOptions(...options: any[]): void {
@@ -230,7 +231,8 @@ export class UserTargetStruct extends InterfaceTarget {
   }
 
   public addPublicCompileOptions(...options: any[]): void {
-    this[IMPL].addPublicCompileOptions(...options);
+    for (const iter of TargetHelper.normalizeCompileOptions(options.flat()))
+      this[IMPL].addCompileOption(true, iter);
   }
 
   public addPublicLinkOptions(...options: any[]): void {

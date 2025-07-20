@@ -15,7 +15,9 @@ import { AbsolutePath } from "@/core/AbsolutePath";
 import { SourceFile } from "@/core/SourceFile";
 
 export type Definition = string | object;
-export type CompileOption = string | string[];
+export type CompileOptionSingle = string;
+export type CompileOptionMulti = [ string, string | AbsolutePath ];
+export type CompileOption = CompileOptionSingle | CompileOptionMulti;
 export type LinkOption = string | string[];
 
 export abstract class InterfaceTask {

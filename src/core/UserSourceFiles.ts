@@ -38,9 +38,9 @@ export class UserSourceFiles extends InterfaceSourceFiles {
       this[SOURCES].forEach(i => i.addDefinition(iter));
   }
 
-  public addCompileFlags(...flags: string[]) {
-    for (const iter of flags.flat())
-      this[SOURCES].forEach(i => i.COMPILE_FLAGS.push(iter));
+  public addCompileFlags(...options: string[]) {
+    for (const iter of TargetHelper.normalizeCompileOptions(options.flat()))
+      this[SOURCES].forEach(i => i.addCompileOption(iter));
   }
 
   public toJSON(): object {

@@ -53,6 +53,10 @@ export class SourceFile {
     this._definitions.push(definition);
   }
 
+  public addCompileOption(option: string | [ string, string ]): void {
+    this._compilerOptions.push(option);
+  }
+
   public get COMPILE_PATH(): string {
     return this._compilerPath;
   }

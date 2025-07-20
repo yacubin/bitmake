@@ -8,6 +8,8 @@
  */
 
 import { Logger } from "@/logger";
+import { CompileOption } from "@/core/MakeInterfaces";
+import { AbsolutePath } from "./AbsolutePath";
 
 const logger = Logger.create(import.meta.url);
 
@@ -26,14 +28,32 @@ export function normalizeDefinitions(definitions: any[]): string[] {
   for (const iter of definitions) {
     if (typeof iter === "string")
       result.push(iter);
-    else if (!iter)
-      throw new Error(`Defenition ${iter} not supported`)
-    else if (typeof iter === "object") {
+    else if (iter && typeof iter === "object") {
       for (const [key, val] of Object.entries(iter))
         result.push(`${key}=${convertValueToDefinition(val)}`);
     }
     else
-      throw new Error(`Defenition ${iter} not supported`)
+      throw new Error(`Defenition ${iter} not supported`);
+  }
+  return result;
+}
+
+export function normalizeCompileOptions(options: CompileOption[]): Array<string | [string, string]> {
+  const result = new Array<string | [string, string]>;
+  for (const iter of options) {
+    if (typeof iter === "string")
+      result.push(iter);
+    else if (Array.isArray(iter) && iter.length == 2 && typeof iter[0] === "string") {
+      if (typeof iter[1] === "string")
+        result.push([ iter[0], iter[1] ]);
+      else if (iter[1] instanceof AbsolutePath)
+        result.push([ iter[0], iter[1].toPath() ]);
+      else
+        throw new Error(`CompileOption ${iter} not supported`);
+    }
+    else {
+      throw new Error(`CompileOption ${iter} not supported`);
+    }
   }
   return result;
 }

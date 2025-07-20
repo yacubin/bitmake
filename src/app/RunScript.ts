@@ -8,7 +8,7 @@
  */
 
 import { isEntryPoint } from "@/utils/Module";
-import { isMainThread, parentPort, workerData } from "node:worker_threads";
+import { isMainThread, parentPort, workerData, threadId } from "node:worker_threads";
 import { Args }  from "@/utils/Args";
 import commands from "@/commands";
 import { Logger } from "@/logger";
@@ -57,7 +57,7 @@ export async function runMainScript() {
 }
 
 export async function runWorkerScript() {
-  logger.debug("Worker thread started", workerData);
+  logger.info(`Worker thread #${threadId} started`, workerData);
 
   if (!parentPort) {
     throw new Error(`Worker not supported parentPort`);

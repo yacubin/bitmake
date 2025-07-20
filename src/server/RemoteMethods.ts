@@ -7,6 +7,8 @@
  * under the MIT License. See LICENSE file for details.
  */
 
+export const WORKERNODE_CREATEMAKECONTEXT = "WorkerNode.createMakeContext";
+export const WORKERNODE_DESTROYMAKECONTEXT = "WorkerNode.destroyMakeContext";
 export const WORKERNODE_STARTMAKESCRIPT = "WorkerNode.startMakeScript";
 export const WORKERNODE_MAINTARGETS = "WorkerNode.mainTargets";
 export const WORKERNODE_POSTTARGETS = "WorkerNode.postTargets";

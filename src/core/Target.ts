@@ -12,7 +12,7 @@ import { TargetName } from "@/core/TargetName";
 import { TargetFile } from "@/core/TargetFile";
 import { TargetIncludes } from "@/core/TargetIncludes";
 import { TargetObjects } from "@/core/TargetObjects";
-import { DirPath, FilePath, AbsolutePath } from "@/core/AbsolutePath";
+import { DirPath, AbsolutePath } from "@/core/AbsolutePath";
 import { SimpleObject } from "./SimpleObject";
 import { Logger } from "@/logger";
 
@@ -153,17 +153,8 @@ export abstract class BaseTarget {
     return this._compileOptions.getPublicValues();
   }
 
-  public addCompileOptions(...options: Array<string | string[]>): void {
-    this.addCompileOptionsImpl(false, ...options);
-  }
-
-  public addPublicCompileOptions(...options: Array<string | string[]>): void {
-    this.addCompileOptionsImpl(true, ...options);
-  }
-
-  public addCompileOptionsImpl(publicOnly: boolean, ...options: Array<string | string[]>): void {
-    for (const value of options.flat())
-      this._compileOptions.add(value, publicOnly);
+  public addCompileOption(publicOnly: boolean, option: string | string[]): void {
+    this._compileOptions.add(option, publicOnly);
   }
 
   public getLinkOptions(): Array<string | string[]> {

@@ -46,7 +46,7 @@ export class WorkerNode {
   public async execMakeScript(params: any): Promise<void> {
     const variableMap = ScopeHelper.fromJSON(params);
 
-    const ctx = new RemoteMakeContext(variableMap, this._transport);
+    const ctx = new RemoteMakeContext(this._transport);
     const mk = UserMakeContext.create(ctx, variableMap);
     await performContext(mk);
 

@@ -284,7 +284,7 @@ export class ProjectContext {
       if (!await this.prepearScriptFile(variableMap))
         continue;
 
-      const ctx = new LocalMakeContext(variableMap, this);
+      const ctx = new LocalMakeContext(this);
       contextList.push(ctx);
       const mk = UserMakeContext.create(ctx, variableMap);
 

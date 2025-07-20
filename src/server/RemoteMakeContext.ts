@@ -15,7 +15,6 @@ import { MAINNODE_EXECUTESCRIPT } from "@/server/RemoteMethods";
 import { MAINNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
 import { Logger } from "@/logger";
 import { ScopeHelper, VariableMap, VariantMap } from "@/core/Scope";
-import { CUSTOM_VARIABLE_GROUP } from "@/Constants";
 import { AbsolutePath } from "@/core/AbsolutePath";
 
 const logger = Logger.create(import.meta.url);
@@ -23,8 +22,8 @@ const logger = Logger.create(import.meta.url);
 export class RemoteMakeContext extends MakeContext {
   private _transport: JsonRpcRequestSync;
 
-  public constructor(scope: VariableMap, transport: JsonRpcRequestSync) {
-    super(scope);
+  public constructor(transport: JsonRpcRequestSync) {
+    super();
     this._transport = transport;
   }
 
@@ -38,14 +37,8 @@ export class RemoteMakeContext extends MakeContext {
     return this._transport.requestSync(MAINNODE_EXECUTESCRIPT, ScopeHelper.toJSON(newVariableMap));
   }
   
-  public addCacheVariables(scope: VariableMap, params: string | VariantMap): void {
-    logger.debug("RemoteMakeContext.addCacheVariables(", params, ")");
-    let variables = params;
-    if (typeof params === "string") {
-      const filename = ScopeHelper.get(scope, "SOURCE_DIR").resolve(params).toString();
-      variables = this._transport.requestSync(MAINNODE_LOADJSON, filename);
-    }
-    ScopeHelper.defineVariablesInVariableMap(scope, CUSTOM_VARIABLE_GROUP, variables);
+  public loadJSON(filename: string): any {
+    return this._transport.requestSync(MAINNODE_LOADJSON, filename);
   }
 
   public addSubdirectory(scope: VariableMap, sourceDir: string | AbsolutePath, binaryDir?: string | AbsolutePath): void {

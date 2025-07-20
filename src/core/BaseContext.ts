@@ -58,19 +58,18 @@ export abstract class GeneralContext implements IGeneralContext {
   }
 };
 
-export abstract class MakeContext /*extends GeneralContext*/ {
+export abstract class MakeContext {
   private _targets = new Map<string, MainTarget>;
   private _postTargets = new Map<string, PostTarget>;
   private _mainScripts = new Map<string, CustomScript>;
   private _postScripts = new Map<string, PostCustomScript>;
   private _installList = new Array<InstallEntity>();
 
-  protected constructor(scope: VariableMap) {
-    //super(scope);
+  protected constructor() {
   }
 
   abstract executeScript(scope: VariableMap, script: any, params: any): any;
-  abstract addCacheVariables(scope: VariableMap, params: string | VariantMap): void;
+  abstract loadJSON(filename: string): any;
   abstract addSubdirectory(scope: VariableMap, sourceDir: string | AbsolutePath, binaryDir?: string | AbsolutePath): void;
 
   public get targets() {

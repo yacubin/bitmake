@@ -65,7 +65,12 @@ export class UserMakeContext extends GeneralContext implements IMakeContext {
   }
 
   public addCacheVariables(params: string | VariantMap): void {
-    this[IMPL].addCacheVariables(this[VARMAP], params);
+    let variables = params;
+    if (typeof params === "string") {
+      const filename = this[SCOPE].SOURCE_DIR.resolve(params).toPath();
+      variables = this[IMPL].loadJSON(filename);
+    }
+    ScopeHelper.defineVariablesInVariableMap(this[VARMAP], CUSTOM_VARIABLE_GROUP, variables);
   }
 
   public addIncludeDirectories(...dirs: any[]): any {

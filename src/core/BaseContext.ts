@@ -7,18 +7,16 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { IGeneralContext, InterfaceTarget } from "@/core/MakeInterfaces";
+import { IGeneralContext } from "@/core/MakeInterfaces";
 import { findProgramSync } from "@/core/FindProgram";
 import { ScopeHelper, VariableMap, VariantMap } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
 import { FilePath, AbsolutePath } from "@/core/AbsolutePath";
 import { importModule } from "@/utils/Module";
 import { MainTarget, PostTarget } from "@/core/Target";
-import { CUSTOM_VARIABLE_GROUP } from "@/Constants";
 import { CustomScript, PostCustomScript } from "@/core/CustomScript";
 import { InstallEntity } from "@/core/InstallEntity";
 import { TargetName } from "@/core/TargetName";
-import { randCIdentifer } from "@/utils/Random";
 import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
@@ -127,38 +125,9 @@ export abstract class MakeContext extends GeneralContext {
     return target;
   }
 
-  public install(value: any, params: any): void {
-    const scope = ScopeHelper.createVariableValues(this._scope);
-    for (const it of [ value ].flat()) {
-      let iter = (it instanceof InterfaceTarget) ? TargetName.create(it.targetName) : it;
-
-      let destination: string | AbsolutePath | undefined;
-      let baseDir;
-      if (typeof params === "string")
-        destination = params;
-      else if (params) {
-        destination = params.destination;
-        baseDir = params.baseDir;
-      }
-
-      if (!destination)
-        throw new Error(`Parameter destination is not specified`);
-    
-      if (baseDir)
-        baseDir = scope.SOURCE_DIR.resolve(baseDir);
-
-      if (typeof iter === "string" || iter instanceof AbsolutePath) {
-        iter = scope.SOURCE_DIR.resolve(iter.toString());
-        iter = FilePath.create(iter);
-        baseDir = baseDir || iter.dirname();
-      }
-      else if (!(iter instanceof TargetName)) {
-        throw new Error(`Not supportet value of ${iter}`);
-      }
-
-      const entity = new InstallEntity(iter, AbsolutePath.create(scope.INSTALL_PREFIX.resolve(destination)), baseDir);
-      this._installList.push(entity);
-    }
+  public addInstallEntry(value: FilePath | TargetName, destination: AbsolutePath, baseDir?: AbsolutePath): void {
+    const entity = new InstallEntity(value, destination, baseDir);
+    this._installList.push(entity);
   }
 
   public getVariableMap(): VariableMap {

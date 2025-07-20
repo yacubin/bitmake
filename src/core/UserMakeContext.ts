@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { IMakeContext, InterfaceScript } from "@/core/MakeInterfaces";
+import { IMakeContext, InterfaceTarget, InterfaceScript } from "@/core/MakeInterfaces";
 import { VariantMap, VariableMap, ScopeHelper } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
 import { GeneralContext, MakeContext, createContext } from "@/core/BaseContext";
@@ -17,7 +17,8 @@ import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
 import { CUSTOM_VARIABLE_GROUP } from "@/Constants";
 import { randCIdentifer } from "@/utils/Random";
 import { Logger } from "@/logger";
-import { AbsolutePath } from "./AbsolutePath";
+import { FilePath, AbsolutePath } from "./AbsolutePath";
+import { TargetName } from "@/core/TargetName";
 
 const logger = Logger.create(import.meta.url);
 
@@ -118,7 +119,35 @@ export class UserMakeContext extends GeneralContext implements IMakeContext {
   }
 
   public install(value: any, params: any): void {
-    this[IMPL].install(value, params);
+    for (const it of [ value ].flat()) {
+      let iter = (it instanceof InterfaceTarget) ? TargetName.create(it.targetName) : it;
+
+      let destination: string | AbsolutePath | undefined;
+      let baseDir;
+      if (typeof params === "string")
+        destination = params;
+      else if (params) {
+        destination = params.destination;
+        baseDir = params.baseDir;
+      }
+
+      if (!destination)
+        throw new Error(`Parameter destination is not specified`);
+    
+      if (baseDir)
+        baseDir = this[SCOPE].SOURCE_DIR.resolve(baseDir);
+
+      if (typeof iter === "string" || iter instanceof AbsolutePath) {
+        iter = this[SCOPE].SOURCE_DIR.resolve(iter.toString());
+        iter = FilePath.create(iter);
+        baseDir = baseDir || iter.dirname();
+      }
+      else if (!(iter instanceof TargetName)) {
+        throw new Error(`Not supportet value of ${iter}`);
+      }
+
+      this[IMPL].addInstallEntry(iter, AbsolutePath.create(this[SCOPE].INSTALL_PREFIX.resolve(destination)), baseDir);
+    }
   }
 
   public addObjectLibrary(name: string, ...sources: any[]): UserTargetStruct {

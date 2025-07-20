@@ -58,7 +58,7 @@ export abstract class GeneralContext implements IGeneralContext {
   }
 };
 
-export abstract class MakeContext extends GeneralContext {
+export abstract class MakeContext /*extends GeneralContext*/ {
   private _targets = new Map<string, MainTarget>;
   private _postTargets = new Map<string, PostTarget>;
   private _mainScripts = new Map<string, CustomScript>;
@@ -66,12 +66,12 @@ export abstract class MakeContext extends GeneralContext {
   private _installList = new Array<InstallEntity>();
 
   protected constructor(scope: VariableMap) {
-    super(scope);
+    //super(scope);
   }
 
-  abstract executeScript(script: any, params: any): any;
-  abstract addCacheVariables(params: string | VariantMap): void;
-  abstract addSubdirectory(sourceDir: string | AbsolutePath, binaryDir?: string | AbsolutePath): void;
+  abstract executeScript(scope: VariableMap, script: any, params: any): any;
+  abstract addCacheVariables(scope: VariableMap, params: string | VariantMap): void;
+  abstract addSubdirectory(scope: VariableMap, sourceDir: string | AbsolutePath, binaryDir?: string | AbsolutePath): void;
 
   public get targets() {
     return this._targets;
@@ -128,10 +128,6 @@ export abstract class MakeContext extends GeneralContext {
   public addInstallEntry(value: FilePath | TargetName, destination: AbsolutePath, baseDir?: AbsolutePath): void {
     const entity = new InstallEntity(value, destination, baseDir);
     this._installList.push(entity);
-  }
-
-  public getVariableMap(): VariableMap {
-    return this._scope;
   }
 };
 

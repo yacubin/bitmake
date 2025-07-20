@@ -28,9 +28,9 @@ export class RemoteMakeContext extends MakeContext {
     this._transport = transport;
   }
 
-  public executeScript(script: any, params: any): any {
+  public executeScript(scope: VariableMap, script: any, params: any): any {
     logger.debug("RemoteMakeContext.executeScript(", script, params, ")");
-    const newVariableMap = ScopeHelper.cloneVariableMap(this._scope);
+    const newVariableMap = ScopeHelper.cloneVariableMap(scope);
     params && ScopeHelper.extendVariableMapByValues(newVariableMap, "", params);
     const scriptFile = ScopeHelper.get(newVariableMap, "SOURCE_DIR").resolve(script);
     ScopeHelper.set(newVariableMap, "SCRIPT_FILE", scriptFile);
@@ -38,19 +38,19 @@ export class RemoteMakeContext extends MakeContext {
     return this._transport.requestSync(MAINNODE_EXECUTESCRIPT, ScopeHelper.toJSON(newVariableMap));
   }
   
-  public addCacheVariables(params: string | VariantMap): void {
+  public addCacheVariables(scope: VariableMap, params: string | VariantMap): void {
     logger.debug("RemoteMakeContext.addCacheVariables(", params, ")");
     let variables = params;
     if (typeof params === "string") {
-      const filename = ScopeHelper.get(this._scope, "SOURCE_DIR").resolve(params).toString();
+      const filename = ScopeHelper.get(scope, "SOURCE_DIR").resolve(params).toString();
       variables = this._transport.requestSync(MAINNODE_LOADJSON, filename);
     }
-    ScopeHelper.defineVariablesInVariableMap(this._scope, CUSTOM_VARIABLE_GROUP, variables);
+    ScopeHelper.defineVariablesInVariableMap(scope, CUSTOM_VARIABLE_GROUP, variables);
   }
 
-  public addSubdirectory(sourceDir: string | AbsolutePath, binaryDir?: string | AbsolutePath): void {
+  public addSubdirectory(scope: VariableMap, sourceDir: string | AbsolutePath, binaryDir?: string | AbsolutePath): void {
     logger.debug("RemoteMakeContext.addSubdirectory(", sourceDir, binaryDir, ")");
-    const newVariableMap = createVariableMapForDirectory(this._scope, sourceDir, binaryDir);
+    const newVariableMap = createVariableMapForDirectory(scope, sourceDir, binaryDir);
     this._transport.requestSync(MAINNODE_STARTMAKESCRIPT, ScopeHelper.toJSON(newVariableMap));
   }
 };

@@ -65,7 +65,7 @@ export class UserMakeContext extends GeneralContext implements IMakeContext {
   }
 
   public addCacheVariables(params: string | VariantMap): void {
-    this[IMPL].addCacheVariables(params);
+    this[IMPL].addCacheVariables(this[VARMAP], params);
   }
 
   public addIncludeDirectories(...dirs: any[]): any {
@@ -76,7 +76,7 @@ export class UserMakeContext extends GeneralContext implements IMakeContext {
   }
 
   public addSubdirectory(sourceDir: any, binaryDir?: any) {
-    this[IMPL].addSubdirectory(sourceDir, binaryDir);
+    this[IMPL].addSubdirectory(this[VARMAP], sourceDir, binaryDir);
   }
   
   public addCustomScript(scriptModule: string | AbsolutePath, params: any): InterfaceScript {
@@ -186,6 +186,6 @@ export class UserMakeContext extends GeneralContext implements IMakeContext {
   }
 
   public executeScript(script: any, params: any): void {
-    this[IMPL].executeScript(script, params);
+    this[IMPL].executeScript(this[VARMAP], script, params);
   }
 };

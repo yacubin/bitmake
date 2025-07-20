@@ -26,23 +26,23 @@ export class LocalMakeContext extends MakeContext {
     this._project = project;
   }
 
-  public executeScript(script: any, params: any) {
-    this._project.executeScriptSync(this._scope, script, params);
+  public executeScript(scope: VariableMap, script: any, params: any) {
+    this._project.executeScriptSync(scope, script, params);
   }
 
-  public addCacheVariables(params: string | VariantMap): void {
+  public addCacheVariables(scope: VariableMap, params: string | VariantMap): void {
     let variables = params;
     if (typeof params === "string") {
-      const filename = ScopeHelper.get(this._scope, "SOURCE_DIR").resolve(params).toString();
+      const filename = ScopeHelper.get(scope, "SOURCE_DIR").resolve(params).toString();
       if (!fileExistsSync(filename))
         return;
       variables = requireSync(filename);
     }
 
-    ScopeHelper.defineVariablesInVariableMap(this._scope, CUSTOM_VARIABLE_GROUP, variables);
+    ScopeHelper.defineVariablesInVariableMap(scope, CUSTOM_VARIABLE_GROUP, variables);
   }
 
-  public addSubdirectory(sourceDir: string | AbsolutePath, binaryDir?: string | AbsolutePath): void {
-    this._project.addSubdirectory(this._scope, sourceDir, binaryDir);
+  public addSubdirectory(scope: VariableMap, sourceDir: string | AbsolutePath, binaryDir?: string | AbsolutePath): void {
+    this._project.addSubdirectory(scope, sourceDir, binaryDir);
   }
 };

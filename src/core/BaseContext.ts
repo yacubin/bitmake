@@ -121,37 +121,9 @@ export abstract class MakeContext extends GeneralContext {
     return script;
   }
 
-  public addCustomScript(scriptModule: string, params: any): CustomScript {
-    const variableMap = ScopeHelper.cloneVariableMap(this._scope);
-    ScopeHelper.extendVariableMapByValues(variableMap, CUSTOM_VARIABLE_GROUP, params);
-    ScopeHelper.set(variableMap, "SCRIPT_MODULE", scriptModule);
-    
-    const sourceDir = ScopeHelper.get(variableMap, "SOURCE_DIR") as AbsolutePath;
-    const binaryDir = ScopeHelper.get(variableMap, "BINARY_DIR") as AbsolutePath;
-
-    let inputFile = ScopeHelper.get(variableMap, "SCRIPT_INPUT");
-    if (inputFile)
-      inputFile = sourceDir.resolve(inputFile);
-
-    let outputFile = ScopeHelper.get(variableMap, "SCRIPT_OUTPUT");
-    if (!outputFile)
-      throw new Error("CustomScript parameters required output entity");
-
-    outputFile = sourceDir.resolve(outputFile);
-
-    const options: CustomScript.Options = {
-      variableMap,
-      name: ScopeHelper.get(variableMap, "SCRIPT_NAME") || randCIdentifer(16),
-      scriptModule,
-      output: outputFile,
-      input: inputFile,
-      sourceDir,
-      binaryDir,
-    };
-
+  public addCustomScript(options: CustomScript.Options): CustomScript {
     const target = CustomScript.create(options);
     this._mainScripts.set(options.name, target);
-
     return target;
   }
 

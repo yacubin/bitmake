@@ -57,7 +57,7 @@ export async function runMainScript() {
 }
 
 export async function runWorkerScript() {
-  logger.info(`Worker thread #${threadId} started`, workerData);
+  logger.debug(`Worker thread #${threadId} started`, workerData);
 
   if (!parentPort) {
     throw new Error(`Worker not supported parentPort`);

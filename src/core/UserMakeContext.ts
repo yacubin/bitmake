@@ -15,7 +15,9 @@ import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, MainTarget } f
 import { UserTargetStruct } from "@/core/UserTargetStruct";
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
 import { CUSTOM_VARIABLE_GROUP } from "@/Constants";
+import { randCIdentifer } from "@/utils/Random";
 import { Logger } from "@/logger";
+import { AbsolutePath } from "./AbsolutePath";
 
 const logger = Logger.create(import.meta.url);
 
@@ -76,8 +78,35 @@ export class UserMakeContext extends GeneralContext implements IMakeContext {
     this[IMPL].addSubdirectory(sourceDir, binaryDir);
   }
   
-  public addCustomScript(script: any, params: any): InterfaceScript {
-    return this[IMPL].addCustomScript(script, params);
+  public addCustomScript(scriptModule: string | AbsolutePath, params: any): InterfaceScript {
+    const variableMap = ScopeHelper.cloneVariableMap(this[VARMAP]);
+    ScopeHelper.extendVariableMapByValues(variableMap, CUSTOM_VARIABLE_GROUP, params);
+    ScopeHelper.set(variableMap, "SCRIPT_MODULE", scriptModule);
+    
+    const sourceDir = ScopeHelper.get(variableMap, "SOURCE_DIR") as AbsolutePath;
+    const binaryDir = ScopeHelper.get(variableMap, "BINARY_DIR") as AbsolutePath;
+
+    let inputFile = ScopeHelper.get(variableMap, "SCRIPT_INPUT");
+    if (inputFile)
+      inputFile = sourceDir.resolve(inputFile);
+
+    let outputFile = ScopeHelper.get(variableMap, "SCRIPT_OUTPUT");
+    if (!outputFile)
+      throw new Error("CustomScript parameters required output entity");
+
+    outputFile = sourceDir.resolve(outputFile);
+
+    const options = {
+      variableMap,
+      name: ScopeHelper.get(variableMap, "SCRIPT_NAME") || randCIdentifer(16),
+      scriptModule,
+      output: outputFile,
+      input: inputFile,
+      sourceDir,
+      binaryDir,
+    };
+
+    return this[IMPL].addCustomScript(options);
   }
 
   public target(name: string): UserTargetStruct {

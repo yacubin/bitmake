@@ -9,7 +9,7 @@
 
 import { IGeneralContext } from "@/core/MakeInterfaces";
 import { findProgramSync } from "@/core/FindProgram";
-import { ScopeHelper, VariableMap, VariantMap } from "@/core/Scope";
+import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
 import { FilePath, AbsolutePath } from "@/core/AbsolutePath";
 import { importModule } from "@/utils/Module";

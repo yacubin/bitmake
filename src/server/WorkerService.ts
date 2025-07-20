@@ -10,14 +10,17 @@
 import { IMessageSender, IMessageEmitter } from "@/server/Transport";
 import { MemoryTransport } from "@/server/MemoryTransport";
 import { JsonRpcServer } from "@/server/JsonRpcServer";
-import { WorkerNode } from "@/server/WorkerNode";
-import { WORKERNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
-import { WORKERNODE_MAINTARGETS } from "@/server/RemoteMethods";
-import { WORKERNODE_POSTTARGETS } from "@/server/RemoteMethods";
-import { WORKERNODE_MAINSCRIPTS } from "@/server/RemoteMethods";
-import { WORKERNODE_POSTSCRIPTS } from "@/server/RemoteMethods";
-import { WORKERNODE_INSTALLENTRIES } from "@/server/RemoteMethods";
-import { WORKERNODE_PROCESSEXIT } from "@/server/RemoteMethods";
+import { MakeContextProvider } from "@/server/MakeContextProvider";
+import { WorkerServiceProvider } from "@/server/WorkerServiceProvider";
+import { MAKECONTEXT_CREATECONTEXT } from "@/server/RemoteMethods";
+import { MAKECONTEXT_DESTROYCONTEXT } from "@/server/RemoteMethods";
+import { MAKECONTEXT_EXECSCRIPT } from "@/server/RemoteMethods";
+import { MAKECONTEXT_MAINTARGETS } from "@/server/RemoteMethods";
+import { MAKECONTEXT_POSTTARGETS } from "@/server/RemoteMethods";
+import { MAKECONTEXT_MAINSCRIPTS } from "@/server/RemoteMethods";
+import { MAKECONTEXT_POSTSCRIPTS } from "@/server/RemoteMethods";
+import { MAKECONTEXT_INSTALLENTRIES } from "@/server/RemoteMethods";
+import { WORKERSERVICE_PROCESSEXIT } from "@/server/RemoteMethods";
 import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
@@ -31,14 +34,18 @@ export class WorkerService implements IMessageEmitter {
     const buffer = new SharedArrayBuffer(0x8000);
     const transport = new MemoryTransport(sender, buffer);
 
-    const workerNode = new WorkerNode(name, transport);
-    this._jsonrpcServer.registerCallback(WORKERNODE_STARTMAKESCRIPT, params => workerNode.execMakeScript(params));
-    this._jsonrpcServer.registerCallback(WORKERNODE_MAINTARGETS, params => workerNode.mainTargets(params));
-    this._jsonrpcServer.registerCallback(WORKERNODE_POSTTARGETS, params => workerNode.postTargets(params));
-    this._jsonrpcServer.registerCallback(WORKERNODE_MAINSCRIPTS, params => workerNode.mainScripts(params));
-    this._jsonrpcServer.registerCallback(WORKERNODE_POSTSCRIPTS, params => workerNode.postScripts(params));
-    this._jsonrpcServer.registerCallback(WORKERNODE_INSTALLENTRIES, params => workerNode.installEntries(params));
-    this._jsonrpcServer.registerCallback(WORKERNODE_PROCESSEXIT, params => workerNode.processExit(params));
+    const makeContext = new MakeContextProvider(name, transport);
+    this._jsonrpcServer.registerCallback(MAKECONTEXT_CREATECONTEXT, params => makeContext.createContext(params));
+    this._jsonrpcServer.registerCallback(MAKECONTEXT_DESTROYCONTEXT, params => makeContext.destroyContext(params));
+    this._jsonrpcServer.registerCallback(MAKECONTEXT_EXECSCRIPT, params => makeContext.execScript(params));
+    this._jsonrpcServer.registerCallback(MAKECONTEXT_MAINTARGETS, params => makeContext.mainTargets(params));
+    this._jsonrpcServer.registerCallback(MAKECONTEXT_POSTTARGETS, params => makeContext.postTargets(params));
+    this._jsonrpcServer.registerCallback(MAKECONTEXT_MAINSCRIPTS, params => makeContext.mainScripts(params));
+    this._jsonrpcServer.registerCallback(MAKECONTEXT_POSTSCRIPTS, params => makeContext.postScripts(params));
+    this._jsonrpcServer.registerCallback(MAKECONTEXT_INSTALLENTRIES, params => makeContext.installEntries(params));
+
+    const workerService = new WorkerServiceProvider;
+    this._jsonrpcServer.registerCallback(WORKERSERVICE_PROCESSEXIT, params => workerService.processExit(params));
   }
 
   public emitMessage(sender: IMessageSender, message: any): void {

@@ -19,13 +19,15 @@ import { MainTarget, PostTarget } from "@/core/Target";
 import { PostCustomScript, CustomScript } from "@/core/CustomScript";
 import { InstallEntity } from "@/core/InstallEntity";
 import { SimpleObject } from "@/core/SimpleObject";
-import { WORKERNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
-import { WORKERNODE_MAINTARGETS } from "@/server/RemoteMethods";
-import { WORKERNODE_POSTTARGETS } from "@/server/RemoteMethods";
-import { WORKERNODE_MAINSCRIPTS } from "@/server/RemoteMethods";
-import { WORKERNODE_POSTSCRIPTS } from "@/server/RemoteMethods";
-import { WORKERNODE_INSTALLENTRIES } from "@/server/RemoteMethods";
-import { WORKERNODE_PROCESSEXIT } from "@/server/RemoteMethods";
+import { MAKECONTEXT_CREATECONTEXT } from "@/server/RemoteMethods";
+import { MAKECONTEXT_DESTROYCONTEXT } from "@/server/RemoteMethods";
+import { MAKECONTEXT_EXECSCRIPT } from "@/server/RemoteMethods";
+import { MAKECONTEXT_MAINTARGETS } from "@/server/RemoteMethods";
+import { MAKECONTEXT_POSTTARGETS } from "@/server/RemoteMethods";
+import { MAKECONTEXT_MAINSCRIPTS } from "@/server/RemoteMethods";
+import { MAKECONTEXT_POSTSCRIPTS } from "@/server/RemoteMethods";
+import { MAKECONTEXT_INSTALLENTRIES } from "@/server/RemoteMethods";
+import { WORKERSERVICE_PROCESSEXIT } from "@/server/RemoteMethods";
 import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
@@ -103,8 +105,58 @@ export class WorkerRpcClient {
   }
 };
 
-export class MakeClient {
+class MakeContextClient {
   private _workerRpc: WorkerRpcClient;
+
+  public constructor(jsonRpcServer: JsonRpcServer) {
+    this._workerRpc = new WorkerRpcClient(jsonRpcServer);
+  }
+
+  public createContext(): Promise<string> {
+    return this._workerRpc.request(MAKECONTEXT_CREATECONTEXT, null);
+  }
+
+  public destroyContext(mkid: string): Promise<void> {
+    return this._workerRpc.request(MAKECONTEXT_DESTROYCONTEXT, { mkid });
+  }
+
+  public execScript(mkid: string, variableMap: VariableMap): Promise<string> {
+    const scope = ScopeHelper.toJSON(variableMap);
+    return this._workerRpc.request(MAKECONTEXT_EXECSCRIPT, { mkid, scope });
+  }
+
+  public async mainTargets(mkid: string): Promise<MainTarget[]> {
+    const result = await this._workerRpc.request(MAKECONTEXT_MAINTARGETS, { mkid });
+    return SimpleObject.fromJSON(result);
+  }
+
+  public async postTargets(mkid: string): Promise<PostTarget[]> {
+    const result = await this._workerRpc.request(MAKECONTEXT_POSTTARGETS, { mkid });
+    return SimpleObject.fromJSON(result);
+  }
+
+  public async mainScripts(mkid: string): Promise<CustomScript[]> {
+    const result = await this._workerRpc.request(MAKECONTEXT_MAINSCRIPTS, { mkid });
+    return SimpleObject.fromJSON(result);
+  }
+
+  public async postScripts(mkid: string): Promise<PostCustomScript[]> {
+    const result = await this._workerRpc.request(MAKECONTEXT_POSTSCRIPTS, { mkid });
+    return SimpleObject.fromJSON(result);
+  }
+
+  public async installEntries(mkid: string): Promise<InstallEntity[]> {
+    const result = await this._workerRpc.request(MAKECONTEXT_INSTALLENTRIES, { mkid });
+    return SimpleObject.fromJSON(result);
+  }
+
+  public processExit(code: number): Promise<void> {
+    return this._workerRpc.request(WORKERSERVICE_PROCESSEXIT, 0);
+  }
+};
+
+export class MakeClient {
+  private _makeContext: MakeContextClient;
   private _mainTargets = new Array<MainTarget>;
   private _postTargets = new Array<PostTarget>;
   private _mainScripts = new Array<CustomScript>;
@@ -112,32 +164,25 @@ export class MakeClient {
   private _installEntries = new Array<InstallEntity>;
 
   public constructor(jsonRpcServer: JsonRpcServer) {
-    this._workerRpc = new WorkerRpcClient(jsonRpcServer);
+    this._makeContext = new MakeContextClient(jsonRpcServer);
   }
 
   public async execMakeScript(variableMap: VariableMap): Promise<void> {
+    const mkid = await this._makeContext.createContext();
+
     const cwdSave = process.cwd();
     const scriptDir = ScopeHelper.get(variableMap, "SCRIPT_DIR");
     process.chdir(scriptDir.toString());
-    await this._workerRpc.request(WORKERNODE_STARTMAKESCRIPT, ScopeHelper.toJSON(variableMap));
+    await this._makeContext.execScript(mkid, variableMap);
     process.chdir(cwdSave);
 
-    const mainTargets = await this._workerRpc.request(WORKERNODE_MAINTARGETS, null);
-    this._mainTargets = SimpleObject.fromJSON(mainTargets);
+    this._mainTargets = await this._makeContext.mainTargets(mkid);
+    this._postTargets = await this._makeContext.postTargets(mkid);
+    this._mainScripts = await this._makeContext.mainScripts(mkid);
+    this._postScripts = await this._makeContext.postScripts(mkid);
+    this._installEntries = await this._makeContext.installEntries(mkid);
 
-    const postTargets = await this._workerRpc.request(WORKERNODE_POSTTARGETS, null);
-    this._postTargets = SimpleObject.fromJSON(postTargets);
-
-    const mainScripts = await this._workerRpc.request(WORKERNODE_MAINSCRIPTS, null);
-    this._mainScripts = SimpleObject.fromJSON(mainScripts);
-
-    const postScripts = await this._workerRpc.request(WORKERNODE_POSTSCRIPTS, null);
-    this._postScripts = SimpleObject.fromJSON(postScripts);
-
-    const installEntries = await this._workerRpc.request(WORKERNODE_INSTALLENTRIES, null);
-    this._installEntries = SimpleObject.fromJSON(installEntries);
-
-    await this._workerRpc.request(WORKERNODE_PROCESSEXIT, 0);
+    await this._makeContext.processExit(0);
   }
 
   public get mainTargets(): MainTarget[] {

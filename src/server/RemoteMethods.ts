@@ -7,15 +7,15 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-export const WORKERNODE_CREATEMAKECONTEXT = "WorkerNode.createMakeContext";
-export const WORKERNODE_DELETEMAKECONTEXT = "WorkerNode.deleteMakeContext";
-export const WORKERNODE_STARTMAKESCRIPT = "WorkerNode.startMakeScript";
-export const WORKERNODE_MAINTARGETS = "WorkerNode.mainTargets";
-export const WORKERNODE_POSTTARGETS = "WorkerNode.postTargets";
-export const WORKERNODE_MAINSCRIPTS = "WorkerNode.mainScripts";
-export const WORKERNODE_POSTSCRIPTS = "WorkerNode.postScripts";
-export const WORKERNODE_INSTALLENTRIES = "WorkerNode.installEntries";
-export const WORKERNODE_PROCESSEXIT = "WorkerNode.processExit";
+export const MAKECONTEXT_CREATECONTEXT = "MakeContext.createContext";
+export const MAKECONTEXT_DESTROYCONTEXT = "MakeContext.destroyContext";
+export const MAKECONTEXT_EXECSCRIPT = "MakeContext.execScript";
+export const MAKECONTEXT_MAINTARGETS = "MakeContext.mainTargets";
+export const MAKECONTEXT_POSTTARGETS = "MakeContext.postTargets";
+export const MAKECONTEXT_MAINSCRIPTS = "MakeContext.mainScripts";
+export const MAKECONTEXT_POSTSCRIPTS = "MakeContext.postScripts";
+export const MAKECONTEXT_INSTALLENTRIES = "MakeContext.installEntries";
+export const WORKERSERVICE_PROCESSEXIT = "WorkerService.processExit";
 
 export const MAINNODE_LOADJSON = "MainNode.loadJSON";
 export const MAINNODE_EXECUTESCRIPT = "MainNode.executeScript";

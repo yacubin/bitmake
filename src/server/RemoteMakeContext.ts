@@ -29,7 +29,7 @@ export class RemoteMakeContext extends MakeContext {
   }
 
   public executeScript(script: any, params: any): any {
-    logger.info("RemoteMakeContext.executeScript(", script, params, ")");
+    logger.debug("RemoteMakeContext.executeScript(", script, params, ")");
     const newVariableMap = ScopeHelper.cloneVariableMap(this._scope);
     params && ScopeHelper.extendVariableMapByValues(newVariableMap, "", params);
     const scriptFile = ScopeHelper.get(newVariableMap, "SOURCE_DIR").resolve(script);
@@ -39,7 +39,7 @@ export class RemoteMakeContext extends MakeContext {
   }
   
   public addCacheVariables(params: string | VariantMap): void {
-    logger.info("RemoteMakeContext.addCacheVariables(", params, ")");
+    logger.debug("RemoteMakeContext.addCacheVariables(", params, ")");
     let variables = params;
     if (typeof params === "string") {
       const filename = ScopeHelper.get(this._scope, "SOURCE_DIR").resolve(params).toString();
@@ -49,7 +49,7 @@ export class RemoteMakeContext extends MakeContext {
   }
 
   public addSubdirectory(sourceDir: string | AbsolutePath, binaryDir?: string | AbsolutePath): void {
-    logger.info("RemoteMakeContext.addSubdirectory(", sourceDir, binaryDir, ")");
+    logger.debug("RemoteMakeContext.addSubdirectory(", sourceDir, binaryDir, ")");
     const newVariableMap = createVariableMapForDirectory(this._scope, sourceDir, binaryDir);
     this._transport.requestSync(MAINNODE_STARTMAKESCRIPT, ScopeHelper.toJSON(newVariableMap));
   }

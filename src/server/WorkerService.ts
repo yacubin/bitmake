@@ -22,16 +22,16 @@ import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
 
-export class WorkerLooper implements IMessageEmitter {
+export class WorkerService implements IMessageEmitter {
   private _jsonrpcServer: JsonRpcServer;
 
-  public constructor(sender: IMessageSender) {
+  public constructor(name: string, sender: IMessageSender) {
     this._jsonrpcServer = new JsonRpcServer;
 
     const buffer = new SharedArrayBuffer(0x8000);
     const transport = new MemoryTransport(sender, buffer);
 
-    const workerNode = new WorkerNode(transport);
+    const workerNode = new WorkerNode(name, transport);
     this._jsonrpcServer.registerCallback(WORKERNODE_STARTMAKESCRIPT, params => workerNode.execMakeScript(params));
     this._jsonrpcServer.registerCallback(WORKERNODE_MAINTARGETS, params => workerNode.mainTargets(params));
     this._jsonrpcServer.registerCallback(WORKERNODE_POSTTARGETS, params => workerNode.postTargets(params));

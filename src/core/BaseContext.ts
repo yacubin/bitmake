@@ -94,16 +94,6 @@ export abstract class MakeContext extends GeneralContext {
   public get installList() {
     return this._installList;
   }
-  
-  public getCacheVariables(): any {
-    return ScopeHelper.getVariablesByGroup(this._scope, CUSTOM_VARIABLE_GROUP);
-  }
-
-  public addIncludeDirectories(...dirs: any[]) {
-    const sourceDir = ScopeHelper.get(this._scope, "SOURCE_DIR");
-    for (const iter of dirs.flat())
-      ScopeHelper.get(this._scope, "INCLUDES").push(sourceDir.resolve(iter));
-  }
 
   public getPostTarget(name: string): PostTarget {
     let target = this._postTargets.get(name);

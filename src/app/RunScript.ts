@@ -14,7 +14,7 @@ import commands from "@/commands";
 import { Logger } from "@/logger";
 import { runScriptInit } from "@/app/RunScriptInit";
 import { MessagePortSender } from "@/server/MessagePortSender";
-import { WorkerLooper } from "@/server/WorkerLooper";
+import { WorkerService } from "@/server/WorkerService";
 
 const logger = Logger.create(import.meta.url);
 
@@ -64,7 +64,7 @@ export async function runWorkerScript() {
   }
 
   const sender = new MessagePortSender(parentPort);
-  const looper = new WorkerLooper(sender);
+  const looper = new WorkerService("w" + threadId, sender);
 
   parentPort.on("message", (message) => looper.emitMessage(sender, message));
 }

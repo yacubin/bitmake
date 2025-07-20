@@ -19,15 +19,28 @@ import { SimpleObject } from "@/core/SimpleObject";
 import { ScopeHelper } from "@/core/Scope";
 
 export class WorkerNode {
+  private _name: string;
   private _transport: JsonRpcRequestSync;
+  private _makeContexts = new Map<string, RemoteMakeContext>;
+  private _makeContextCount = 0;
   private _mainTargets = new Array<MainTarget>;
   private _postTargets = new Array<PostTarget>;
   private _mainScripts = new Array<CustomScript>;
   private _postScripts = new Array<PostCustomScript>;
   private _installEntries = new Array<InstallEntity>;
 
-  public constructor(requestSync: IRequestSync) {
+  public constructor(name: string, requestSync: IRequestSync) {
+    this._name = name;
     this._transport = new JsonRpcRequestSync(requestSync);
+  }
+
+  public createMakeContext(params: any) {
+    const mcid = this._name + ":" + this._makeContextCount++;
+    return mcid;
+  }
+
+  public deleteMakeContext(params: any) {
+    return this._makeContexts.delete(params);
   }
 
   public async execMakeScript(params: any): Promise<void> {

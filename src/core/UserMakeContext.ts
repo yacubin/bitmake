@@ -14,12 +14,14 @@ import { GeneralContext, MakeContext, createContext } from "@/core/BaseContext";
 import { ObjectLibrary, StaticLibrary, SharedLibrary, Executable, MainTarget } from "@/core/Target";
 import { UserTargetStruct } from "@/core/UserTargetStruct";
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
+import { CUSTOM_VARIABLE_GROUP } from "@/Constants";
 import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
 
 const SCOPE = Symbol("SCOPE");
 const IMPL = Symbol("IMPL");
+const VARMAP = Symbol("VARMAP");
 
 function createTargetImpl<T extends MainTarget>(TargetCtor: new (...args: any[]) => T, ctx: MakeContext, scope: SystemScope, name: string) {
   if (typeof name !== "string")
@@ -40,12 +42,14 @@ function createTargetImpl<T extends MainTarget>(TargetCtor: new (...args: any[])
 }
 
 export class UserMakeContext extends GeneralContext implements IMakeContext {
-  [IMPL]: MakeContext;
-  [SCOPE]: SystemScope;
+  private [IMPL]: MakeContext;
+  private [VARMAP]: VariableMap;
+  private [SCOPE]: SystemScope;
 
   public constructor(impl: MakeContext, variableMap: VariableMap) {
     super(variableMap);
     this[IMPL] = impl;
+    this[VARMAP] = variableMap;
     this[SCOPE] = ScopeHelper.createProxy(variableMap);
   }
 
@@ -54,7 +58,7 @@ export class UserMakeContext extends GeneralContext implements IMakeContext {
   }
 
   public getCacheVariables() {
-    return this[IMPL].getCacheVariables();
+    return ScopeHelper.getVariablesByGroup(this[VARMAP], CUSTOM_VARIABLE_GROUP);
   }
 
   public addCacheVariables(params: string | VariantMap): void {
@@ -62,7 +66,10 @@ export class UserMakeContext extends GeneralContext implements IMakeContext {
   }
 
   public addIncludeDirectories(...dirs: any[]): any {
-    this[IMPL].addIncludeDirectories(...dirs);
+    const sourceDir = this[SCOPE].SOURCE_DIR;
+    for (const iter of dirs.flat()) {
+      this[SCOPE].INCLUDES.push(sourceDir.resolve(iter));
+    }
   }
 
   public addSubdirectory(sourceDir: any, binaryDir?: any) {

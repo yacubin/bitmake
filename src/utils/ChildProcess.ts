@@ -9,7 +9,8 @@
 
 import path from "node:path";
 import fs from "node:fs";
-import { spawn } from "node:child_process";
+import { spawn, execFile } from "node:child_process";
+import util from "node:util";
 import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
@@ -52,3 +53,5 @@ export function spawnAsync(command: string, args: string[], options?: any): Prom
     });
   });
 }
+
+export const execFileAsync = util.promisify(execFile);

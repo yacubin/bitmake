@@ -33,13 +33,12 @@ import { FileInstallationTask } from "@/core/FileInstallationTask";
 import { CustomScript, PostCustomScript } from "@/core/CustomScript";
 import { performContext, createVariableMapForDirectory } from "@/core/BaseContext";
 
-import BuildinScripts from "@/core/BuildinScripts";
+import builtinScripts from "@/core/BuiltinScripts";
 
 const logger = Logger.create(import.meta.url);
 
 const TARGETS = Symbol("TARGETS");
 const CACHE = Symbol("CACHE");
-const BUILTIN_SCRIPTS = Symbol("BUILTIN_SCRIPTS");
 
 type SubdirectoryAlias = {
   [name: string]: AbsolutePath | null;
@@ -98,7 +97,7 @@ export class ProjectContext {
   private [CACHE]: CacheVariableDescriptors;
   private _installList: InstallEntity[];
   private _processedVariableMap: any;
-  private [BUILTIN_SCRIPTS]: BuildinScripts;
+  private _builtinScripts: BuildinScripts;
   private _subdirAlias: SubdirectoryAlias;
   private _subdirList: VariableMap[];
 
@@ -108,7 +107,7 @@ export class ProjectContext {
     this._installList = [];
     this._processedVariableMap = {};
     this._subdirAlias = {};
-    this[BUILTIN_SCRIPTS] = BuildinScripts;
+    this._builtinScripts = builtinScripts;
     this._subdirList = [];
   }
 
@@ -237,7 +236,7 @@ export class ProjectContext {
   }
 
   public findScriptFunction(name: string): Function | undefined {
-    return this[BUILTIN_SCRIPTS][name];
+    return this._builtinScripts[name];
   }
 
   public applyMainTargets(targets: MainTarget[]) {

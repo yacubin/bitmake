@@ -17,7 +17,7 @@ const logger = Logger.create(import.meta.url);
 export async function determineCompiler(scope: SystemScope) {
   const clangPath = await findProgram("clang");
   if (clangPath) {
-    let version = "Uknown";
+    let version = "Unknown";
     try {
       version = await clang.readVersion(clangPath);
     }

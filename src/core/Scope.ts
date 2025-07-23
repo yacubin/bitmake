@@ -17,7 +17,6 @@ interface VariableDescriptor {
 };
 
 interface VariableEntry {
-  name: string;
   type: string | string[];
   group: string;
   description: string;
@@ -43,7 +42,7 @@ function toDescriptor(value: any): VariableDescriptor {
   return value;
 }
 
-export function getEntryValue(entry: VariableEntry): any {
+function getEntryValue(entry: VariableEntry): any {
   /*if (value === undefined)
     throw new Error(`Value of ${name} cannot be obtained because it has not been established`);*/
   return (entry.value === undefined) ? entry.initValue : entry.value;
@@ -116,33 +115,32 @@ const tojsonValueMap: any = {
   },
 };
 
-export function makeJSONValue(entry: VariableEntry, value: any): any {
+function makeJSONValue(entry: VariableEntry, value: any): any {
   if (Array.isArray(entry.type))
     return value;
   const func = tojsonValueMap[entry.type];
   if (!func)
-    throw new Error(`Unknown type "${entry.type}" for ${entry.name}`);
+    throw new Error(`Unknown type "${entry.type}"`);
   return func(value);
 }
 
-export function makeEntryValue(entry: VariableEntry, value: any): any {
+function makeEntryValue(entry: VariableEntry, value: any): any {
   let newValue: any;
   if (Array.isArray(entry.type))
     newValue = entry.type.includes(value) ? value : undefined;
   else {
     const func = makeValueMap[entry.type];
     if (!func)
-      throw new Error(`Unknown type "${entry.type}" for ${entry.name}`);
+      throw new Error(`Unknown type "${entry.type}"`);
     newValue = func(value);
   }
   if (newValue === undefined)
-    throw new TypeError(`Attempting to set "${value}" to ${entry.name} as an ${entry.type}`);
+    throw new TypeError(`Attempting to set "${value}" to type ${entry.type}`);
   return newValue;
 }
 
 export function copyEntryValue(entry: VariableEntry, transform: (entry: VariableEntry, value: any) => any) {
   const result: VariableEntry = {
-    name: entry.name,
     type: entry.type,
     group: entry.group,
     description: entry.description,
@@ -191,7 +189,6 @@ export function defineVariable(map: VariableMap, group: string, name: string, de
   let isValidValue = (value: any) => true;
   if (!defineEntry) {
     defineEntry = {
-      name,
       type: "", group, value: undefined,  initValue: undefined, description: "",
     };
     map[name] = defineEntry;

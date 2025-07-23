@@ -92,7 +92,7 @@ export class MakeServer {
     const variableMap = ScopeHelper.fromJSON(params);
     const scriptFile = ScopeHelper.get(variableMap, "SCRIPT_FILE");
 
-    const module = await importModule(scriptFile.toString());
+    const module = await importModule(scriptFile.toURLString());
     if (!module.default)
       throw new Error(`Script "${scriptFile}" has not contain a default function`);
 

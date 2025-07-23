@@ -7,8 +7,8 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import configure_file from "@/core/BuildinScripts/configure_file";
-import c_header from "@/core/BuildinScripts/c_header";
+import configure_file from "@/core/BuiltinScripts/configure_file";
+import c_header from "@/core/BuiltinScripts/c_header";
 
 export default {
   configure_file,

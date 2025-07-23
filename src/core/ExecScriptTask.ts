@@ -30,7 +30,7 @@ export class ExecScriptTask extends InterfaceTask {
   public async execute(): Promise<void> {
     let func = this._script;
     if (func instanceof AbsolutePath) {
-      const scriptUrl = func.toJSON(); // TODO: toString()
+      const scriptUrl = func.toURLString();
       logger.debug("Import", scriptUrl);
       func = (await importModule(scriptUrl)).default;
     }

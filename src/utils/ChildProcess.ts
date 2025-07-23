@@ -15,13 +15,30 @@ import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
 
-type Result = {
-  status: number;
+interface SpawnAsyncOptions {
+  cwd?: string;
+  encoding?: BufferEncoding;
+  env?: any;
+  nostdout?: boolean;
+  extra?: {
+    verbose?: boolean;
+    output?: string;
+  };
 };
 
-export function spawnAsync(command: string, args: string[], options?: any): Promise<Result> {
+interface SpawnAsyncReturns {
+  status: number;
+  stdout: string;
+  stderr: string;
+  output: string;
+  error?: Error | undefined;
+};
+
+export function spawnAsync(command: string, args: string[], options?: SpawnAsyncOptions): Promise<SpawnAsyncReturns> {
   let fd = null;
   let verbose = false;
+  const encoding = options?.encoding;
+
   if (options && options.extra) {
     if (options.extra.verbose)
       verbose = true;
@@ -33,24 +50,47 @@ export function spawnAsync(command: string, args: string[], options?: any): Prom
       fd = fs.openSync(logfile, "w+", 0o666);
     }
   }
+
   return new Promise((resolve, reject) => {
-    if (fd || verbose) {
-      verbose && logger.notice([ path.basename(command), ...args ].join(" "));
-      fd && fs.writeSync(fd, JSON.stringify({command, args, options }, null, 2) + "\n");
+    verbose && logger.notice([ path.basename(command), ...args ].join(" "));
+
+    if (fd) {
+      fs.writeSync(fd, JSON.stringify({command, args, options }, null, 2) + "\n");
     }
+
+    const stdout: Buffer[] = [];
+    const stderr: Buffer[] = [];
+    const output: Buffer[] = [];
+
     const exec = spawn(command, args, options);
-    exec.stdout.on("data", (data) => {
-      process.stdout.write(data);
-      fd && fs.writeSync(fd, data);
-    });
-    exec.stderr.on("data", (data) => {
-      process.stderr.write(data);
-      fd && fs.writeSync(fd, data);
-    });
-    exec.on("close", (status: number) => {
-      fd && fs.closeSync(fd);
-      resolve({status});
-    });
+
+    if (fd) {
+      exec.stdout.addListener("data", chunk => fs.writeSync(fd, chunk));
+      exec.stderr.addListener("data", chunk => fs.writeSync(fd, chunk));
+      exec.addListener("close", () => fs.closeSync(fd));
+    }
+    else {
+      exec.stdout.addListener("data", chunk => {
+        stdout.push(chunk);
+        output.push(chunk);
+      });
+      exec.stderr.addListener("data", chunk => {
+        stderr.push(chunk);
+        output.push(chunk);
+      });
+    }
+
+    if (!options?.nostdout) {
+      exec.stdout.addListener("data", chunk => process.stdout.write(chunk));
+      exec.stderr.addListener("data", chunk => process.stderr.write(chunk));
+    }
+
+    exec.addListener("close", (status: number) => resolve({
+      status,
+      stdout: Buffer.concat(stdout).toString(encoding),
+      stderr: Buffer.concat(stderr).toString(encoding),
+      output: Buffer.concat(output).toString(encoding),
+    }));
   });
 }
 

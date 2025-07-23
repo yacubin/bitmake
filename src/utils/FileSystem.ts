@@ -128,6 +128,12 @@ export function getURLString(str: string) {
   return str;
 }
 
+export function resolveURLString(str: string) {
+  if (str.startsWith(IMPORT_SCHEME))
+    return requireResolve(str.slice(IMPORT_SCHEME.length));
+  return isURL(str) ? str : url.pathToFileURL(str);
+}
+
 export async function fetchBuffer(str: string): Promise<Buffer> {
   if (str.startsWith(HTTP_SCHEME) || str.startsWith(HTTPS_SCHEME)) {
     const response = await fetch(str);

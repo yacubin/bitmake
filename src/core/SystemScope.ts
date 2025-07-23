@@ -50,7 +50,7 @@ export interface SystemScope {
   CACHE_FILE: AbsolutePath;
 
   // Specifies the path to a toolchain file used for cross-compilation
-  TOOLCHAIN_FILE: string;
+  TOOLCHAIN_FILE: AbsolutePath;
 
   // Specifies the build configuration for controlling optimization levels and debug information in the build process
   BUILD_TYPE: "Debug" | "Release";

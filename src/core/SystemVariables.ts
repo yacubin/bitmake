@@ -66,7 +66,7 @@ export default {
   },
   TOOLCHAIN_FILE: {
     description: "Specifies the path to a toolchain file used for cross-compilation",
-    type: "string",
+    type: "FilePath",
   },
   BUILD_TYPE: {
     description: "Specifies the build configuration for controlling optimization levels and debug information in the build process",

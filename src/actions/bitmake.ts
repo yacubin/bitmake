@@ -14,7 +14,7 @@ import { MakeServer } from "@/server/MakeServer";
 import { PluginContext } from "@/core/PluginContext";
 import { ScopeHelper } from "@/core/Scope";
 import { ToolchainContext } from "@/core/ToolchainContext";
-import { getPathString, getURLString, saveAsJSON }  from "@/utils/FileSystem";
+import { getPathString, saveAsJSON }  from "@/utils/FileSystem";
 import { AbsolutePath } from "@/core/AbsolutePath";
 import { importModule }  from "@/utils/Module";
 import { determineCompiler }  from "@/core/DetermineCompiler";
@@ -74,8 +74,8 @@ export default async function(config: any, environment: any, settings: SettingsS
     const binaryDir = (binaryDir2.length < binaryDir1.length ? binaryDir2 : binaryDir1).replace("../", "__/");
     scope.BINARY_DIR = scope.PROJECT_BINARY_DIR.join("MakePluginBinaries", binaryDir);
 
-    process.chdir(scope.SOURCE_DIR.toString());
-    const pluginUrl = getURLString(scope.SCRIPT_FILE.toString());
+    process.chdir(scope.SOURCE_DIR.toPath());
+    const pluginUrl = scope.SCRIPT_FILE.toURLString();
     const module = await importModule(pluginUrl);
     
     if (!module.default)
@@ -101,7 +101,7 @@ export default async function(config: any, environment: any, settings: SettingsS
   }
 
   if (scope.TOOLCHAIN_FILE) {
-    const toolchainUrl = getURLString(scope.TOOLCHAIN_FILE.toString());
+    const toolchainUrl = scope.TOOLCHAIN_FILE.toURLString();
     const toolchain = await importModule(toolchainUrl);
     if (!toolchain.default)
       throw new Error("Toolchain module has no default export");

@@ -11,8 +11,9 @@ import path from "node:path";
 import url from "node:url";
 
 import { Path } from "@/utils/Path";
-import { FILE_SCHEME } from "@/utils/UrlScheme";
+import { FILE_SCHEME, IMPORT_SCHEME } from "@/utils/UrlScheme";
 import { SimpleObject } from "@/core/SimpleObject";
+import { requireResolve } from "@/utils/Module";
 
 const PATH = Symbol("PATH");
 
@@ -28,7 +29,7 @@ export class AbsolutePath {
   private [PATH]: string;
 
   protected constructor(filepath: string) {
-    if (filepath.startsWith(FILE_SCHEME)) {
+    if (filepath.startsWith(FILE_SCHEME) || filepath.startsWith(IMPORT_SCHEME)) {
       this[PATH] = filepath;
     }
     else if (Path.isAbsolute(filepath)) {
@@ -64,13 +65,15 @@ export class AbsolutePath {
     return this[PATH].match(regexp);
   }
 
-  public toString() {
+  public toString(): string {
     return url.fileURLToPath(this[PATH]);
   }
 
   public toPath() {
     if (this[PATH].startsWith(FILE_SCHEME))
       return url.fileURLToPath(this[PATH]);
+    if (this[PATH].startsWith(IMPORT_SCHEME))
+      return requireResolve(this[PATH].slice(IMPORT_SCHEME.length));
     throw new Error(`URL ${this[PATH]} can't convert to path`);
   }
 
@@ -78,7 +81,9 @@ export class AbsolutePath {
     return url.fileURLToPath(this[PATH]);
   }
 
-  public toURLString() {
+  public toURLString(): string {
+    if (this[PATH].startsWith(IMPORT_SCHEME))
+      return url.pathToFileURL(requireResolve(this[PATH].slice(IMPORT_SCHEME.length))).toString();
     return this[PATH];
   }
 

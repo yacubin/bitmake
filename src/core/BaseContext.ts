@@ -69,7 +69,7 @@ export abstract class MakeContext {
   }
 
   abstract executeScript(scope: VariableMap, script: any, params: any): any;
-  abstract loadJSON(filename: string): any;
+  abstract loadJSON(url: string): any;
   abstract addSubdirectory(scope: VariableMap, sourceDir: string | AbsolutePath, binaryDir?: string | AbsolutePath): void;
 
   public get targets() {

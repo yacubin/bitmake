@@ -7,22 +7,45 @@
  * under the MIT License. See LICENSE file for details.
  */
 
+import os from "node:os";
 import path from "node:path";
 import url from "node:url";
 
-import { Path } from "@/utils/Path";
 import { FILE_SCHEME, IMPORT_SCHEME } from "@/utils/UrlScheme";
 import { SimpleObject } from "@/core/SimpleObject";
 import { requireResolve } from "@/utils/Module";
 
 const PATH = Symbol("PATH");
 
-function toPathString(pth: string | AbsolutePath) {
-  if (typeof pth !== "string")
-    return pth.toPath();
-  if (pth.startsWith(FILE_SCHEME))
-    return url.fileURLToPath(pth);
-  return pth;
+const nativeSep = os.platform() === "win32" ? path.win32.sep : path.posix.sep;
+const otherSep = os.platform() === "win32" ? path.posix.sep : path.win32.sep;
+
+function isAbsolute(filepath: string): boolean {
+  if (filepath.startsWith(FILE_SCHEME))
+    return true;
+  if (filepath.startsWith(IMPORT_SCHEME))
+    return true;
+  if (filepath.startsWith("/"))
+    return true;
+  if (filepath.match(/^[a-zA-Z]:[\\/]/))
+    return true;
+  /* \\localhost */
+  /* \\wsl.localhost\Ubuntu\opt */
+  return false;
+}
+
+function normalizePathSep(str: string) {
+  return str.replaceAll(otherSep, nativeSep);
+}
+
+function toPathString(obj: string | AbsolutePath) {
+  if (typeof obj !== "string")
+    return obj.toPath();
+  if (obj.startsWith(FILE_SCHEME))
+    return url.fileURLToPath(obj);
+  if (obj.startsWith(IMPORT_SCHEME))
+    return requireResolve(obj.slice(IMPORT_SCHEME.length));
+  return normalizePathSep(obj);
 }
 
 export class AbsolutePath {
@@ -32,7 +55,7 @@ export class AbsolutePath {
     if (filepath.startsWith(FILE_SCHEME) || filepath.startsWith(IMPORT_SCHEME)) {
       this[PATH] = filepath;
     }
-    else if (Path.isAbsolute(filepath)) {
+    else if (isAbsolute(filepath)) {
       this[PATH] = url.pathToFileURL(filepath).toString();
     }
     else {
@@ -40,25 +63,68 @@ export class AbsolutePath {
     }
   }
 
-  public join(...paths: Array<AbsolutePath | string>) {
-    const filepath = Path.join(this.toPath(), ...paths.map(i => toPathString(i)));
-    return AbsolutePath.create(filepath);
+  public join(...paths: Array<AbsolutePath | string>): AbsolutePath {
+    const url = new URL(this[PATH]);
+    url.pathname = path.posix.join(url.pathname, ...paths.map(i => {
+      if (i instanceof AbsolutePath)
+        return new URL(i[PATH]).pathname;
+      if (typeof i === "string")
+        return i.replaceAll(path.win32.sep, path.posix.sep);
+      throw new Error(`Attempted to join to wrong type ${i} type`);
+    }));
+    return new AbsolutePath(url.toString());
   }
 
   public dirname() {
-    return AbsolutePath.create(path.posix.dirname(this[PATH]));
+    const dirname = path.posix.dirname(this[PATH]);
+    return new AbsolutePath(dirname);
   }
 
-  public basename() {
+  public basename(): string {
     return path.posix.basename(this[PATH]);
   }
 
   public relative(to: AbsolutePath | string) {
-    return Path.relative(this.toPath(), toPathString(to));
+    if (typeof to === "string")
+      to = AbsolutePath.create(to);
+
+    const leftUrl = new URL(this[PATH]);
+    const rightUrl = new URL(to[PATH]);
+
+    if (leftUrl.protocol !== rightUrl.protocol)
+        throw new Error(`Protocol ${leftUrl.protocol} did not match for ${to}`);
+
+    if (leftUrl.host !== rightUrl.host)
+        throw new Error(`Host ${leftUrl.host} did not match for ${to}`);
+
+    return path.posix.relative(leftUrl.pathname, rightUrl.pathname);
   }
 
-  public resolve(...paths: Array<AbsolutePath | string>) {
-    return AbsolutePath.create(Path.resolve(this.toPath(), ...paths.map(i => toPathString(i))));
+  public resolve(...paths: Array<AbsolutePath | string>): AbsolutePath {
+    if (paths.length === 0)
+      return this;
+
+    let rootPath: AbsolutePath = this;
+    const pathStrings: string[] = [];
+
+    for (let i = paths.length - 1; i >= 0; i--) {
+      const iter = paths[i];
+      if (iter instanceof AbsolutePath) {
+        rootPath = iter;
+        break;
+      }
+      if (AbsolutePath.isAbsolute(iter)) {
+        rootPath = AbsolutePath.create(iter);
+        break;
+      }
+      pathStrings.push(iter.replaceAll("\\", "/"));
+    }
+
+    const url = new URL(rootPath[PATH]);
+    url.pathname = path.posix.resolve(url.pathname, ...pathStrings);
+
+    return AbsolutePath.create(url.toString());
+    // return AbsolutePath.create(Path.resolve(this.toPath(), ...paths.map(i => toPathString(i))));
   }
 
   public match(regexp: RegExp) {
@@ -94,9 +160,7 @@ export class AbsolutePath {
   public static isAbsolute(filepath: AbsolutePath | string) {
     if (filepath instanceof AbsolutePath)
       return true;
-    if (filepath.startsWith(FILE_SCHEME))
-      return true;
-    return Path.isAbsolute(filepath);
+    return isAbsolute(filepath);
   }
 
   public static ensureInstance(value: any): AbsolutePath {
@@ -118,14 +182,14 @@ export class DirPath extends AbsolutePath {
     super(dirname);
   }
 
-  public static create(dirname: DirPath | AbsolutePath | string): DirPath {
+  public static create(dirname: AbsolutePath | string): DirPath {
     if (typeof dirname !== "string")
       dirname = dirname.toURLString();
     return new DirPath(dirname);
   }
 
   public static fromJSON(object: SimpleObject) {
-    return new DirPath(object.url as string);
+    return DirPath.create(object.url as string);
   }
 
   public toJSON(): SimpleObject {
@@ -141,14 +205,14 @@ export class FilePath extends AbsolutePath {
     super(filepath);
   }
 
-  public static create(filepath: FilePath | AbsolutePath | string): FilePath {
+  public static create(filepath: AbsolutePath | string): FilePath {
     if (typeof filepath !== "string")
       filepath = filepath.toURLString();
     return new FilePath(filepath);
   }
 
   public static fromJSON(object: SimpleObject) {
-    return new FilePath(object.url as string);
+    return FilePath.create(object.url as string);
   }
 
   public toJSON(): SimpleObject {

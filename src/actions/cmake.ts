@@ -20,7 +20,7 @@ export default async function(config: any, environment: any, settings: SettingsS
       DESTDIR: config.destDir,
     },
     generator: config.generator || DEFAULT_GENERATOR,
-    cacheVariables: config.cacheVariables,
+    cacheVariables: config.cacheVariables || {},
     sourceDir,
     binaryDir,
   };

@@ -7,7 +7,6 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import os from "node:os";
 import path from "node:path";
 import url from "node:url";
 
@@ -16,9 +15,6 @@ import { SimpleObject } from "@/core/SimpleObject";
 import { requireResolve } from "@/utils/Module";
 
 const PATH = Symbol("PATH");
-
-const nativeSep = os.platform() === "win32" ? path.win32.sep : path.posix.sep;
-const otherSep = os.platform() === "win32" ? path.posix.sep : path.win32.sep;
 
 function isAbsolute(filepath: string): boolean {
   if (filepath.startsWith(FILE_SCHEME))
@@ -34,33 +30,21 @@ function isAbsolute(filepath: string): boolean {
   return false;
 }
 
-function normalizePathSep(str: string) {
-  return str.replaceAll(otherSep, nativeSep);
-}
+function toURLString(str: string) {
+  if (str.startsWith(FILE_SCHEME) || str.startsWith(IMPORT_SCHEME))
+   return str;
 
-function toPathString(obj: string | AbsolutePath) {
-  if (typeof obj !== "string")
-    return obj.toPath();
-  if (obj.startsWith(FILE_SCHEME))
-    return url.fileURLToPath(obj);
-  if (obj.startsWith(IMPORT_SCHEME))
-    return requireResolve(obj.slice(IMPORT_SCHEME.length));
-  return normalizePathSep(obj);
+  if (isAbsolute(str))
+    return url.pathToFileURL(str).toString();
+  
+  throw new Error(`Not supported relative path of "${str}"`);
 }
 
 export class AbsolutePath {
   private [PATH]: string;
 
-  protected constructor(filepath: string) {
-    if (filepath.startsWith(FILE_SCHEME) || filepath.startsWith(IMPORT_SCHEME)) {
-      this[PATH] = filepath;
-    }
-    else if (isAbsolute(filepath)) {
-      this[PATH] = url.pathToFileURL(filepath).toString();
-    }
-    else {
-      throw new Error(`Not supported relative path of "${filepath}"`);
-    }
+  protected constructor(urlString: string) {
+    this[PATH] = urlString;
   }
 
   public join(...paths: Array<AbsolutePath | string>): AbsolutePath {
@@ -85,11 +69,11 @@ export class AbsolutePath {
   }
 
   public relative(to: AbsolutePath | string) {
-    if (typeof to === "string")
-      to = AbsolutePath.create(to);
+    if (to instanceof AbsolutePath)
+      to = to[PATH];
 
     const leftUrl = new URL(this[PATH]);
-    const rightUrl = new URL(to[PATH]);
+    const rightUrl = new URL(toURLString(to));
 
     if (leftUrl.protocol !== rightUrl.protocol)
         throw new Error(`Protocol ${leftUrl.protocol} did not match for ${to}`);
@@ -104,27 +88,26 @@ export class AbsolutePath {
     if (paths.length === 0)
       return this;
 
-    let rootPath: AbsolutePath = this;
+    let rootPath: string = this[PATH];
     const pathStrings: string[] = [];
 
     for (let i = paths.length - 1; i >= 0; i--) {
       const iter = paths[i];
       if (iter instanceof AbsolutePath) {
-        rootPath = iter;
+        rootPath = iter[PATH];
         break;
       }
       if (AbsolutePath.isAbsolute(iter)) {
-        rootPath = AbsolutePath.create(iter);
+        rootPath = toURLString(iter);
         break;
       }
       pathStrings.push(iter.replaceAll("\\", "/"));
     }
 
-    const url = new URL(rootPath[PATH]);
+    const url = new URL(rootPath);
     url.pathname = path.posix.resolve(url.pathname, ...pathStrings);
 
-    return AbsolutePath.create(url.toString());
-    // return AbsolutePath.create(Path.resolve(this.toPath(), ...paths.map(i => toPathString(i))));
+    return new AbsolutePath(url.toString());
   }
 
   public match(regexp: RegExp) {
@@ -173,7 +156,7 @@ export class AbsolutePath {
     if (path instanceof AbsolutePath)
       return path;
 
-    return Object.seal(new AbsolutePath(path));
+    return Object.seal(new AbsolutePath(toURLString(path)));
   }
 };
 
@@ -185,7 +168,7 @@ export class DirPath extends AbsolutePath {
   public static create(dirname: AbsolutePath | string): DirPath {
     if (typeof dirname !== "string")
       dirname = dirname.toURLString();
-    return new DirPath(dirname);
+    return new DirPath(toURLString(dirname));
   }
 
   public static fromJSON(object: SimpleObject) {
@@ -208,7 +191,7 @@ export class FilePath extends AbsolutePath {
   public static create(filepath: AbsolutePath | string): FilePath {
     if (typeof filepath !== "string")
       filepath = filepath.toURLString();
-    return new FilePath(filepath);
+    return new FilePath(toURLString(filepath));
   }
 
   public static fromJSON(object: SimpleObject) {

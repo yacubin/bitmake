@@ -7,20 +7,25 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { GlobalContext } from "@/core/GlobalContext";
+import { ProjectContext } from "@/core/ProjectContext";
 import { VariableMap } from "@/core/Scope";
-import { BaseContext } from "@/core/BaseContext";
+import { GeneralContext } from "@/core/BaseContext";
+import { createContext } from "@/core/BaseContext";
 
 const GLOBAL = Symbol("GLOBAL");
 const SCOPE = Symbol("SCOPE");
 
-export class ToolchainContext extends BaseContext {
+export class ToolchainContext extends GeneralContext {
   [SCOPE]: VariableMap;
-  [GLOBAL]: GlobalContext;
+  [GLOBAL]: ProjectContext;
 
-  constructor(global: GlobalContext, scope: VariableMap) {
-    super();
+  constructor(global: ProjectContext, scope: VariableMap) {
+    super(scope);
     this[GLOBAL] = global;
     this[SCOPE] = scope;
   }
-}
+
+  public static create(global: ProjectContext, variableMap: VariableMap) {
+    return createContext(new ToolchainContext(global, variableMap));
+  }
+};

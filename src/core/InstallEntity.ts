@@ -7,70 +7,52 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { InterfaceTarget } from "@/core/Target";
-import { DirPath, FilePath, AbsolutePath } from "@/core/Path";
-import { SystemScope } from "@/core/SystemScope";
-
-const VALUE       = Symbol("VALUE");
-const DESTINATION = Symbol("DESTINATION");
-const BASE_DIR    = Symbol("BASE_DIR");
+import { TargetName } from "@/core/TargetName";
+import { FilePath, Locator } from "@/utils/Locator";
+import { SimpleObject } from "@/core/SimpleObject";
 
 export class InstallEntity {
-  private [VALUE]: AbsolutePath | InterfaceTarget;
-  private [DESTINATION]: DirPath;
-  private [BASE_DIR]: DirPath | null;
+  private _value: FilePath | TargetName;
+  private _destination: Locator;
+  private _baseDir?: Locator;
 
-  private constructor(scope: SystemScope, value: string | AbsolutePath | InterfaceTarget, params: string | any) {
-    let destination: string | AbsolutePath | undefined;
-    let baseDir;
-    if (typeof params === "string")
-      destination = params;
-    else if (params) {
-      destination = params.destination;
-      baseDir = params.baseDir;
-    }
-  
-    if (!destination)
-      throw new Error(`Parameter destination is not specified`);
-  
-    if (baseDir)
-      baseDir = scope.SOURCE_DIR.resolve(baseDir);
-  
-    if (typeof value === "string" || value instanceof AbsolutePath) {
-      value = scope.SOURCE_DIR.resolve(value.toString()) as AbsolutePath;
-      value = FilePath.create(value);
-      baseDir = baseDir || value.dirname();
-    }
-    else if (!(value instanceof InterfaceTarget)) {
-      throw new Error(`Not supportet value of ${value}`);
-    }
-  
-    this[VALUE] = value;
-    this[DESTINATION] = DirPath.create(scope.INSTALL_PREFIX.resolve(destination.toString()).toString());
-    this[BASE_DIR] = baseDir ? DirPath.create(baseDir.toString()) : null;
-  }
-  
-  public static create(scope: any, value: string | AbsolutePath | InterfaceTarget, params: string | any) {
-    return Object.seal(new InstallEntity(scope, value, params));
+  public constructor(value: FilePath | TargetName, destination: Locator, baseDir?: Locator) {
+    this._value = value;
+    this._destination = destination;
+    this._baseDir = baseDir;
   }
 
-  public get VALUE () {
-    return this[VALUE];
+  public static create(value: FilePath | TargetName, destination: Locator, baseDir?: Locator) {
+    return new InstallEntity(value, destination, baseDir);
   }
 
-  public get DESTINATION () {
-    return this[DESTINATION];
+  public get value () {
+    return this._value;
   }
 
-  public get BASE_DIR () {
-    return this[BASE_DIR];
+  public get destination () {
+    return this._destination;
   }
 
-  public toJSON(): object {
-    return {
-      VALUE: this.VALUE,
-      DESTINATION: this.DESTINATION,
-      BASE_DIR: this.BASE_DIR,
+  public get baseDir () {
+    return this._baseDir;
+  }
+
+  public static fromJSON(json: any) {
+    const value = SimpleObject.fromJSON(json.value);
+    const destination = Locator.create(json.destination);
+    const baseDir = json.baseDir ? Locator.create(json.baseDir) : undefined;
+    return new InstallEntity(value, destination, baseDir);
+  }
+
+  public toJSON(): SimpleObject {
+    const result: SimpleObject = {
+      type: InstallEntity.name,
+      value: this._value.toJSON(),
+      destination: this._destination.toURLString(),
     };
+    if (this._baseDir)
+      result.baseDir = this._baseDir.toURLString();
+    return result;
   }
 };

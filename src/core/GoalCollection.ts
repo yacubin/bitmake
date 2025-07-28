@@ -7,56 +7,110 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { createLogger } from "@/logger";
+import { SimpleObject } from "@/core/SimpleObject";
+import { InterfaceTask } from "@/core/MakeInterfaces";
+import { Logger } from "@/logger";
+import { Locator } from "@/utils/Locator";
 
-const logger = createLogger(import.meta.url);
+const logger = Logger.create(import.meta.url);
 
-const ENTRIES = Symbol("ENTRIES");
+export class GoalTarget {
+  private _message: string | undefined;
+  private _name: string | undefined;
+  private _output: string | undefined;
+  private _depends = new Array<string>;
+  private _tasks = new Array<InterfaceTask>;
 
-export interface GoalWorker {
-  doWork(): Promise<void>;
-  updateProgress(event: { loaded: number, total: number }): void;
+  constructor(name?: string) {
+    this._name = name;
+  }
 
-  get name(): string | undefined;
-  get output(): string | undefined;
-  get depends(): string[];
+  get message(): string | undefined {
+    return this._message;
+  }
+
+  set message(value: string) {
+    this._message = value;
+  }
+
+  get name(): string | undefined {
+    return this._name;
+  }
+
+  get output(): string | undefined {
+    return this._output;
+  }
+
+  set output(value: Locator) {
+    this._output = value.toPath();
+  }
+
+  get depends(): string[] {
+    return this._depends;
+  }
+
+  public addDependency(...value: string[]) {
+    this._depends.push(...value);
+  }
+
+  public addTask(task: InterfaceTask) {
+    this._tasks.push(task);
+  }
+
+  async doWork(): Promise<void> {
+    for (const task of this._tasks) {
+      const res = task.execute();
+      if (res instanceof Promise)
+        await res;
+    }
+  }
+
+  public toJSON(): SimpleObject {
+    const json: any = {
+      type: GoalTarget.name,
+      depends: this._depends,
+      tasks: this._tasks,
+    };
+    if (this._message) {
+      json.message = this._message;
+    }
+    if (this._name) {
+      json.name = this._name;
+    }
+    if (this._output) {
+      json.output = this._output;
+    }
+    return json;
+  }
 };
 
 export class GoalCollection {
-  private [ENTRIES]: Array<GoalWorker>;
-
-  private constructor() {
-    this[ENTRIES] = new Array<GoalWorker>;
-  }
+  private _entries = new Array<GoalTarget>;
 
   public get ENTRIES() {
-    return this[ENTRIES];
+    return this._entries;
   }
 
-  public static create() {
-    return Object.seal(new GoalCollection);
+  public addTarget(ge: GoalTarget) {
+    if (ge.name && this._entries.find((i) => i.name === ge.name))
+      throw new Error(`Nmae "${ge.name}" exists`);
+    if (ge.output && this._entries.find((i) => i.output === ge.output))
+      throw new Error(`Output "${ge.output}" exists`);
+    this._entries.push(ge);
   }
 
-  public add(worker: GoalWorker) {
-    if (worker.name && this[ENTRIES].find((i) => i.name === worker.name))
-      throw new Error(`Nmae "${worker.name}" exists`);
-    if (worker.output && this[ENTRIES].find((i) => i.output === worker.output))
-      throw new Error(`Output "${worker.output}" exists`);
-    this[ENTRIES].push(worker);
-  }
-
-  public getTarget(name: string): GoalWorker | undefined {
+  public getTarget(name: string): GoalTarget | undefined {
     if (!name)
       return undefined;
-    return this[ENTRIES].find((i) => i.name === name);
+    return this._entries.find((i) => i.name === name);
   }
 
-  private addTargetListImpl(name: string, result: Array<GoalWorker>) {
+  private addTargetListImpl(name: string, result: Array<GoalTarget>) {
     if (result.find(i => i.name === name || i.output === name)) {
       return;
     }
 
-    const goal = this[ENTRIES].find(i => i.name === name || (i.output === name));
+    const goal = this._entries.find(i => i.name === name || i.output === name);
     if (!goal) {
       return;
     }
@@ -69,12 +123,15 @@ export class GoalCollection {
   }
   
   public getTargetList(name:string) {
-    const result = new Array<GoalWorker>;
+    const result = new Array<GoalTarget>;
     this.addTargetListImpl(name, result);
     return result;
   }
   
   public toJSON() {
-    return this[ENTRIES];
+    return {
+      type: GoalCollection.name,
+      entries: this._entries,
+    };
   }
 };

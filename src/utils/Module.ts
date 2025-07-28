@@ -7,8 +7,12 @@
  * under the MIT License. See LICENSE file for details.
  */
 
+export { isEntryPoint } from "./ImportModule.mjs";
 export { importModule } from "./ImportModule.mjs";
+export { currentScriptURL } from "./ImportModule.mjs";
+
 export const requireSync = eval("require") as NodeJS.Require;
+
 export function requireResolve(name: string) {
   if (typeof import.meta.resolve === 'function')
     return import.meta.resolve(name);
@@ -16,4 +20,3 @@ export function requireResolve(name: string) {
     return requireSync.resolve(name);
   throw new Error("No compatible module resolver found");
 }
-

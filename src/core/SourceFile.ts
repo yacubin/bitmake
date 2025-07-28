@@ -7,101 +7,107 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { ensureBoolean } from "@/utils/StrictType";
-import { AbsolutePath } from "@/core/Path";
-
-const LANGUAGE            = Symbol("LANGUAGE");
-const HEADER_FILE_ONLY    = Symbol("HEADER_FILE_ONLY");
-const DEFINES             = Symbol("DEFINES");
-const COMPILE_FLAGS       = Symbol("COMPILE_FLAGS");
-const FILE                = Symbol("FILE");
-const BASE_DIR            = Symbol("BASE_DIR");
-const OBJECT_FILE         = Symbol("OBJECT_FILE");
+import { Locator } from "@/utils/Locator";
+import { SimpleObject } from "@/core/SimpleObject";
 
 export class SourceFile {
-  private [LANGUAGE]: string;
-  private [HEADER_FILE_ONLY]: boolean;
-  private [FILE]: AbsolutePath;
-  private [BASE_DIR]: AbsolutePath;
-  private [OBJECT_FILE]: AbsolutePath | null;
-  private [DEFINES]: string[];
-  private [COMPILE_FLAGS]: Array<string|string[]>;
+  private _filename: Locator;
+  private _baseDir: Locator;
+  
+  private _headerOnly: boolean;
 
-  private constructor(filename: AbsolutePath, baseDir: AbsolutePath, language: string, compileFlags: Array<string|string[]>) {
-    this[FILE] = filename;
-    this[BASE_DIR] = baseDir;
-    this[LANGUAGE] = language;
-    this[HEADER_FILE_ONLY] = !language;
-    this[OBJECT_FILE] = null;
-    this[DEFINES] = [];
-    this[COMPILE_FLAGS] = [ ...compileFlags ];
+  private _language: string;
+  private _definitions: string[];
+  private _compilerPath: string;
+  private _compilerOptions: Array<string | string[]>;
+
+  private constructor(filename: Locator, baseDir: Locator, headerOnly: boolean, language: string, compilerPath: string, compilerOptions: Array<string | string[]>) {
+    this._filename = filename;
+    this._baseDir = baseDir;
+
+    this._headerOnly = headerOnly;
+
+    this._language = language;
+    this._definitions = [];
+    this._compilerPath = compilerPath;
+    this._compilerOptions = [ ...compilerOptions ];
   }
 
-  public static create(filename: AbsolutePath, baseDir: AbsolutePath, language: string, compileFlags: Array<string|string[]>) {
-    return Object.seal(new SourceFile(filename, baseDir, language, compileFlags));
+  public static create(filename: Locator, baseDir: Locator, headerOnly: boolean, language: string, compilerPath: string, compilerOptions: Array<string | string[]>) {
+    return new SourceFile(filename, baseDir, headerOnly, language, compilerPath, compilerOptions);
   }
 
   public get LANGUAGE(): string {
-    return this[LANGUAGE];
+    return this._language;
   }
 
   public get HEADER_FILE_ONLY(): boolean {
-    return this[HEADER_FILE_ONLY];
+    return this._headerOnly;
   }
 
-  public set HEADER_FILE_ONLY(value: boolean) {
-    this[HEADER_FILE_ONLY] = ensureBoolean(value);
+  public get DEFINES(): string[] {
+    return this._definitions;
   }
 
-  public get DEFINES() {
-    return this[DEFINES]
+  public addDefinition(definition: string) {
+    this._definitions.push(definition);
   }
 
-  public get COMPILE_FLAGS() {
-    return this[COMPILE_FLAGS];
+  public addCompileOption(option: string | [ string, string ]): void {
+    this._compilerOptions.push(option);
   }
 
-  public get FILE(): AbsolutePath {
-    return this[FILE];
+  public get COMPILE_PATH(): string {
+    return this._compilerPath;
   }
 
-  public get FILE_DIR(): AbsolutePath {
-    return this[FILE].dirname();
+  public get COMPILE_FLAGS(): Array<string | string[]> {
+    return this._compilerOptions;
+  }
+
+  public get FILE(): Locator {
+    return this._filename;
+  }
+
+  public get FILE_DIR(): Locator {
+    return this._filename.dirname();
   }
 
   public get FILE_NAME(): string {
-    return this[FILE].basename();
+    return this._filename.basename();
   }
 
-  public get OBJECT_FILE(): AbsolutePath | null {
-    return this[OBJECT_FILE];
+  public static fromJSON(json: any): SourceFile {
+    const filename = Locator.create(json.filename);
+    const baseDir = Locator.create(json.baseDir);
+    const headerOnly = json.headerOnly || false;
+    const language = json.language || "";
+    const compilerPath = json.compilerPath || "";
+    const compilerOptions = json.compilerOptions || [];
+    const result = new SourceFile(filename, baseDir, headerOnly, language, compilerPath, compilerOptions);
+    if (json.definitions)
+      result._definitions = Array.from(json.definitions);
+    return result;
   }
 
-  public set OBJECT_FILE(value: AbsolutePath) {
-    this[OBJECT_FILE] = value;
-  }
-
-  public get OBJECT_FILE_DIR(): AbsolutePath | null {
-    return this[OBJECT_FILE] ? this[OBJECT_FILE].dirname() : null;
-  }
-
-  public get OBJECT_FILE_NAME(): string | null {
-    return this[OBJECT_FILE] ? this[OBJECT_FILE].basename() : null;
-  }
-
-  public toJSON(): object {
-    return {
-      LANGUAGE: this[LANGUAGE],
-      HEADER_FILE_ONLY: this[HEADER_FILE_ONLY],
-      DEFINES: this[DEFINES],
-      COMPILE_FLAGS: this[COMPILE_FLAGS],
-      FILE: this[FILE],
-      FILE_DIR: this.FILE_DIR,
-      FILE_NAME: this.FILE_NAME,
-      BASE_DIR: this[BASE_DIR],
-      OBJECT_FILE: this[OBJECT_FILE],
-      OBJECT_FILE_DIR: this.OBJECT_FILE_DIR,
-      OBJECT_FILE_NAME: this.OBJECT_FILE_NAME,
+  public toJSON(): SimpleObject {
+    const json: SimpleObject = {
+      type: SourceFile.name,
+      filename: this._filename.toURLString(),
+      baseDir: this._baseDir.toURLString(),
     };
+    if (this._headerOnly)
+      json.headerOnly = true;
+    else {
+      if (this._language)
+        json.language = this._language;
+      if (this._compilerPath)
+        json.compilerPath = this._compilerPath;
+      if (this._definitions.length)
+        json.definitions = [ ...this._definitions ];
+      if (this._compilerOptions.length)
+        json.compilerOptions = [ ...this._compilerOptions ];
+    }
+    return json;
   }
 }

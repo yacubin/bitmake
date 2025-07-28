@@ -15,7 +15,7 @@ import { CMakeProcess, CTestProcess, ScriptModeOptions, getProjectInfo } from "@
 import { spawnAsync } from "@/utils/ChildProcess";
 import { requestGet, downloadFile } from "@/utils/HttpRequest";
 import { Path } from "@/utils/Path";
-import commands from "@/commands";
+import { runScript } from "@/app/RunScript";
 
 export default {
   cxx,
@@ -28,7 +28,6 @@ export default {
     ctest: (args: any) => CTestProcess.getInstance().ctest(args),
     getProjectInfo,
   },
-  commands,
   process: {
     spawn: spawnAsync,
   },
@@ -38,3 +37,5 @@ export default {
   },
   path: Path,
 };
+
+runScript();

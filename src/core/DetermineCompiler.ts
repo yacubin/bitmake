@@ -9,14 +9,22 @@
 
 import { findProgram } from "@/core/FindProgram";
 import { SystemScope } from "@/core/SystemScope";
-import { createLogger } from "@/logger";
+import { clang } from "@/clang/index";
+import { Logger } from "@/logger";
 
-const logger = createLogger(import.meta.url);
+const logger = Logger.create(import.meta.url);
 
 export async function determineCompiler(scope: SystemScope) {
   const clangPath = await findProgram("clang");
   if (clangPath) {
-    logger.info("The C compiler identification is Clang a.b.c");
+    let version = "Unknown";
+    try {
+      version = await clang.readVersion(clangPath);
+    }
+    catch (e) {
+      logger.error("Cannot read version from", clangPath);
+    }
+    logger.info("The C compiler identification is Clang", version);
     scope.ASM_COMPILER = "clang";
     scope.C_COMPILER = "clang";
     scope.CXX_COMPILER = "clang++";

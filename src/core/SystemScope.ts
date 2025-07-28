@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { DirPath, AbsolutePath } from "@/core/Path";
+import { Locator } from "@/utils/Locator";
 
 export interface SystemScope {
   // Defines the target OS for the build, used in cross-compilation and native builds
@@ -29,40 +29,43 @@ export interface SystemScope {
   PROJECT_HOMEPAGE_URL: string;
 
   // Absolute path to the top-level source directory of the project
-  PROJECT_SOURCE_DIR: DirPath;
+  PROJECT_SOURCE_DIR: Locator;
 
   // Absolute path to the top-level build (binary) directory of the project
-  PROJECT_BINARY_DIR: DirPath;
+  PROJECT_BINARY_DIR: Locator;
+
+  // Module name of the current MakeScript
+  SCRIPT_MODULE: string;
 
   // Full path to the current MakeScript file being processed
-  SCRIPT_FILE: AbsolutePath;
+  SCRIPT_FILE: Locator;
 
   // Directory of the current MakeScript file being processed
-  SCRIPT_DIR: AbsolutePath;
+  SCRIPT_DIR: Locator;
 
   // Filename of project manifest containing metadata and dependencies
-  PACKAGE_FILE: AbsolutePath;
+  PACKAGE_FILE: Locator;
 
   // Default filename of the BitMake cache storing settings
-  CACHE_FILE: AbsolutePath;
+  CACHE_FILE: Locator;
 
   // Specifies the path to a toolchain file used for cross-compilation
-  TOOLCHAIN_FILE: string;
+  TOOLCHAIN_FILE: Locator;
 
   // Specifies the build configuration for controlling optimization levels and debug information in the build process
   BUILD_TYPE: "Debug" | "Release";
 
   // The root directory where files will be installed by default
-  INSTALL_PREFIX: AbsolutePath;
+  INSTALL_PREFIX: Locator;
   
   // Temporary installation root
-  DESTDIR?: AbsolutePath;
+  DESTDIR?: Locator;
 
   // Path to the source directory currently being processed
-  SOURCE_DIR: AbsolutePath;
+  SOURCE_DIR: Locator;
 
   // Path to the binary directory currently being processed
-  BINARY_DIR: AbsolutePath;
+  BINARY_DIR: Locator;
 
   // Enables Position-Independent Code (PIC) for building shared libraries
   POSITION_INDEPENDENT_CODE: boolean;
@@ -74,7 +77,7 @@ export interface SystemScope {
   HOST_SYSTEM_NAME: string;
 
   // Paths searched for header files
-  INCLUDES: Array<DirPath>;
+  INCLUDES: Array<Locator>;
 
   // Path to the assembler compiler detected
   ASM_COMPILER: string;
@@ -167,10 +170,10 @@ export interface SystemScope {
   EXE_LINKER_FLAGS: string[];
 
   // Filename for JSON of the Global context
-  GLOBAL_CONTEXT_JSON: AbsolutePath;
+  GLOBAL_CONTEXT_JSON: Locator;
 
   // Filename for JSON of the Target Goals
-  TARGET_GOALS_JSON: AbsolutePath;
+  TARGET_GOALS_JSON: Locator;
 
   // Defines the size (in bytes) of a void pointer on the target architecture
   SIZEOF_VOID_P: 4 | 8;

@@ -128,10 +128,22 @@ export function getURLString(str: string) {
   return str;
 }
 
+export function resolveURLString(str: string) {
+  if (str.startsWith(IMPORT_SCHEME))
+    return requireResolve(str.slice(IMPORT_SCHEME.length));
+  return isURL(str) ? str : url.pathToFileURL(str);
+}
+
 export async function fetchBuffer(str: string): Promise<Buffer> {
   if (str.startsWith(HTTP_SCHEME) || str.startsWith(HTTPS_SCHEME)) {
     const response = await fetch(str);
     return Buffer.from(await response.arrayBuffer());
   }
   return await fs.promises.readFile(getURLString(str));
+}
+
+export async function saveAsJSON(filename: string, value: any, options?: { pretty: boolean }) {
+  const content = JSON.stringify(value, null, options && options.pretty ? 2 : 0);
+  await fs.promises.mkdir(path.dirname(filename), { recursive: true });
+  await fs.promises.writeFile(filename, content, { encoding: "utf8" });
 }

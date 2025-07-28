@@ -10,32 +10,40 @@
 import fs from "node:fs";
 
 import { Path } from "@/utils/Path";
+import { MakeServer } from "@/server/MakeServer";
 import { PluginContext } from "@/core/PluginContext";
-import { GlobalContext } from "@/core/GlobalContext";
 import { ScopeHelper } from "@/core/Scope";
 import { ToolchainContext } from "@/core/ToolchainContext";
-import { getPathString, getURLString }  from "@/utils/FileSystem";
-import { AbsolutePath, DirPath, FilePath } from "@/core/Path";
+import { getPathString, saveAsJSON }  from "@/utils/FileSystem";
+import { Locator } from "@/utils/Locator";
 import { importModule }  from "@/utils/Module";
 import { determineCompiler }  from "@/core/DetermineCompiler";
 import { SettingsStorage } from "@/utils/SettingsStorage";
 import { IMPORT_SCHEME } from "@/utils/UrlScheme";
 import { INSTALL_TARGET, PACKAGE_JSON, MAKE_CACHE } from "@/Constants";
+import { SYSTEM_VARIABLE_GROUP } from "@/Constants";
 import { requireResolve } from "@/utils/Module";
-import { createLogger } from "@/logger";
+import { SystemScope } from "@/core/SystemScope";
+import SystemVariables from "@/core/SystemVariables";
+import { Logger } from "@/logger";
 
-const logger = createLogger(import.meta.url);
+const logger = Logger.create(import.meta.url);
 
 export default async function(config: any, environment: any, settings: SettingsStorage) {
   process.env = environment;
 
-  const scope = ScopeHelper.create(config.variables);
+  const server = new MakeServer;
+
+  const variableMap = server.rootVariableMap;
+  ScopeHelper.extendVariableMapByValues(variableMap, "", config.variables);
+  ScopeHelper.defineVariablesInVariableMap(variableMap, SYSTEM_VARIABLE_GROUP, SystemVariables);
+  const scope = ScopeHelper.createProxy(variableMap) as SystemScope;
 
   const sourceDir = getPathString(config.sourceDir);
   const binaryDir = getPathString(config.binaryDir);
 
-  scope.PROJECT_SOURCE_DIR = DirPath.create(sourceDir);
-  scope.PROJECT_BINARY_DIR = DirPath.create(binaryDir);
+  scope.PROJECT_SOURCE_DIR = Locator.create(sourceDir);
+  scope.PROJECT_BINARY_DIR = Locator.create(binaryDir);
 
   scope.PACKAGE_FILE = scope.PROJECT_SOURCE_DIR.join(PACKAGE_JSON);
   scope.CACHE_FILE = scope.PROJECT_BINARY_DIR.join(MAKE_CACHE);
@@ -54,27 +62,10 @@ export default async function(config: any, environment: any, settings: SettingsS
   if (config.destDir)
     scope.DESTDIR = config.destDir;
 
-  const global = GlobalContext.create();
-  if (scope.TOOLCHAIN_FILE) {
-    const toolchainUrl = getURLString(scope.TOOLCHAIN_FILE.toString());
-    const toolchain = await importModule(toolchainUrl);
-    if (!toolchain.default)
-      throw new Error("Toolchain module has no default export");
-    const variableMap = ScopeHelper.getVariableMap(scope);
-    const ctx = new ToolchainContext(global, variableMap);
-    const mk = ScopeHelper.createProxy(ScopeHelper.getVariableMap(scope), ctx);
-    const result = toolchain.default(mk);
-    if (result instanceof Promise)
-      await result;
-  }
-  else {
-    await determineCompiler(scope);
-  }
-
   for (const plugin of (scope.MAKE_PLUGIN_LIST || [])) {
     const cwdSave = process.cwd();
 
-    scope.SCRIPT_FILE = FilePath.create(plugin);
+    scope.SCRIPT_FILE = Locator.create(plugin);
     scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
     scope.SOURCE_DIR = scope.SCRIPT_DIR;
 
@@ -83,16 +74,14 @@ export default async function(config: any, environment: any, settings: SettingsS
     const binaryDir = (binaryDir2.length < binaryDir1.length ? binaryDir2 : binaryDir1).replace("../", "__/");
     scope.BINARY_DIR = scope.PROJECT_BINARY_DIR.join("MakePluginBinaries", binaryDir);
 
-    process.chdir(scope.SOURCE_DIR.toString());
-    const pluginUrl = getURLString(scope.SCRIPT_FILE.toString());
+    process.chdir(scope.SOURCE_DIR.toPath());
+    const pluginUrl = scope.SCRIPT_FILE.toURLString();
     const module = await importModule(pluginUrl);
     
     if (!module.default)
       throw new Error(`Plugin ${scope.SCRIPT_FILE.basename()} not contain default export`);
 
-    const variableMap = ScopeHelper.getVariableMap(scope);
-    const ctx = new PluginContext(global, variableMap);
-    const mk = ScopeHelper.createProxy(ScopeHelper.getVariableMap(scope), ctx);
+    const mk = PluginContext.create(server.project, variableMap);
     if (typeof module.default !== "function")
       throw new Error(`Plugin ${scope.SCRIPT_FILE.basename()} export has no function or class`);
     let result: any;
@@ -111,39 +100,65 @@ export default async function(config: any, environment: any, settings: SettingsS
     process.chdir(cwdSave);
   }
 
+  if (scope.TOOLCHAIN_FILE) {
+    const toolchainUrl = scope.TOOLCHAIN_FILE.toURLString();
+    const toolchain = await importModule(toolchainUrl);
+    if (!toolchain.default)
+      throw new Error("Toolchain module has no default export");
+    const mk = ToolchainContext.create(server.project, variableMap);
+    const result = toolchain.default(mk);
+    if (result instanceof Promise)
+      await result;
+  }
+  else {
+    await determineCompiler(scope);
+  }
+
   if (config.sourceUrl && config.sourceUrl.startsWith(IMPORT_SCHEME)) {
     const scriptFile = requireResolve(config.sourceUrl.slice(IMPORT_SCHEME.length));
-    scope.SCRIPT_FILE = AbsolutePath.create(scriptFile);
+    scope.SCRIPT_FILE = Locator.create(scriptFile);
     scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
   }
 
-  global.addSubdirectory(ScopeHelper.getVariableMap(scope), "work", scope.PROJECT_SOURCE_DIR, scope.PROJECT_BINARY_DIR);
+  server.addEventListener("configure", async (event) => {
+    logger.info("Configuring done");
 
-  await global.doSubdirectory();
-  logger.info("Configuring done");
+    if (scope.GLOBAL_CONTEXT_JSON) {
+      await saveAsJSON(scope.GLOBAL_CONTEXT_JSON.toPath(), server.project, { pretty: true });
+    }
 
-  if (scope.GLOBAL_CONTEXT_JSON) {
-    const filename = scope.GLOBAL_CONTEXT_JSON.toString();
-    const content = JSON.stringify(global, null, 2);
-    await fs.promises.mkdir(Path.dirname(filename), { recursive: true });
-    await fs.promises.writeFile(filename, content, { encoding: "utf8" });
-  }
+    const allGoalList = server.project.createGoals(scope);
+    const goalList = allGoalList.getTargetList(INSTALL_TARGET);
 
-  const allGoalList = global.createGoals(scope);
-  const goalList = allGoalList.getTargetList(INSTALL_TARGET);
+    if (scope.TARGET_GOALS_JSON) {
+      await saveAsJSON(scope.TARGET_GOALS_JSON.toPath(), goalList, { pretty: true });
+    }
 
-  if (scope.TARGET_GOALS_JSON) {
-    const filename = scope.TARGET_GOALS_JSON.toString();
-    const content = JSON.stringify(goalList, null, 2);
-    await fs.promises.mkdir(Path.dirname(filename), { recursive: true });
-    await fs.promises.writeFile(filename, content, { encoding: "utf8" });
-  }
+    let loaded = 0;
+    const total = goalList.length;
+    for (const iter of goalList) {
+      if (iter.output) {
+        const outputDir = Path.dirname(iter.output);
+        await fs.promises.mkdir(outputDir, { recursive: true });
+      }
+      if (iter.message) {
+        const relationOfLength = Math.round(((loaded + 1) / total) * 100);
+        const percent = "[" + relationOfLength.toString().padStart(3, " ") + "%] ";
+        logger.notice(percent + iter.message);
+      }
+      await iter.doWork();
+      loaded++;
+    }
+  });
 
-  let loaded = 0;
-  const total = goalList.length;
-  for (const goal of goalList) {
-    goal.updateProgress({ loaded, total });
-    await goal.doWork();
-    loaded++;
-  }
+  let finishResolve: () => void;
+  const result = new Promise<void>((resolve) => {
+    finishResolve = resolve;
+  });
+
+  server.addEventListener("build", (event) => finishResolve());
+
+  server.start();
+
+  return result;
 }

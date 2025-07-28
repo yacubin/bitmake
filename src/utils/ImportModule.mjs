@@ -7,4 +7,22 @@
  * under the MIT License. See LICENSE file for details.
  */
 
+import url from "node:url";
+
 export const importModule = async (name) => import(/* webpackIgnore: true */ name);
+
+export function isEntryPoint() {
+  // if (Object(import.meta).url)
+  //   return url.fileURLToPath(Object(import.meta).url) === process.argv[1];
+  if (typeof require !== 'undefined')
+    return require.main === module;
+  throw new Error("No compatible module resolver found");
+}
+
+export function currentScriptURL() {
+  // if (Object(import.meta).url)
+  //   return url.fileURLToPath(Object(import.meta).url);
+  if (typeof require !== 'undefined')
+    return url.pathToFileURL(/* webpackIgnore: true */ __filename);
+  throw new Error("Unknown current filename");
+}

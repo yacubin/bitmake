@@ -7,377 +7,616 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { ensureString } from "@/utils/StrictType";
 import { SourceFile } from "@/core/SourceFile";
-import { SourceFileList } from "@/core/SourceFileList";
-import { InterfaceIncludes } from "@/core/InterfaceIncludes";
-import { InterfaceObjects } from "@/core/InterfaceObjects";
-import { AbsolutePath, FilePath } from "@/core/Path";
-import { ScopeHelper, VariableMap } from "@/core/Scope";
-import { SystemScope } from "@/core/SystemScope";
-import { TargetStruct, TargetType, LiveString } from "@/core/TargetStruct";
+import { TargetName } from "@/core/TargetName";
+import { TargetFile } from "@/core/TargetFile";
+import { TargetIncludes } from "@/core/TargetIncludes";
+import { TargetObjects } from "@/core/TargetObjects";
+import { DirPath, Locator } from "@/utils/Locator";
+import { SimpleObject } from "./SimpleObject";
+import { Logger } from "@/logger";
 
-const _languageExtensions = {
-  ASM: [ ".asm", ".s" ],
-  C:   [ ".c" ],
-  CXX: [".cpp", ".cc", ".cxx" ],
+const logger = Logger.create(import.meta.url);
+
+export interface TargetCommand {
+  command: string | TargetFile;
+  args: Array<string | TargetFile>;
 };
 
-function isSupportLanguage(language: string) {
-  return _languageExtensions.hasOwnProperty(language);
-}
+interface TargetElement<T> {
+  value: T;
+  isPublic?: boolean;
+};
 
-function getFileLanguage(filename: string) {
-  const filenameLowerCase = filename.toLowerCase();
-  for (const [language, extensions] of Object.entries(_languageExtensions)) {
-    for (const iter of extensions) {
-      if (filenameLowerCase.endsWith(iter))
-        return language;
+class TargetElements<T> {
+  private _list = new Array<TargetElement<T>>;
+
+  public add(value: T, isPublic?: boolean) {
+    this._list.push({value, isPublic});
+  }
+
+  public concat(other: TargetElements<T>) {
+    const result = new TargetElements<T>;
+    for (const iter of this._list)
+      result._list.push(iter);
+    for (const iter of other._list)
+      result._list.push(iter);
+    return result;
+  }
+
+  public getAllValues(): T[] {
+    return this._list.map(i => i.value);
+  }
+
+  public getPublicValues() {
+    return this._list.filter(i => i.isPublic).map(i => i.value);
+  }
+
+  public static fromJSON<U>(json: any[]) {
+    const result = new TargetElements<U>;
+    for (const iter of json) {
+      let isPublic = false;
+      let value = iter.private;
+      if (!value) {
+        value = iter.public;
+        isPublic = true;
+      }
+      value = SimpleObject.fromJSON(value);
+      result._list.push({value, isPublic});
     }
-  }
-  return "";
-}
-
-function makeLanguage(value: string) {
-  if (isSupportLanguage(value))
-    return value;
-  throw new Error(`Language "${value}" is not supported`);
-}
-
-function createSources(scope: SystemScope, source: any): InterfaceObjects | SourceFile {
-  if (source instanceof InterfaceObjects || source instanceof SourceFile)
-    return source;
-
-  if (typeof source === "string" || AbsolutePath.isAbsolute(source)) {
-    const filename = scope.SOURCE_DIR.resolve(source);
-    const language = getFileLanguage(filename.toString());
-    const compileFlags = !language ? [] : [
-      ...(scope as any)[language + "_FLAGS"],
-      ...(scope as any)[language + "_FLAGS_" + scope.BUILD_TYPE.toUpperCase()],
-    ];
-    return SourceFile.create(filename, scope.SOURCE_DIR, language, compileFlags);
-  }
-  
-  throw new Error(`Not support instance ${source}`);
-}
-
-function getSourceFiles(impl: TargetStruct, scope: SystemScope, ...sources: any[]): SourceFileList {
-  const result = [];
-  const sourceFiles = impl.getSourceFiles();
-  for (const it of sources.flat()) {
-    const filename = scope.SOURCE_DIR.resolve(it).toString();
-    const src = sourceFiles.find(i => i.FILE.toString() === filename);
-    if (!src)
-      throw new Error(`Cannot find "${it}"`);
-    result.push(src);
+    return result;
   }
 
-  if (result.length)
-    return SourceFileList.create(scope, result);
-
-  return SourceFileList.create(scope, sourceFiles);
-}
-
-const IMPL                = Symbol("IMPL");
-const TARGET_SCOPE        = Symbol("TARGET_SCOPE");
-
-export class InterfaceTarget {
-  private [IMPL]: TargetStruct;
-  private [TARGET_SCOPE]: SystemScope;
-
-  private constructor(impl: TargetStruct, variableMap: VariableMap) {
-    this[IMPL] = impl;
-    this[TARGET_SCOPE] = ScopeHelper.createVariableValues(variableMap) as SystemScope;
-  }
-
-  public static create(impl: TargetStruct, variableMap: VariableMap) {
-    return Object.seal(new InterfaceTarget(impl, variableMap));
-  }
-
-  public static ensureInstance(value: any) {
-    if (value instanceof InterfaceTarget)
-      return value;
-    throw new Error(`The '${value}' is not a InterfaceTarget`);
-  }
-
-  public get targetName(): string {
-    return this[IMPL].name;
-  }
-
-  public get includes(): InterfaceIncludes {
-    return InterfaceIncludes.create(this.targetName);
-  }
-
-  public get objects(): InterfaceObjects {
-    return InterfaceObjects.create(this.targetName);
-  }
-
-  public setPrefix(prefix: any) {
-    this[IMPL].targetFile.setForcePrefix(ensureString(prefix));
-  }
-
-  public setSuffix(suffix: any) {
-    this[IMPL].targetFile.setForceSuffix(ensureString(suffix));
-  }
-
-  public setOutputName(outputName: any) {
-    this[IMPL].targetFile.setForceOutputName(ensureString(outputName));
-  }
-
-  public toJSON(): string {
-    return this.toString();
-  }
-
-  public toString(): string {
-    return "${" + this.targetName + "}";
-  }
-
-  public addSources(...sources: Array<InterfaceObjects | SourceFile | AbsolutePath | string>): void {
-    for (let it of sources.flat()) {
-      this[IMPL].addSource("indirectly", false, createSources(this[TARGET_SCOPE], it));
+  public toJSON() {
+    const result: any = [];
+    for (const iter of this._list) {
+      const name = iter.isPublic ? "public" : "private";
+      const value = SimpleObject.toJSON(iter.value);
+      result.push({ [name] : value });
     }
-  }
-
-  public addIncludes(...includes: any): void {
-    this[IMPL].addIncludes("indirectly", false, this[TARGET_SCOPE].SOURCE_DIR, ...includes);
-  }
-
-  public addPublicIncludes(...includes: Array<InterfaceIncludes|AbsolutePath|string>): void {
-    this[IMPL].addIncludes("indirectly", true, this[TARGET_SCOPE].SOURCE_DIR, ...includes);
-  }
-
-  public addDefinitions(...definitions: any): void {
-    this[IMPL].addDefinitions("indirectly", false, ...definitions);
-  }
-
-  public addPublicDefinitions(...definitions: any): void {
-    this[IMPL].addDefinitions("indirectly", true, ...definitions);
-  }
-
-  public addCompileOptions(...options: Array<string|string[]>): void {
-    this[IMPL].addCompileOptions("indirectly", false, ...options);
-  }
-
-  public addPublicCompileOptions(...options: string[]): void {
-    this[IMPL].addCompileOptions("indirectly", true, ...options);
-  }
-
-  public addLinkOptions(...options: Array<string|string[]>): void {
-    this[IMPL].addLinkOptions("indirectly", false, ...options);
-  }
-
-  public addPublicLinkOptions(...options: string[]): void {
-    this[IMPL].addLinkOptions("indirectly", true, ...options);
-  }
-
-  public getSourceFiles(...sources: any[]): SourceFileList {
-    return getSourceFiles(this[IMPL], this[TARGET_SCOPE], ...sources);
+    return result;
   }
 };
 
-export class BaseTarget {
-  private [IMPL]: TargetStruct;
-  private [TARGET_SCOPE]: SystemScope;
+export abstract class BaseTarget {
+  protected _name: string;
+  protected _includes = new TargetElements<DirPath | TargetIncludes>;
+  protected _definitions = new TargetElements<string>;
+  protected _compileOptions = new TargetElements<string | string[]>;
+  protected _linkOptions = new TargetElements<string | string[]>;
+  protected _libraries = new TargetElements<TargetName>;
+  protected _sources = new Array<TargetObjects | SourceFile>;
+  protected _preBuildList = new Array<TargetCommand>;
+  protected _postBuildList = new Array<TargetCommand>;
+  protected _language = "";
+  protected _compilerPath = "";
+  protected _compilerFlags = new Array<string>;
 
-  protected constructor(impl: TargetStruct, variableMap: VariableMap) {
-    this[IMPL] = impl;
-
-    const scope = ScopeHelper.createVariableValues(variableMap) as SystemScope;
-    const targetFile = impl.targetFile;
-    targetFile.fileDir = scope.BINARY_DIR;
-    targetFile.setInitOutputName(impl.name);
-
-    this[IMPL].addIncludes("initialize", false, scope.SOURCE_DIR, ...scope.INCLUDES);
-    this[IMPL].positionIndependentCode = scope.POSITION_INDEPENDENT_CODE;
-
-    this[TARGET_SCOPE] = scope;
+  protected constructor(name: string) {
+    this._name = name;
   }
+
+  abstract setPrefix(value: string) : void;
+  abstract setOutputName(value: any) : void;
+  abstract setSuffix(value: string) : void;
+  abstract setPositionIndependentCode(value: boolean) : void;
 
   public get targetName() {
-    return this[IMPL].name;
+    return this._name;
   }
 
-  public get includes(): InterfaceIncludes {
-    return InterfaceIncludes.create(this.targetName);
+  public get name() { // DELME
+    return this._name;
   }
 
-  public get objects(): InterfaceObjects {
-    return InterfaceObjects.create(this.targetName);
+  public get includes(): TargetIncludes {
+    return TargetIncludes.create(this._name);
   }
 
-  public setPrefix(prefix: any) {
-    this[IMPL].targetFile.setTargetPrefix(ensureString(prefix));
+  public get objects(): TargetObjects {
+    return TargetObjects.create(this._name);
   }
 
-  public setSuffix(suffix: any) {
-    this[IMPL].targetFile.setTargetSuffix(ensureString(suffix));
+  public get targetFile(): TargetFile {
+    return TargetFile.create(this._name);
   }
 
-  public setOutputName(outputName: any) {
-    this[IMPL].targetFile.setTargetOutputName(ensureString(outputName));
+  public getIncludes(): Array<DirPath | TargetIncludes> {
+    return this._includes.getAllValues();
   }
 
-  public get TARGET_SCOPE() {
-    return this[TARGET_SCOPE];
+  public getPublicIncludes(): Array<DirPath | TargetIncludes> {
+    return this._includes.getPublicValues();
   }
 
-  public get FILE_DIR(): AbsolutePath {
-    if (!this[IMPL].targetFile.fileDir)
-      throw new Error(`Target "${this.targetName}" is not defined`);
-    return this[IMPL].targetFile.fileDir;
+  public addInclude(publicOnly: boolean, value: DirPath | TargetIncludes): void {
+    this._includes.add(value, publicOnly);
   }
 
-  public get FILE_NAME(): string {
-    if (!this[IMPL].targetFile.fileName)
-      throw new Error(`Target "${this.targetName}" is not defined`);
-    return this[IMPL].targetFile.fileName;
+  public getDefinitions(): Array<string> {
+    return this._definitions.getAllValues();
   }
 
-  public get FILE(): AbsolutePath {
-    if (!this[IMPL].targetFile.file)
-      throw new Error(`Target "${this.targetName}" is not defined`);
-    return this[IMPL].targetFile.file;
+  public getPublicDefinitions(): Array<string> {
+    return this._definitions.getPublicValues();
   }
 
-  public get IMPL(): TargetStruct {
-    return this[IMPL];
+  public addDefinition(publicOnly: boolean, value: string): void {
+    this._definitions.add(value, publicOnly);
   }
 
-  public addSources(...sources: Array<InterfaceObjects | SourceFile | AbsolutePath | string>) {
-    for (let it of sources.flat()) {
-      this[IMPL].addSource("directly", false, createSources(this[TARGET_SCOPE], it));
-    }
+  public getCompileOptions(): Array<string | string[]> {
+    return this._compileOptions.getAllValues();
+  }
+  
+  public getPublicCompileOptions(): Array<string|string[]> {
+    return this._compileOptions.getPublicValues();
   }
 
-  public addIncludes(...includes: any) {
-    this[IMPL].addIncludes("directly", false, this[TARGET_SCOPE].SOURCE_DIR, ...includes);
+  public addCompileOption(publicOnly: boolean, option: string | string[]): void {
+    this._compileOptions.add(option, publicOnly);
   }
 
-  public addLibraries(...libraries: any) {
-    this[IMPL].addLibraries("directly", false, ...libraries);
+  public getLinkOptions(): Array<string | string[]> {
+    return this._linkOptions.getAllValues();
   }
 
-  public addCompileOptions(...options: Array<string|string[]>) {
-    this[IMPL].addCompileOptions("directly", false, ...options);
+  public getPublicLinkOptions(): Array<string | string[]> {
+    return this._linkOptions.getPublicValues();
   }
 
-  public addLinkOptions(...options: Array<string|string[]>) {
-    this[IMPL].addLinkOptions("directly", false, ...options);
+  public addLinkOptions(...options: Array<string | string[]>) {
+    this.addLinkOptionsImpl(false, ...options);
   }
 
-  public getSourceFiles(...sources: any[]): SourceFileList {
-    return getSourceFiles(this[IMPL], this[TARGET_SCOPE], ...sources);
+  public addPublicLinkOptions(...options: Array<string | string[]>) {
+    this.addLinkOptionsImpl(true, ...options);
   }
 
-  public addDefinitions(...definitions: any[]) {
-    this[IMPL].addDefinitions("directly", false, ...definitions);
+  public addLinkOptionsImpl(publicOnly: boolean, ...options: Array<string | string[]>) {
+    for (const value of options.flat())
+      this._linkOptions.add(value, publicOnly);
   }
 
-  public addPreBuild(command: any, args: any[]) {
-    this[IMPL].addPreBuild(command, args);
+  public getLibraries() {
+    return this._libraries.getAllValues()
   }
 
-  public addPostBuild(command: any, args: any[]) {
-    this[IMPL].addPostBuild(command, args);
+  public getPublicLibraries() {
+    return this._libraries.getPublicValues();
   }
 
-  public get targetFile(): LiveString {
-    const targetFile = this[IMPL].targetFile;
-    return LiveString.create(() => FilePath.create(targetFile.file).toString());
+  public addLibraries(...libraries: PostTarget[]) {
+    this.addLibrariesImpl(false, ...libraries);
   }
 
-  public toJSON(): object {
-    return {
-      NAME: this.targetName,
-      TARGET_SCOPE: this.TARGET_SCOPE,
-      FILE_DIR: this.FILE_DIR,
-      FILE: this.FILE,
-    }
+  public addPublicLibraries(...libraries: PostTarget[]) {
+    this.addLibrariesImpl(true, ...libraries);
+  }
+
+  public addLibrariesImpl(publicOnly: boolean, ...libraries: PostTarget[]) {
+    for (const iter of libraries.flat())
+      this._libraries.add(TargetName.create(iter.targetName), publicOnly);
+  }
+
+  public getHeaders(): SourceFile[] {
+    return this.getSourceFiles().filter(i => i.HEADER_FILE_ONLY);
+  }
+
+  public getAllSources() {
+    return this._sources;
+  }
+
+  public getSourceFiles(): SourceFile[] {
+    return this._sources.filter(i => i instanceof SourceFile);
+  }
+
+  public getTargetObjects(): TargetObjects[] {
+    return this._sources.filter(i => i instanceof TargetObjects);
+  }
+
+  public addSource(source: TargetObjects | SourceFile) {
+    this._sources.push(source);
+  }
+
+  public get preBuildList() {
+    return this._preBuildList;
+  }
+
+  public addPreBuild(command: string | TargetFile, args: Array<string | TargetFile>) {
+    this._preBuildList.push({command, args});
+  }
+
+  public get postBuildList() {
+    return this._postBuildList;
+  }
+
+  public addPostBuild(command: string | TargetFile, args: Array<string | TargetFile>) {
+    this._postBuildList.push({command, args});
+  }
+
+  public get language(): string {
+    return this._language;
+  }
+
+  public set language(value: string) {
+    this._language = value;
+  }
+
+  public get compilerPath(): string {
+    return this._compilerPath;
+  }
+
+  public set compilerPath(value: string) {
+    this._compilerPath = value;
+  }
+
+  public get compilerFlags(): string[] {
+    return this._compilerFlags;
+  }
+
+  public set compilerFlags(value: string[]) {
+    this._compilerFlags = value;
+  }
+
+  public postUpdate(target: BaseTarget) {
+    this._includes = this._includes.concat(target._includes);
+    this._definitions = this._definitions.concat(target._definitions);
+    this._compileOptions = this._compileOptions.concat(target._compileOptions);
+    this._linkOptions = this._linkOptions.concat(target._linkOptions);
+    this._libraries = this._libraries.concat(target._libraries);
+    this._sources.push(...target._sources);
+    this._preBuildList.push(...target._preBuildList);
+    this._postBuildList.push(...target._postBuildList);
+  }
+
+  protected putFromJSON(json: any) {
+    this._includes = TargetElements.fromJSON<DirPath | TargetIncludes>(json.includes);
+    this._definitions = TargetElements.fromJSON<string>(json.definitions);
+    this._compileOptions = TargetElements.fromJSON<string | string[]>(json.compileOptions);
+    this._linkOptions = TargetElements.fromJSON<string | string[]>(json.linkOptions);
+    this._libraries = TargetElements.fromJSON<TargetName>(json.libraries);
+    this._sources = SimpleObject.fromJSON(json.sources);
+    this._preBuildList = SimpleObject.fromJSON(json.preBuildList);
+    this._postBuildList = SimpleObject.fromJSON(json.postBuildList);
+    this._language = SimpleObject.fromJSON(json.language);
+    this._compilerPath = SimpleObject.fromJSON(json.compilerPath);
+    this._compilerFlags = SimpleObject.fromJSON(json.compilerFlags);
+  }
+
+  protected copyToJSON(json: any) {
+    json.name = this._name;
+    json.includes = this._includes.toJSON();
+    json.definitions = this._definitions.toJSON();
+    json.compileOptions = this._compileOptions.toJSON();
+    json.linkOptions = this._linkOptions.toJSON();
+    json.libraries = this._libraries.toJSON();
+    json.sources = SimpleObject.toJSON(this._sources);
+    json.preBuildList = SimpleObject.toJSON(this._preBuildList);
+    json.postBuildList = SimpleObject.toJSON(this._postBuildList);
+    json.language = this._language;
+    json.compilerPath = this._compilerPath;
+    json.compilerFlags = this._compilerFlags;
   }
 };
 
-export class BaseLibrary extends BaseTarget {
-  protected constructor(impl: TargetStruct, variableMap: VariableMap) {
-    super(impl, variableMap);
+export class PostTarget extends BaseTarget {
+  private _prefix?: string;
+  private _outputName?: string;
+  private _suffix?: string;
+  private _positionIndependentCode?: boolean;
+
+  private constructor(name: string) {
+    super(name);
+  }
+
+  public static create(name: string) {
+    return Object.seal(new PostTarget(name));
+  }
+
+  public get prefix() {
+    return this._prefix;
+  }
+
+  public setPrefix(value: string) {
+    this._prefix = value;
+  }
+
+  public get outputName() {
+    return this._outputName;
+  }
+
+  public setOutputName(value: any) {
+    this._outputName = value;
+  }
+
+  public get suffix() {
+    return this._suffix;
+  }
+
+  public setSuffix(value: string) {
+    this._suffix = value;
+  }
+
+  public get positionIndependentCode() {
+    return this._positionIndependentCode;
   }
 
   public setPositionIndependentCode(value: boolean) {
-    this[IMPL].positionIndependentCode = value;
+    this._positionIndependentCode = value;
   }
 
-  public addPublicIncludes(...includes: any[]) {
-    this[IMPL].addIncludes("directly", true, this[TARGET_SCOPE].SOURCE_DIR, ...includes);
+  public get COMPILE_OPTIONS() {
+    return this._compileOptions;
   }
 
-  public addPublicDefinitions(...definitions: any) {
-    this[IMPL].addDefinitions("directly", true, ...definitions);
+  public get LINK_OPTIONS() {
+    return this._linkOptions;
   }
 
-  public addPublicLibraries(...libraries: any[]) {
-    this[IMPL].addLibraries("directly", true, ...libraries);
+  public get LIBRARIES() {
+    return this._libraries;
   }
 
-  public addPublicCompileOptions(...options: Array<string|string[]>) {
-    this[IMPL].addCompileOptions("directly", true, ...options);
+  public get SOURCES() {
+    return this._sources;
   }
 
-  public addPublicLinkOptions(...options: Array<string|string[]>) {
-    this[IMPL].addLinkOptions("directly", true, ...options);
+  public static fromJSON(json: any): PostTarget {
+    const target = new PostTarget(json.name);
+
+    target.putFromJSON(json);
+
+    if (json.prefix !== undefined)
+      target._prefix = json.prefix;
+
+    if (json.outputName !== undefined)
+      target._outputName = json.outputName;
+
+    if (json.suffix !== undefined)
+      target._suffix = json.suffix;
+
+    if (json.positionIndependentCode !== undefined)
+      target._positionIndependentCode = json.positionIndependentCode;
+
+    return target;
+  }
+
+  public toJSON(): SimpleObject {
+    const result: SimpleObject = {
+      type: PostTarget.name
+    };
+
+    super.copyToJSON(result);
+
+    if (this._prefix !== undefined)
+      result.prefix = this._prefix;
+
+    if (this._outputName !== undefined)
+      result.outputName = this._outputName;
+
+    if (this._suffix !== undefined)
+      result.suffix = this._suffix;
+
+    if (this._positionIndependentCode !== undefined)
+      result.positionIndependentCode = this._positionIndependentCode;
+
+    return result;
   }
 };
 
-export class ObjectLibrary extends BaseLibrary {
-  private constructor(impl: TargetStruct, variableMap: VariableMap) {
-    super(impl, variableMap);
-    this[IMPL].type = TargetType.ObjectLibrary;
-    this[IMPL].targetFile.setInitPrefix(this[TARGET_SCOPE].OBJECT_LIBRARY_PREFIX);
-    this[IMPL].targetFile.setInitSuffix(this[TARGET_SCOPE].OBJECT_LIBRARY_SUFFIX);
-    this[IMPL].addLinkOptions("initialize", true, ...this[TARGET_SCOPE].OBJECT_LINKER_FLAGS);
+export abstract class MainTarget extends BaseTarget {
+  private _sourceDir: Locator;
+  private _binaryDir: Locator;
+  private _prefix = "";
+  private _suffix = "";
+  private _outputName: string;
+  private _positionIndependentCode = false;
+
+  protected constructor(name: string, sourceDir: Locator, binaryDir: Locator) {
+    super(name);
+
+    this._sourceDir = sourceDir;
+    this._binaryDir = binaryDir;
+    this._outputName = name;
   }
 
-  public static create(impl: TargetStruct, variableMap: VariableMap) {
-    return Object.seal(new ObjectLibrary(impl, variableMap));
+  public get isObjectLibrary(): boolean {
+    return false;
+  }
+
+  public get isStaticLibrary(): boolean {
+    return false;
+  }
+
+  public get isSharedLibrary(): boolean {
+    return false;
+  }
+
+  public get isExecutable(): boolean {
+    return false;
+  }
+
+  public get sourceDir() {
+    return this._sourceDir;
+  }
+
+  public get binaryDir() {
+    return this._binaryDir;
+  }
+
+  public getFileDir() {
+    return this._binaryDir;
+  }
+
+  public getFileName() {
+    return this.prefix + this.outputName + this.suffix;
+  }
+
+  public getFile() {
+    return this._binaryDir.join(this.getFileName());
+  }
+
+  public get prefix() {
+    return this._prefix;
+  }
+
+  public setPrefix(value: string) {
+    this._prefix = value;
+  }
+
+  public get suffix() {
+    return this._suffix;
+  }
+
+  public setSuffix(value: any) {
+    this._suffix = value;
+  }
+
+  public get outputName() {
+    return this._outputName;
+  }
+
+  public setOutputName(value: any) {
+    this._outputName = value;
+  }
+
+  public get positionIndependentCode() {
+    return this._positionIndependentCode;
+  }
+
+  public setPositionIndependentCode(value: boolean) {
+    this._positionIndependentCode = value;
+  }
+
+  public postUpdate(target: PostTarget) {
+    super.postUpdate(target);
+
+    if (target.prefix !== undefined)
+      this._prefix = target.prefix;
+    if (target.suffix !== undefined)
+      this._suffix = target.suffix;
+    if (target.outputName !== undefined)
+      this._outputName = target.outputName;
+    if (target.positionIndependentCode !== undefined)
+      this._positionIndependentCode = target.positionIndependentCode;
+  }
+
+  protected putFromJSON(json: any) {
+    super.putFromJSON(json);
+
+    this._prefix = json.prefix;
+    this._outputName = json.outputName;
+    this._suffix = json.suffix;
+    this._positionIndependentCode = json.positionIndependentCode;
+  }
+
+  protected copyToJSON(json: any) {
+    super.copyToJSON(json);
+
+    json.sourceDir = this._sourceDir.toURLString();
+    json.binaryDir = this._binaryDir.toURLString();
+    json.prefix = this._prefix;
+    json.suffix = this._suffix;
+    json.outputName = this._outputName;
+    json.positionIndependentCode = this._positionIndependentCode;
+
+    return json;
   }
 };
 
-export class StaticLibrary extends BaseLibrary {
-  private constructor(impl: TargetStruct, variableMap: VariableMap) {
-    super(impl, variableMap);
-    this[IMPL].type = TargetType.StaticLibrary;
-    this[IMPL].targetFile.setInitPrefix(this[TARGET_SCOPE].STATIC_LIBRARY_PREFIX);
-    this[IMPL].targetFile.setInitSuffix(this[TARGET_SCOPE].STATIC_LIBRARY_SUFFIX);
-    this[IMPL].addLinkOptions("initialize", true, ...this[TARGET_SCOPE].STATIC_LINKER_FLAGS);
+export class ObjectLibrary extends MainTarget {
+  public constructor(name: string, sourceDir: Locator, binaryDir: Locator) {
+    super(name, sourceDir, binaryDir);
   }
 
-  public static create(impl: TargetStruct, variableMap: VariableMap) {
-    return Object.seal(new StaticLibrary(impl, variableMap));
+  public get isObjectLibrary(): boolean {
+    return true;
+  }
+
+  public static fromJSON(json: any): ObjectLibrary {
+    const target = new ObjectLibrary(json.name, Locator.create(json.sourceDir), Locator.create(json.binaryDir));
+    target.putFromJSON(json);
+    return target;
+  }
+
+  public toJSON(): SimpleObject {
+    const result: SimpleObject = {
+      type: ObjectLibrary.name,
+    };
+    super.copyToJSON(result);
+    return result;
   }
 };
 
-export class SharedLibrary extends BaseLibrary {
-  private constructor(impl: TargetStruct, variableMap: VariableMap) {
-    super(impl, variableMap);
-    this[IMPL].type = TargetType.SharedLibrary;
-    this[IMPL].targetFile.setInitPrefix(this[TARGET_SCOPE].SHARED_LIBRARY_PREFIX);
-    this[IMPL].targetFile.setInitSuffix(this[TARGET_SCOPE].SHARED_LIBRARY_SUFFIX);
-    this[IMPL].addLinkOptions("initialize", true, ...this[TARGET_SCOPE].SHARED_LINKER_FLAGS);
+export class StaticLibrary extends MainTarget {
+  public constructor(name: string, sourceDir: Locator, binaryDir: Locator) {
+    super(name, sourceDir, binaryDir);
   }
 
-  public static create(impl: TargetStruct, variableMap: VariableMap) {
-    return Object.seal(new SharedLibrary(impl, variableMap));
-  }
-}
-
-export class Executable extends BaseTarget {
-  private constructor(impl: TargetStruct, variableMap: VariableMap) {
-    super(impl, variableMap);
-    this[IMPL].type = TargetType.Executable;
-    this[IMPL].targetFile.setInitPrefix("");
-    this[IMPL].targetFile.setInitSuffix(this[TARGET_SCOPE].EXECUTABLE_SUFFIX);
-    this[IMPL].addLinkOptions("initialize", true, ...this[TARGET_SCOPE].EXE_LINKER_FLAGS);
+  public get isStaticLibrary(): boolean {
+    return true;
   }
 
-  public static create(impl: TargetStruct, variableMap: VariableMap) {
-    return Object.seal(new Executable(impl, variableMap));
+  public static fromJSON(json: any): StaticLibrary {
+    const target = new StaticLibrary(json.name, Locator.create(json.sourceDir), Locator.create(json.binaryDir));
+    target.putFromJSON(json);
+    return target;
+  }
+
+  public toJSON(): SimpleObject {
+    const result: SimpleObject = {
+      type: StaticLibrary.name,
+    };
+    super.copyToJSON(result);
+    return result;
+  }
+};
+
+export class SharedLibrary extends MainTarget {
+  public constructor(name: string, sourceDir: Locator, binaryDir: Locator) {
+    super(name, sourceDir, binaryDir);
+  }
+
+  public get isSharedLibrary(): boolean {
+    return true;
+  }
+
+  public static fromJSON(json: any): SharedLibrary {
+    const target = new SharedLibrary(json.name, Locator.create(json.sourceDir), Locator.create(json.binaryDir));
+    target.putFromJSON(json);
+    return target;
+  }
+
+  public toJSON(): SimpleObject {
+    const result: SimpleObject = {
+      type: SharedLibrary.name,
+    };
+    super.copyToJSON(result);
+    return result;
+  }
+};
+
+export class Executable extends MainTarget {
+  public constructor(name: string, sourceDir: Locator, binaryDir: Locator) {
+    super(name, sourceDir, binaryDir);
+  }
+
+  public get isExecutable(): boolean {
+    return true;
+  }
+
+  public static fromJSON(json: any): Executable {
+    const target = new Executable(json.name, Locator.create(json.sourceDir), Locator.create(json.binaryDir));
+    target.putFromJSON(json);
+    return target;
+  }
+
+  public toJSON(): SimpleObject {
+    const result: SimpleObject = {
+      type: Executable.name,
+    };
+    super.copyToJSON(result);
+    return result;
   }
 };

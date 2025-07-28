@@ -18,3 +18,9 @@ declare const PROJECT_DESCRIPTION: string;
 
 // The URL to the project's homepage
 declare const PROJECT_HOMEPAGE_URL: string;
+
+// Host source URL
+declare const HOST_SOURCE_URL: string;
+
+// Host source URL
+declare const LOGGER_DEBUG: string[];

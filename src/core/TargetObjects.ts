@@ -7,9 +7,11 @@
  * under the MIT License. See LICENSE file for details.
  */
 
+import { SimpleObject } from "@/core/SimpleObject";
+
 const NAME = Symbol("NAME");
 
-export class InterfaceObjects {
+export class TargetObjects {
   private [NAME]: string;
 
   private constructor(name: string) {
@@ -17,13 +19,17 @@ export class InterfaceObjects {
   }
 
   public static create(name: string) {
-    return Object.seal(new InterfaceObjects(name));
+    return Object.seal(new TargetObjects(name));
   }
 
-  public static ensureInstance(value: any): InterfaceObjects {
-    if (value instanceof InterfaceObjects)
+  public static fromJSON(object: SimpleObject) {
+    return TargetObjects.create(object.targetName as string);
+  }
+
+  public static ensureInstance(value: any): TargetObjects {
+    if (value instanceof TargetObjects)
       return value;
-    throw new Error(`The '${value}' is not a InterfaceObjects`);
+    throw new Error(`The '${value}' is not a TargetObjects`);
   }
 
   public get targetName(): string {
@@ -34,7 +40,10 @@ export class InterfaceObjects {
     return "${" + this[NAME] + ".objects}";
   }
 
-  public toJSON(): string {
-    return this.toString();
+  public toJSON(): SimpleObject {
+    return {
+      type: TargetObjects.name,
+      targetName: this[NAME],
+    }
   }
 };

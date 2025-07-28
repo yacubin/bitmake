@@ -1,6 +1,6 @@
 {
   "name": "bitmake",
-  "version": "0.0.1-develop.10",
+  "version": "0.0.1-develop.11",
   "description": "BitMake builds your code with the flexibility of JS-defined rules",
   "author": "Yurii Yakubin",
   "homepage": "https://github.com/ykbin/bitmake#readme",
@@ -8,7 +8,7 @@
   "types": "./dist/bitmake.d.ts",
   "exports": "./dist/bitmake.js",
   "bin": {
-    "bitmake": "dist/bitmake-cli.js"
+    "bitmake": "./dist/bitmake.js"
   },
   "files": [
     "dist"

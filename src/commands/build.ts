@@ -22,13 +22,15 @@ import { IMPORT_SCHEME } from "@/utils/UrlScheme";
 import { requireResolve } from "@/utils/Module";
 import { downloadFile } from "@/utils/HttpRequest";
 import { CommandOptions } from "@/core/CommandOptions";
-import { createLogger } from "@/logger";
+import { Logger } from "@/logger";
 import { fileExists } from "@/utils/FileSystem";
+import { loadJSValue } from "@/utils/JSValue";
 import { importModule } from "@/utils/Module";
+import { Locator } from "@/utils/Locator";
 
 import actions from "@/actions";
 
-const logger = createLogger(import.meta.url);
+const logger = Logger.create(import.meta.url);
 
 interface IGeneralConfig {
   workDir: string;
@@ -68,6 +70,18 @@ function mergeEnvironment(...args: any) {
     }
   }
   return environment;
+}
+
+interface Environment {
+  [name: string]: boolean | number | string | string[];
+};
+
+async function resolveEnvironment(environment: Environment | string): Promise<Environment> {
+  if (typeof environment !== "string")
+    return environment;
+
+  const envFile = Locator.create(environment);
+  return loadJSValue(envFile);
 }
 
 function rebaseConfig(config: any) {
@@ -243,12 +257,12 @@ async function doExtractArchive(gconfig: IGeneralConfig, environment: any, confi
     throw new Error("Unknown extractDir");
 
   if (!await directoryExists(config.archiveDir)) {
-    console.log(`mkdir -p ${config.archiveDir}`);
+    logger.notice(`mkdir -p ${config.archiveDir}`);
     await fs.promises.mkdir(config.archiveDir, { recursive: true });
   }
 
   if (!await directoryExists(config.tempDir)) {
-    console.log(`mkdir -p ${config.tempDir}`);
+    logger.notice(`mkdir -p ${config.tempDir}`);
     await fs.promises.mkdir(config.tempDir, { recursive: true });
   }
 
@@ -284,7 +298,7 @@ async function doExtractArchive(gconfig: IGeneralConfig, environment: any, confi
     if (extractList.length === 1) {
       extractDir = Path.resolve(extractDir, extractList[0]);
       if (!await directoryExists(extractDir)) {
-        console.log(`rm -fr ${extractDir}`);
+        logger.notice(`rm -fr ${extractDir}`);
         await fs.promises.rm(extractDir, { recursive: true });
         throw new Error(`Support only directory for archive`);
       }
@@ -292,18 +306,18 @@ async function doExtractArchive(gconfig: IGeneralConfig, environment: any, confi
   
     if (await directoryExists(config.extractDir)) {
       // TODO: Marge extractDir with output
-      console.log(`rm -fr ${config.extractDir}`);
+      logger.notice(`rm -fr ${config.extractDir}`);
       await fs.promises.rm(config.extractDir, { recursive: true });
     }
     else {
       const parentDir = Path.dirname(config.extractDir);
       if (!await directoryExists(parentDir)) {
-        console.log(`mkdir -p ${parentDir}`);
+        logger.notice(`mkdir -p ${parentDir}`);
         await fs.promises.mkdir(parentDir, { recursive: true }); 
       }
     }
   
-    console.log(`mv ${extractDir} ${config.extractDir}`);
+    logger.notice(`mv ${extractDir} ${config.extractDir}`);
     await fs.promises.rename(extractDir, config.extractDir);
   
     extractFiles[arcFile] = extractDir;
@@ -329,7 +343,7 @@ async function doTargetBuild(gconfig: IGeneralConfig, environment: any, config: 
     delete newConfig.preAction;
     delete newConfig.postAction;
     assignObject(newConfig, config.preAction);
-    const newEnvironment = mergeEnvironment(config.preAction.environment, environment);
+    const newEnvironment = mergeEnvironment(await resolveEnvironment(config.preAction.environment), environment);
     await doTargetBuild(gconfig, newEnvironment, newConfig, settings);
     await settings.pop();
   }
@@ -344,7 +358,7 @@ async function doTargetBuild(gconfig: IGeneralConfig, environment: any, config: 
       delete newConfig.preAction;
       delete newConfig.postAction;
       assignObject(newConfig, config.action[i]);
-      const newEnvironment = mergeEnvironment(config.action[i].environment, environment);
+      const newEnvironment = mergeEnvironment(await resolveEnvironment(config.action[i].environment), environment);
       await doTargetBuild(gconfig, newEnvironment, newConfig, settings);
       await settings.pop();
     }
@@ -355,7 +369,7 @@ async function doTargetBuild(gconfig: IGeneralConfig, environment: any, config: 
       await fs.promises.mkdir(config.binaryDir, { recursive: true });
     }
     if (actions[config.action]) {
-      config.description && console.log(config.description);
+      config.description && logger.notice(config.description);
       await actions[config.action](config, environment, settings);
     }
   }
@@ -368,7 +382,7 @@ async function doTargetBuild(gconfig: IGeneralConfig, environment: any, config: 
     delete newConfig.preAction;
     delete newConfig.postAction;
     assignObject(newConfig, config.postAction);
-    const newEnvironment = mergeEnvironment(config.postAction.environment, environment);
+    const newEnvironment = mergeEnvironment(await resolveEnvironment(config.postAction.environment), environment);
     await doTargetBuild(gconfig, newEnvironment, newConfig, settings);
     await settings.pop();
   }
@@ -443,7 +457,7 @@ export default async (options: CommandOptions) => {
       const completed = await settings.get("completed");
       if (entry.rebuild || !completed) {
         logger.info(`Started action: ${key}`);
-        const environment = mergeEnvironment(entry.environment, process.env);
+        const environment = mergeEnvironment(await resolveEnvironment(entry.environment), process.env);
         if (entry.sourceUrl && !entry.sourceUrl.startsWith(IMPORT_SCHEME)) {
           await doExtractArchive(gconfig, environment, entry, settings);
         }

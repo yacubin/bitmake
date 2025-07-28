@@ -40,36 +40,40 @@ function toURLString(str: string) {
   throw new Error(`Not supported relative path of "${str}"`);
 }
 
-export class AbsolutePath {
+export class Locator {
   private [PATH]: string;
 
   protected constructor(urlString: string) {
     this[PATH] = urlString;
   }
 
-  public join(...paths: Array<AbsolutePath | string>): AbsolutePath {
+  public join(...paths: Array<Locator | string>): Locator {
     const url = new URL(this[PATH]);
     url.pathname = path.posix.join(url.pathname, ...paths.map(i => {
-      if (i instanceof AbsolutePath)
+      if (i instanceof Locator)
         return new URL(i[PATH]).pathname;
       if (typeof i === "string")
         return i.replaceAll(path.win32.sep, path.posix.sep);
       throw new Error(`Attempted to join to wrong type ${i} type`);
     }));
-    return new AbsolutePath(url.toString());
+    return new Locator(url.toString());
   }
 
   public dirname() {
     const dirname = path.posix.dirname(this[PATH]);
-    return new AbsolutePath(dirname);
+    return new Locator(dirname);
   }
 
   public basename(): string {
     return path.posix.basename(this[PATH]);
   }
 
-  public relative(to: AbsolutePath | string) {
-    if (to instanceof AbsolutePath)
+  public extname(): string {
+    return path.posix.extname(this[PATH]);
+  }
+
+  public relative(to: Locator | string) {
+    if (to instanceof Locator)
       to = to[PATH];
 
     const leftUrl = new URL(this[PATH]);
@@ -84,7 +88,7 @@ export class AbsolutePath {
     return path.posix.relative(leftUrl.pathname, rightUrl.pathname);
   }
 
-  public resolve(...paths: Array<AbsolutePath | string>): AbsolutePath {
+  public resolve(...paths: Array<Locator | string>): Locator {
     if (paths.length === 0)
       return this;
 
@@ -93,11 +97,11 @@ export class AbsolutePath {
 
     for (let i = paths.length - 1; i >= 0; i--) {
       const iter = paths[i];
-      if (iter instanceof AbsolutePath) {
+      if (iter instanceof Locator) {
         rootPath = iter[PATH];
         break;
       }
-      if (AbsolutePath.isAbsolute(iter)) {
+      if (Locator.isAbsolute(iter)) {
         rootPath = toURLString(iter);
         break;
       }
@@ -107,11 +111,19 @@ export class AbsolutePath {
     const url = new URL(rootPath);
     url.pathname = path.posix.resolve(url.pathname, ...pathStrings);
 
-    return new AbsolutePath(url.toString());
+    return new Locator(url.toString());
   }
 
   public match(regexp: RegExp) {
     return this[PATH].match(regexp);
+  }
+
+  public startsWith(searchString: string, position?: number): boolean {
+    return this[PATH].startsWith(searchString, position);
+  }
+
+  public endsWith(searchString: string, endPosition?: number): boolean {
+    return this[PATH].endsWith(searchString, endPosition);
   }
 
   public toString(): string {
@@ -140,32 +152,32 @@ export class AbsolutePath {
     return this[PATH];
   }
 
-  public static isAbsolute(filepath: AbsolutePath | string) {
-    if (filepath instanceof AbsolutePath)
+  public static isAbsolute(filepath: Locator | string) {
+    if (filepath instanceof Locator)
       return true;
     return isAbsolute(filepath);
   }
 
-  public static ensureInstance(value: any): AbsolutePath {
-    if (value instanceof AbsolutePath)
+  public static ensureInstance(value: any): Locator {
+    if (value instanceof Locator)
       return value;
-    throw new Error(`The '${value}' is not a AbsolutePath`);
+    throw new Error(`The '${value}' is not a Locator`);
   }
 
-  public static create(path: AbsolutePath | string): AbsolutePath {
-    if (path instanceof AbsolutePath)
+  public static create(path: Locator | string): Locator {
+    if (path instanceof Locator)
       return path;
 
-    return Object.seal(new AbsolutePath(toURLString(path)));
+    return Object.seal(new Locator(toURLString(path)));
   }
 };
 
-export class DirPath extends AbsolutePath {
+export class DirPath extends Locator {
   private constructor(dirname: string) {
     super(dirname);
   }
 
-  public static create(dirname: AbsolutePath | string): DirPath {
+  public static create(dirname: Locator | string): DirPath {
     if (typeof dirname !== "string")
       dirname = dirname.toURLString();
     return new DirPath(toURLString(dirname));
@@ -183,12 +195,12 @@ export class DirPath extends AbsolutePath {
   }
 };
 
-export class FilePath extends AbsolutePath {
+export class FilePath extends Locator {
   private constructor(filepath: string) {
     super(filepath);
   }
 
-  public static create(filepath: AbsolutePath | string): FilePath {
+  public static create(filepath: Locator | string): FilePath {
     if (typeof filepath !== "string")
       filepath = filepath.toURLString();
     return new FilePath(toURLString(filepath));

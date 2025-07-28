@@ -12,7 +12,7 @@ import { TargetName } from "@/core/TargetName";
 import { TargetFile } from "@/core/TargetFile";
 import { TargetIncludes } from "@/core/TargetIncludes";
 import { TargetObjects } from "@/core/TargetObjects";
-import { DirPath, AbsolutePath } from "@/core/AbsolutePath";
+import { DirPath, Locator } from "@/utils/Locator";
 import { SimpleObject } from "./SimpleObject";
 import { Logger } from "@/logger";
 
@@ -406,14 +406,14 @@ export class PostTarget extends BaseTarget {
 };
 
 export abstract class MainTarget extends BaseTarget {
-  private _sourceDir: AbsolutePath;
-  private _binaryDir: AbsolutePath;
+  private _sourceDir: Locator;
+  private _binaryDir: Locator;
   private _prefix = "";
   private _suffix = "";
   private _outputName: string;
   private _positionIndependentCode = false;
 
-  protected constructor(name: string, sourceDir: AbsolutePath, binaryDir: AbsolutePath) {
+  protected constructor(name: string, sourceDir: Locator, binaryDir: Locator) {
     super(name);
 
     this._sourceDir = sourceDir;
@@ -526,7 +526,7 @@ export abstract class MainTarget extends BaseTarget {
 };
 
 export class ObjectLibrary extends MainTarget {
-  public constructor(name: string, sourceDir: AbsolutePath, binaryDir: AbsolutePath) {
+  public constructor(name: string, sourceDir: Locator, binaryDir: Locator) {
     super(name, sourceDir, binaryDir);
   }
 
@@ -535,7 +535,7 @@ export class ObjectLibrary extends MainTarget {
   }
 
   public static fromJSON(json: any): ObjectLibrary {
-    const target = new ObjectLibrary(json.name, AbsolutePath.create(json.sourceDir), AbsolutePath.create(json.binaryDir));
+    const target = new ObjectLibrary(json.name, Locator.create(json.sourceDir), Locator.create(json.binaryDir));
     target.putFromJSON(json);
     return target;
   }
@@ -550,7 +550,7 @@ export class ObjectLibrary extends MainTarget {
 };
 
 export class StaticLibrary extends MainTarget {
-  public constructor(name: string, sourceDir: AbsolutePath, binaryDir: AbsolutePath) {
+  public constructor(name: string, sourceDir: Locator, binaryDir: Locator) {
     super(name, sourceDir, binaryDir);
   }
 
@@ -559,7 +559,7 @@ export class StaticLibrary extends MainTarget {
   }
 
   public static fromJSON(json: any): StaticLibrary {
-    const target = new StaticLibrary(json.name, AbsolutePath.create(json.sourceDir), AbsolutePath.create(json.binaryDir));
+    const target = new StaticLibrary(json.name, Locator.create(json.sourceDir), Locator.create(json.binaryDir));
     target.putFromJSON(json);
     return target;
   }
@@ -574,7 +574,7 @@ export class StaticLibrary extends MainTarget {
 };
 
 export class SharedLibrary extends MainTarget {
-  public constructor(name: string, sourceDir: AbsolutePath, binaryDir: AbsolutePath) {
+  public constructor(name: string, sourceDir: Locator, binaryDir: Locator) {
     super(name, sourceDir, binaryDir);
   }
 
@@ -583,7 +583,7 @@ export class SharedLibrary extends MainTarget {
   }
 
   public static fromJSON(json: any): SharedLibrary {
-    const target = new SharedLibrary(json.name, AbsolutePath.create(json.sourceDir), AbsolutePath.create(json.binaryDir));
+    const target = new SharedLibrary(json.name, Locator.create(json.sourceDir), Locator.create(json.binaryDir));
     target.putFromJSON(json);
     return target;
   }
@@ -598,7 +598,7 @@ export class SharedLibrary extends MainTarget {
 };
 
 export class Executable extends MainTarget {
-  public constructor(name: string, sourceDir: AbsolutePath, binaryDir: AbsolutePath) {
+  public constructor(name: string, sourceDir: Locator, binaryDir: Locator) {
     super(name, sourceDir, binaryDir);
   }
 
@@ -607,7 +607,7 @@ export class Executable extends MainTarget {
   }
 
   public static fromJSON(json: any): Executable {
-    const target = new Executable(json.name, AbsolutePath.create(json.sourceDir), AbsolutePath.create(json.binaryDir));
+    const target = new Executable(json.name, Locator.create(json.sourceDir), Locator.create(json.binaryDir));
     target.putFromJSON(json);
     return target;
   }

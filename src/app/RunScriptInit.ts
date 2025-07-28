@@ -16,7 +16,7 @@ import { TargetIncludes } from "@/core/TargetIncludes";
 import { TargetObjects } from "@/core/TargetObjects";
 import { TargetName } from "@/core/TargetName";
 import { SourceFile } from "@/core/SourceFile";
-import { DirPath, FilePath } from "@/core/AbsolutePath";
+import { DirPath, FilePath } from "@/utils/Locator";
 import { PostTarget, ObjectLibrary, StaticLibrary, SharedLibrary, Executable } from "@/core/Target";
 
 import { SimpleObject } from "@/core/SimpleObject";

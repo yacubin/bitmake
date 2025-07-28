@@ -11,7 +11,7 @@ import { MakeContext } from "@/core/BaseContext";
 import { ProjectContext } from "@/core/ProjectContext";
 import { VariableMap } from "@/core/Scope";
 import { requireSync } from "@/utils/Module";
-import { AbsolutePath } from "@/core/AbsolutePath";
+import { Locator } from "@/utils/Locator";
 import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
@@ -32,7 +32,7 @@ export class LocalMakeContext extends MakeContext {
     return requireSync(filename);
   }
 
-  public addSubdirectory(scope: VariableMap, sourceDir: string | AbsolutePath, binaryDir?: string | AbsolutePath): void {
+  public addSubdirectory(scope: VariableMap, sourceDir: string | Locator, binaryDir?: string | Locator): void {
     this._project.addSubdirectory(scope, sourceDir, binaryDir);
   }
 };

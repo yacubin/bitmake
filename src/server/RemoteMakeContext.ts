@@ -15,7 +15,7 @@ import { MAINNODE_EXECUTESCRIPT } from "@/server/RemoteMethods";
 import { MAINNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
 import { Logger } from "@/logger";
 import { ScopeHelper, VariableMap, VariantMap } from "@/core/Scope";
-import { AbsolutePath } from "@/core/AbsolutePath";
+import { Locator } from "@/utils/Locator";
 
 const logger = Logger.create(import.meta.url);
 
@@ -41,7 +41,7 @@ export class RemoteMakeContext extends MakeContext {
     return this._transport.requestSync(MAINNODE_LOADJSON, filename);
   }
 
-  public addSubdirectory(scope: VariableMap, sourceDir: string | AbsolutePath, binaryDir?: string | AbsolutePath): void {
+  public addSubdirectory(scope: VariableMap, sourceDir: string | Locator, binaryDir?: string | Locator): void {
     logger.debug("RemoteMakeContext.addSubdirectory(", sourceDir, binaryDir, ")");
     const newVariableMap = createVariableMapForDirectory(scope, sourceDir, binaryDir);
     this._transport.requestSync(MAINNODE_STARTMAKESCRIPT, ScopeHelper.toJSON(newVariableMap));

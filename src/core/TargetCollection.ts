@@ -10,7 +10,7 @@
 import { TargetIncludes }from "@/core/TargetIncludes";
 import { TargetName }from "@/core/TargetName";
 import { MainTarget } from "@/core/Target";
-import { AbsolutePath } from "@/core/AbsolutePath";
+import { Locator } from "@/utils/Locator";
 import { SimpleObject } from "@/core/SimpleObject";
 
 const ENTRIES = Symbol("ENTRIES");
@@ -45,7 +45,7 @@ export class TargetCollection {
     this[ENTRIES].set(name, target);
   }
 
-  private __getAllIncludes(includes: string[], targetSet: Set<string>, list: Array<AbsolutePath | TargetIncludes> | Array<TargetName>) {
+  private __getAllIncludes(includes: string[], targetSet: Set<string>, list: Array<Locator | TargetIncludes> | Array<TargetName>) {
     for (const iter of list) {
       if (iter instanceof TargetIncludes || iter instanceof TargetName) {
         if (!targetSet.has(iter.targetName)) {
@@ -55,7 +55,7 @@ export class TargetCollection {
           this.__getAllIncludes(includes, targetSet, target.getPublicLibraries());
         }
       }
-      else if (iter instanceof AbsolutePath) {
+      else if (iter instanceof Locator) {
         if (!includes.includes(iter.toString()))
           includes.push(iter.toString());
       }
@@ -74,7 +74,7 @@ export class TargetCollection {
     return includes;
   }
 
-  private __getAllHeaders(headers: string[], targetSet: Set<string>, list: Array<AbsolutePath | TargetIncludes> | Array<TargetName>) {
+  private __getAllHeaders(headers: string[], targetSet: Set<string>, list: Array<Locator | TargetIncludes> | Array<TargetName>) {
     for (const iter of list) {
       if (iter instanceof TargetIncludes || iter instanceof TargetName) {
         if (!targetSet.has(iter.targetName)) {

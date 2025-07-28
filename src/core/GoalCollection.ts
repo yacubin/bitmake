@@ -10,7 +10,7 @@
 import { SimpleObject } from "@/core/SimpleObject";
 import { InterfaceTask } from "@/core/MakeInterfaces";
 import { Logger } from "@/logger";
-import { AbsolutePath } from "./AbsolutePath";
+import { Locator } from "@/utils/Locator";
 
 const logger = Logger.create(import.meta.url);
 
@@ -41,7 +41,7 @@ export class GoalTarget {
     return this._output;
   }
 
-  set output(value: AbsolutePath) {
+  set output(value: Locator) {
     this._output = value.toPath();
   }
 

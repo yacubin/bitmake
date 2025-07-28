@@ -9,7 +9,7 @@
 
 import { Logger } from "@/logger";
 import { CompileOption } from "@/core/MakeInterfaces";
-import { AbsolutePath } from "./AbsolutePath";
+import { Locator } from "@/utils/Locator";
 
 const logger = Logger.create(import.meta.url);
 
@@ -46,7 +46,7 @@ export function normalizeCompileOptions(options: CompileOption[]): Array<string 
     else if (Array.isArray(iter) && iter.length == 2 && typeof iter[0] === "string") {
       if (typeof iter[1] === "string")
         result.push([ iter[0], iter[1] ]);
-      else if (iter[1] instanceof AbsolutePath)
+      else if (iter[1] instanceof Locator)
         result.push([ iter[0], iter[1].toPath() ]);
       else
         throw new Error(`CompileOption ${iter} not supported`);

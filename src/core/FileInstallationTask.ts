@@ -10,15 +10,15 @@
 import fs from "node:fs";
 
 import { InterfaceTask } from "@/core/MakeInterfaces";
-import { AbsolutePath } from "@/core/AbsolutePath";
+import { Locator } from "@/utils/Locator";
 import { SimpleObject } from "@/core/SimpleObject";
 import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
 
 interface Entry {
-  src: AbsolutePath;
-  dest: AbsolutePath;
+  src: Locator;
+  dest: Locator;
 };
 
 export class FileInstallationTask extends InterfaceTask {
@@ -37,7 +37,7 @@ export class FileInstallationTask extends InterfaceTask {
     }
   }
 
-  public add(src: AbsolutePath, dest: AbsolutePath) {
+  public add(src: Locator, dest: Locator) {
     this._entries.push({src, dest});
   }
 

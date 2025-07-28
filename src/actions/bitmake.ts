@@ -15,7 +15,7 @@ import { PluginContext } from "@/core/PluginContext";
 import { ScopeHelper } from "@/core/Scope";
 import { ToolchainContext } from "@/core/ToolchainContext";
 import { getPathString, saveAsJSON }  from "@/utils/FileSystem";
-import { AbsolutePath } from "@/core/AbsolutePath";
+import { Locator } from "@/utils/Locator";
 import { importModule }  from "@/utils/Module";
 import { determineCompiler }  from "@/core/DetermineCompiler";
 import { SettingsStorage } from "@/utils/SettingsStorage";
@@ -42,8 +42,8 @@ export default async function(config: any, environment: any, settings: SettingsS
   const sourceDir = getPathString(config.sourceDir);
   const binaryDir = getPathString(config.binaryDir);
 
-  scope.PROJECT_SOURCE_DIR = AbsolutePath.create(sourceDir);
-  scope.PROJECT_BINARY_DIR = AbsolutePath.create(binaryDir);
+  scope.PROJECT_SOURCE_DIR = Locator.create(sourceDir);
+  scope.PROJECT_BINARY_DIR = Locator.create(binaryDir);
 
   scope.PACKAGE_FILE = scope.PROJECT_SOURCE_DIR.join(PACKAGE_JSON);
   scope.CACHE_FILE = scope.PROJECT_BINARY_DIR.join(MAKE_CACHE);
@@ -65,7 +65,7 @@ export default async function(config: any, environment: any, settings: SettingsS
   for (const plugin of (scope.MAKE_PLUGIN_LIST || [])) {
     const cwdSave = process.cwd();
 
-    scope.SCRIPT_FILE = AbsolutePath.create(plugin);
+    scope.SCRIPT_FILE = Locator.create(plugin);
     scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
     scope.SOURCE_DIR = scope.SCRIPT_DIR;
 
@@ -116,7 +116,7 @@ export default async function(config: any, environment: any, settings: SettingsS
 
   if (config.sourceUrl && config.sourceUrl.startsWith(IMPORT_SCHEME)) {
     const scriptFile = requireResolve(config.sourceUrl.slice(IMPORT_SCHEME.length));
-    scope.SCRIPT_FILE = AbsolutePath.create(scriptFile);
+    scope.SCRIPT_FILE = Locator.create(scriptFile);
     scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();
   }
 

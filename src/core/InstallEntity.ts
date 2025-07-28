@@ -8,21 +8,21 @@
  */
 
 import { TargetName } from "@/core/TargetName";
-import { FilePath, AbsolutePath } from "@/core/AbsolutePath";
+import { FilePath, Locator } from "@/utils/Locator";
 import { SimpleObject } from "@/core/SimpleObject";
 
 export class InstallEntity {
   private _value: FilePath | TargetName;
-  private _destination: AbsolutePath;
-  private _baseDir?: AbsolutePath;
+  private _destination: Locator;
+  private _baseDir?: Locator;
 
-  public constructor(value: FilePath | TargetName, destination: AbsolutePath, baseDir?: AbsolutePath) {
+  public constructor(value: FilePath | TargetName, destination: Locator, baseDir?: Locator) {
     this._value = value;
     this._destination = destination;
     this._baseDir = baseDir;
   }
 
-  public static create(value: FilePath | TargetName, destination: AbsolutePath, baseDir?: AbsolutePath) {
+  public static create(value: FilePath | TargetName, destination: Locator, baseDir?: Locator) {
     return new InstallEntity(value, destination, baseDir);
   }
 
@@ -40,8 +40,8 @@ export class InstallEntity {
 
   public static fromJSON(json: any) {
     const value = SimpleObject.fromJSON(json.value);
-    const destination = AbsolutePath.create(json.destination);
-    const baseDir = json.baseDir ? AbsolutePath.create(json.baseDir) : undefined;
+    const destination = Locator.create(json.destination);
+    const baseDir = json.baseDir ? Locator.create(json.baseDir) : undefined;
     return new InstallEntity(value, destination, baseDir);
   }
 

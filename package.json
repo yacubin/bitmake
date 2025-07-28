@@ -8,7 +8,7 @@
   "types": "./dist/bitmake.d.ts",
   "exports": "./dist/bitmake.js",
   "bin": {
-    "bitmake": "dist/bitmake.js"
+    "bitmake": "./dist/bitmake.js"
   },
   "files": [
     "dist"

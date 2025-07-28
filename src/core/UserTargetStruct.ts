@@ -13,7 +13,7 @@ import { SystemScope } from "@/core/SystemScope";
 import { ensureString } from "@/utils/StrictType";
 import { TargetIncludes } from "@/core/TargetIncludes";
 import { TargetObjects } from "@/core/TargetObjects";
-import { DirPath, AbsolutePath } from "@/core/AbsolutePath";
+import { DirPath, Locator } from "@/utils/Locator";
 import { SourceFile } from "@/core/SourceFile";
 import { UserSourceFiles } from "@/core/UserSourceFiles";
 import { TargetFile } from "@/core/TargetFile";
@@ -52,18 +52,18 @@ function makeLanguage(value: string) {
   throw new Error(`Language "${value}" is not supported`);
 }
 
-function addIncludeImpl(target: BaseTarget, sourceDir: AbsolutePath, publicOnly: boolean, include: TargetIncludes | AbsolutePath | string): void {
+function addIncludeImpl(target: BaseTarget, sourceDir: Locator, publicOnly: boolean, include: TargetIncludes | Locator | string): void {
   if (include instanceof TargetIncludes)
     target.addInclude(publicOnly, include);
   else if (typeof include === "string")
     target.addInclude(publicOnly, DirPath.create(sourceDir.resolve(include)));
-  else if (include instanceof AbsolutePath)
+  else if (include instanceof Locator)
     target.addInclude(publicOnly, DirPath.create(include));
   else
     throw new Error(`Not support instance ${include}`);
 }
 
-function addIncludesImpl(target: BaseTarget, scope: SystemScope, publicOnly: boolean, ...includes: Array<TargetIncludes | AbsolutePath | string>): void {
+function addIncludesImpl(target: BaseTarget, scope: SystemScope, publicOnly: boolean, ...includes: Array<TargetIncludes | Locator | string>): void {
   const sourceDir = scope.SOURCE_DIR;
   for (const iter of includes.flat())
     addIncludeImpl(target, sourceDir, publicOnly, iter);
@@ -74,7 +74,7 @@ function ensureCmdValue(value: any): string | TargetFile {
     return value;
   else if (value instanceof TargetFile)
     return value;
-  else if (value instanceof AbsolutePath)
+  else if (value instanceof Locator)
     return value.toPath();
   else
     throw new TypeError(`Wrong type ${value} for command`);
@@ -128,10 +128,10 @@ export class UserTargetStruct extends InterfaceTarget {
     this[IMPL].setOutputName(ensureString(value));
   }
 
-  public addSources(...sources: Array<TargetObjects | SourceFile | AbsolutePath | string>): void {
+  public addSources(...sources: Array<TargetObjects | SourceFile | Locator | string>): void {
     const scope = this[SCOPE];
     for (const iter of sources.flat()) {
-      if (typeof iter === "string" || iter instanceof AbsolutePath) {
+      if (typeof iter === "string" || iter instanceof Locator) {
         const filename = scope.SOURCE_DIR.resolve(iter);
         const language = getFileLanguage(filename.toPath());
         let compilerPath = "";
@@ -183,7 +183,7 @@ export class UserTargetStruct extends InterfaceTarget {
     return UserSourceFiles.create(this[IMPL], result.length ? result : sourceFiles);
   }
 
-  public addIncludes(...includes: Array<TargetIncludes | AbsolutePath | string>): void {
+  public addIncludes(...includes: Array<TargetIncludes | Locator | string>): void {
     addIncludesImpl(this[IMPL], this[SCOPE], false, ...includes);
   }
 
@@ -217,7 +217,7 @@ export class UserTargetStruct extends InterfaceTarget {
     this[IMPL].setPositionIndependentCode(value);
   }
 
-  public addPublicIncludes(...includes: Array<TargetIncludes | AbsolutePath | string>): void {
+  public addPublicIncludes(...includes: Array<TargetIncludes | Locator | string>): void {
     addIncludesImpl(this[IMPL], this[SCOPE], true, ...includes);
   }
 

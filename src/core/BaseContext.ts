@@ -11,7 +11,7 @@ import { IGeneralContext } from "@/core/MakeInterfaces";
 import { findProgramSync } from "@/core/FindProgram";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { SystemScope } from "@/core/SystemScope";
-import { FilePath, AbsolutePath } from "@/core/AbsolutePath";
+import { FilePath, Locator } from "@/utils/Locator";
 import { importModule } from "@/utils/Module";
 import { MainTarget, PostTarget } from "@/core/Target";
 import { CustomScript, PostCustomScript } from "@/core/CustomScript";
@@ -70,7 +70,7 @@ export abstract class MakeContext {
 
   abstract executeScript(scope: VariableMap, script: any, params: any): any;
   abstract loadJSON(url: string): any;
-  abstract addSubdirectory(scope: VariableMap, sourceDir: string | AbsolutePath, binaryDir?: string | AbsolutePath): void;
+  abstract addSubdirectory(scope: VariableMap, sourceDir: string | Locator, binaryDir?: string | Locator): void;
 
   public get targets() {
     return this._targets;
@@ -124,7 +124,7 @@ export abstract class MakeContext {
     return target;
   }
 
-  public addInstallEntry(value: FilePath | TargetName, destination: AbsolutePath, baseDir?: AbsolutePath): void {
+  public addInstallEntry(value: FilePath | TargetName, destination: Locator, baseDir?: Locator): void {
     const entity = new InstallEntity(value, destination, baseDir);
     this._installList.push(entity);
   }
@@ -174,7 +174,7 @@ export async function performContext(mk: IGeneralContext & SystemScope) {
 
 export function createVariableMapForDirectory(variableMap: VariableMap, sourceDir: any, binaryDir?: any): VariableMap {
   if (binaryDir === undefined) {
-    if (!AbsolutePath.isAbsolute(sourceDir))
+    if (!Locator.isAbsolute(sourceDir))
       binaryDir = sourceDir;
     else {
       const binaryDir1 = ScopeHelper.get(variableMap, "PROJECT_BINARY_DIR").relative(sourceDir);

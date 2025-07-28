@@ -7,19 +7,19 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import fs from "node:fs";
-
 import { ProjectContext } from "@/core/ProjectContext";
 import { ScriptContext } from "@/core/ScriptContext";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { MakeClient } from "@/server/MakeClient";
 import { JsonRpcServer } from "@/server/JsonRpcServer";
 import { importModule } from "@/utils/Module";
+import { loadJSValue } from "@/utils/JSValue";
 import { createVariableMapForDirectory } from "@/core/BaseContext";
 import { MAINNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
 import { MAINNODE_LOADJSON } from "@/server/RemoteMethods";
 import { MAINNODE_EXECUTESCRIPT } from "@/server/RemoteMethods";
 import { Logger } from "@/logger";
+import { Locator } from "@/utils/Locator";
 
 const logger = Logger.create(import.meta.url);
 
@@ -75,16 +75,7 @@ export class MakeServer {
 
   private async loadJSON(filename: string): Promise<any> {
     logger.debug("MakeServer.loadJSON(", filename, ")");
-    if (filename.endsWith(".json")) {
-      const content = await fs.promises.readFile(filename, "utf8");
-      return JSON.parse(content);
-    }
-
-    const module = await importModule(filename);
-    if (!module.default)
-      throw new Error(`Script "${filename}" has not contain a default function`);
-
-    return module.default;
+    return await loadJSValue(Locator.create(filename));
   }
 
   private async executeScript(params: any): Promise<void> {

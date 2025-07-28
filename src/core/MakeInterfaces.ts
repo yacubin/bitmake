@@ -11,12 +11,12 @@ import { TargetFile } from "@/core/TargetFile";
 import { TargetObjects } from "@/core/TargetObjects";
 import { TargetIncludes } from "@/core/TargetIncludes";
 import { VariantMap } from "@/core/Scope";
-import { AbsolutePath } from "@/core/AbsolutePath";
+import { Locator } from "@/utils/Locator";
 import { SourceFile } from "@/core/SourceFile";
 
 export type Definition = string | object;
 export type CompileOptionSingle = string;
-export type CompileOptionMulti = [ string, string | AbsolutePath ];
+export type CompileOptionMulti = [ string, string | Locator ];
 export type CompileOption = CompileOptionSingle | CompileOptionMulti;
 export type LinkOption = string | string[];
 
@@ -40,8 +40,8 @@ export abstract class InterfaceTarget {
   abstract setSuffix(suffix: string): void;
   abstract setOutputName(outputName: string): void;
 
-  abstract addSources(...sources: Array<TargetObjects | SourceFile | AbsolutePath | string>): void;
-  abstract addIncludes(...includes: Array<TargetIncludes | AbsolutePath | string>): void;
+  abstract addSources(...sources: Array<TargetObjects | SourceFile | Locator | string>): void;
+  abstract addIncludes(...includes: Array<TargetIncludes | Locator | string>): void;
   abstract addLibraries(...libraries: any): void;
   abstract addCompileOptions(...options: CompileOption[]): void;
   abstract addLinkOptions(...options: LinkOption[]): void;
@@ -51,7 +51,7 @@ export abstract class InterfaceTarget {
   abstract addPostBuild(command: any, args: any[]): void;
 
   abstract setPositionIndependentCode(value: boolean): void;
-  abstract addPublicIncludes(...includes: Array<TargetIncludes | AbsolutePath | string>): void;
+  abstract addPublicIncludes(...includes: Array<TargetIncludes | Locator | string>): void;
   abstract addPublicDefinitions(...definitions: Definition[]): void;
   abstract addPublicLibraries(...libraries: any[]): void;
   abstract addPublicCompileOptions(...options: CompileOption[]): void;
@@ -76,7 +76,7 @@ export interface IMakeContext extends IGeneralContext {
   getCacheVariables(): any;
   addCacheVariables(params: string | VariantMap): void;
   addIncludeDirectories(...dirs: any[]): void;
-  addSubdirectory(sourceDir: string | AbsolutePath, binaryDir?: string | AbsolutePath): void;
+  addSubdirectory(sourceDir: string | Locator, binaryDir?: string | Locator): void;
   script(name: string): InterfaceScript;
   addCustomScript(script: string, params: any): InterfaceScript;
   target(name: string): InterfaceTarget;

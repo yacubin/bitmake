@@ -7,12 +7,12 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { AbsolutePath } from "@/core/AbsolutePath";
+import { Locator } from "@/utils/Locator";
 import { SimpleObject } from "@/core/SimpleObject";
 
 export class SourceFile {
-  private _filename: AbsolutePath;
-  private _baseDir: AbsolutePath;
+  private _filename: Locator;
+  private _baseDir: Locator;
   
   private _headerOnly: boolean;
 
@@ -21,7 +21,7 @@ export class SourceFile {
   private _compilerPath: string;
   private _compilerOptions: Array<string | string[]>;
 
-  private constructor(filename: AbsolutePath, baseDir: AbsolutePath, headerOnly: boolean, language: string, compilerPath: string, compilerOptions: Array<string | string[]>) {
+  private constructor(filename: Locator, baseDir: Locator, headerOnly: boolean, language: string, compilerPath: string, compilerOptions: Array<string | string[]>) {
     this._filename = filename;
     this._baseDir = baseDir;
 
@@ -33,7 +33,7 @@ export class SourceFile {
     this._compilerOptions = [ ...compilerOptions ];
   }
 
-  public static create(filename: AbsolutePath, baseDir: AbsolutePath, headerOnly: boolean, language: string, compilerPath: string, compilerOptions: Array<string | string[]>) {
+  public static create(filename: Locator, baseDir: Locator, headerOnly: boolean, language: string, compilerPath: string, compilerOptions: Array<string | string[]>) {
     return new SourceFile(filename, baseDir, headerOnly, language, compilerPath, compilerOptions);
   }
 
@@ -65,11 +65,11 @@ export class SourceFile {
     return this._compilerOptions;
   }
 
-  public get FILE(): AbsolutePath {
+  public get FILE(): Locator {
     return this._filename;
   }
 
-  public get FILE_DIR(): AbsolutePath {
+  public get FILE_DIR(): Locator {
     return this._filename.dirname();
   }
 
@@ -78,8 +78,8 @@ export class SourceFile {
   }
 
   public static fromJSON(json: any): SourceFile {
-    const filename = AbsolutePath.create(json.filename);
-    const baseDir = AbsolutePath.create(json.baseDir);
+    const filename = Locator.create(json.filename);
+    const baseDir = Locator.create(json.baseDir);
     const headerOnly = json.headerOnly || false;
     const language = json.language || "";
     const compilerPath = json.compilerPath || "";

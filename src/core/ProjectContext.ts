@@ -10,7 +10,7 @@
 import fs from "node:fs";
 
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
-import { AbsolutePath } from "@/core/AbsolutePath";
+import { Locator } from "@/utils/Locator";
 import { fileExists, fileExistsSync } from "@/utils/FileSystem";
 import { TargetCollection } from "@/core/TargetCollection";
 import { GoalCollection, GoalTarget } from "@/core/GoalCollection";
@@ -41,7 +41,7 @@ const TARGETS = Symbol("TARGETS");
 const CACHE = Symbol("CACHE");
 
 type SubdirectoryAlias = {
-  [name: string]: AbsolutePath | null;
+  [name: string]: Locator | null;
 };
 
 type CacheVariableDescriptor = {
@@ -69,11 +69,11 @@ function ensureValueByType(type: any, value: any) {
   throw new Error(`The '${value}' is not a ${type}`);
 }
 
-function resolveInstance(project: ProjectContext, o: string | AbsolutePath | TargetFile): string {
+function resolveInstance(project: ProjectContext, o: string | Locator | TargetFile): string {
   if (typeof o === "string")
     return o;
 
-  if (o instanceof AbsolutePath)
+  if (o instanceof Locator)
     return o.toString();
 
   if (o instanceof TargetFile) {
@@ -129,7 +129,7 @@ export class ProjectContext {
     this._processedVariableMap[name] = variableMap;
   }
 
-  public resolveSubdirectory(path: AbsolutePath | string): AbsolutePath | string | undefined {
+  public resolveSubdirectory(path: Locator | string): Locator | string | undefined {
     const resolvedPath = this._subdirAlias[path.toString()];
     if (resolvedPath === undefined)
       return path;
@@ -139,8 +139,8 @@ export class ProjectContext {
   }
 
   public addSubdirectoryAlias(variableMap: VariableMap, src: any, dest: any) {
-    const srcPath = AbsolutePath.create(ScopeHelper.get(variableMap, "SOURCE_DIR").resolve(src));
-    const destPath = (dest === null) ? null : AbsolutePath.create(ScopeHelper.get(variableMap, "SOURCE_DIR").resolve(dest));
+    const srcPath = Locator.create(ScopeHelper.get(variableMap, "SOURCE_DIR").resolve(src));
+    const destPath = (dest === null) ? null : Locator.create(ScopeHelper.get(variableMap, "SOURCE_DIR").resolve(dest));
     const srcStr = srcPath.toString();
     if (this._subdirAlias.hasOwnProperty(srcStr))
       logger.warn(`Owerride "${srcStr}" subdirectory alias`);
@@ -154,7 +154,7 @@ export class ProjectContext {
     }
   }
 
-  public loadCacheVariables(filename: AbsolutePath | string) {
+  public loadCacheVariables(filename: Locator | string) {
     if (fileExistsSync(filename.toString())) {
       const variables = requireSync(filename.toString());
       this.addCacheVariables(variables);
@@ -207,7 +207,7 @@ export class ProjectContext {
     ScopeHelper.set(variableMap, "SOURCE_DIR", resolveSourceDir);
 
     if (!ScopeHelper.get(variableMap, "SCRIPT_FILE")) {
-      let scriptFile: AbsolutePath | undefined;
+      let scriptFile: Locator | undefined;
       const fileList = [ ".js", ".mjs" ].map(i => "MakeScript" + i);
       for (const filename of fileList) {
         const iter = ScopeHelper.get(variableMap, "SOURCE_DIR").join(filename);
@@ -310,7 +310,7 @@ export class ProjectContext {
     for (const [name, script] of this._customScripts.entries()) {   
       const depends = [];
 
-      let scriptObj: AbsolutePath | Function;
+      let scriptObj: Locator | Function;
       if (typeof script.scriptModule === "string") {
         const func = this.findScriptFunction(script.scriptModule);
         scriptObj = func ? func : script.sourceDir.resolve(script.scriptModule);
@@ -333,7 +333,7 @@ export class ProjectContext {
       goalList.addTarget(ge);
     }
 
-    const objectFiles = new Map<SourceFile, AbsolutePath>();
+    const objectFiles = new Map<SourceFile, Locator>();
     for (const target of this[TARGETS].ENTRIES.values()) {
       for (const it of target.getSourceFiles()) {
         if (!it.LANGUAGE)
@@ -386,7 +386,7 @@ export class ProjectContext {
         args.push("-o", relativeObject);
         args.push("-c", s.FILE.toString());
   
-        const output = AbsolutePath.create(target.binaryDir.join(relativeObject));
+        const output = Locator.create(target.binaryDir.join(relativeObject));
         depends.push(output.toString());
 
         const ge = new GoalTarget;
@@ -482,8 +482,8 @@ export class ProjectContext {
       const worker = new GoalTarget(INSTALL_TARGET);
       const fileInstallationTask = new FileInstallationTask;
       for (const iter of this._installList) {
-        let src: AbsolutePath, dest: AbsolutePath;
-        if (iter.value instanceof AbsolutePath) {
+        let src: Locator, dest: Locator;
+        if (iter.value instanceof Locator) {
           if (scope.PREVENT_INSTALL_FILES)
             continue;
           src = iter.value;

@@ -17,7 +17,7 @@ import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
 import { CUSTOM_VARIABLE_GROUP } from "@/Constants";
 import { randCIdentifer } from "@/utils/Random";
 import { Logger } from "@/logger";
-import { FilePath, AbsolutePath } from "./AbsolutePath";
+import { FilePath, Locator } from "@/utils/Locator";
 import { TargetName } from "@/core/TargetName";
 
 const logger = Logger.create(import.meta.url);
@@ -84,13 +84,13 @@ export class UserMakeContext extends GeneralContext implements IMakeContext {
     this[IMPL].addSubdirectory(this[VARMAP], sourceDir, binaryDir);
   }
   
-  public addCustomScript(scriptModule: string | AbsolutePath, params: any): InterfaceScript {
+  public addCustomScript(scriptModule: string | Locator, params: any): InterfaceScript {
     const variableMap = ScopeHelper.cloneVariableMap(this[VARMAP]);
     ScopeHelper.extendVariableMapByValues(variableMap, CUSTOM_VARIABLE_GROUP, params);
     ScopeHelper.set(variableMap, "SCRIPT_MODULE", scriptModule);
     
-    const sourceDir = ScopeHelper.get(variableMap, "SOURCE_DIR") as AbsolutePath;
-    const binaryDir = ScopeHelper.get(variableMap, "BINARY_DIR") as AbsolutePath;
+    const sourceDir = ScopeHelper.get(variableMap, "SOURCE_DIR") as Locator;
+    const binaryDir = ScopeHelper.get(variableMap, "BINARY_DIR") as Locator;
 
     let inputFile = ScopeHelper.get(variableMap, "SCRIPT_INPUT");
     if (inputFile)
@@ -127,7 +127,7 @@ export class UserMakeContext extends GeneralContext implements IMakeContext {
     for (const it of [ value ].flat()) {
       let iter = (it instanceof InterfaceTarget) ? TargetName.create(it.targetName) : it;
 
-      let destination: string | AbsolutePath | undefined;
+      let destination: string | Locator | undefined;
       let baseDir;
       if (typeof params === "string")
         destination = params;
@@ -142,7 +142,7 @@ export class UserMakeContext extends GeneralContext implements IMakeContext {
       if (baseDir)
         baseDir = this[SCOPE].SOURCE_DIR.resolve(baseDir);
 
-      if (typeof iter === "string" || iter instanceof AbsolutePath) {
+      if (typeof iter === "string" || iter instanceof Locator) {
         iter = this[SCOPE].SOURCE_DIR.resolve(iter.toString());
         iter = FilePath.create(iter);
         baseDir = baseDir || iter.dirname();
@@ -151,7 +151,7 @@ export class UserMakeContext extends GeneralContext implements IMakeContext {
         throw new Error(`Not supportet value of ${iter}`);
       }
 
-      this[IMPL].addInstallEntry(iter, AbsolutePath.create(this[SCOPE].INSTALL_PREFIX.resolve(destination)), baseDir);
+      this[IMPL].addInstallEntry(iter, Locator.create(this[SCOPE].INSTALL_PREFIX.resolve(destination)), baseDir);
     }
   }
 

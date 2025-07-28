@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { AbsolutePath } from "@/core/AbsolutePath";
+import { Locator } from "@/utils/Locator";
 import { deepCopy } from "@/utils/Primitives";
 
 interface VariableDescriptor {
@@ -67,14 +67,14 @@ const makeValueMap: any = {
   string: (value: any) => {
     return (typeof value === "string") ? value : undefined;
   },
-  AbsolutePath: (value: any) => {
-    return AbsolutePath.create(value);
+  Locator: (value: any) => {
+    return Locator.create(value);
   },
   FilePath: (value: any) => {
-    return AbsolutePath.create(value);
+    return Locator.create(value);
   },
   DirPath: (value: any) => {
-    return AbsolutePath.create(value);
+    return Locator.create(value);
   },
   object: (value: any) => {
     return value;
@@ -101,7 +101,7 @@ const tojsonValueMap: any = {
   string: (value: any) => {
     return value;
   },
-  AbsolutePath: (value: any) => {
+  Locator: (value: any) => {
     return value.toJSON();
   },
   FilePath: (value: any) => {
@@ -207,8 +207,8 @@ export function defineVariable(map: VariableMap, group: string, name: string, de
     type = defineEntry.type;
   else if (Array.isArray(descriptor.value))
     type = "array";
-  else if (descriptor.value instanceof AbsolutePath)
-    type = "AbsolutePath";
+  else if (descriptor.value instanceof Locator)
+    type = "Locator";
   else
     type = typeof descriptor.value;
 
@@ -238,8 +238,8 @@ export function defineVariable(map: VariableMap, group: string, name: string, de
   else if (type === "array") {
     isValidValue = Array.isArray;
   }
-  else if (type === "AbsolutePath" || type === "FilePath" || type === "DirPath") {
-    isValidValue = (value: any) => !!AbsolutePath.create(value);
+  else if (type === "Locator" || type === "FilePath" || type === "DirPath") {
+    isValidValue = (value: any) => !!Locator.create(value);
   }
   else if (type !== "object" && type !== "enum") {
     throw new Error(`Variable "${name}" has wrong "${type}" type`);

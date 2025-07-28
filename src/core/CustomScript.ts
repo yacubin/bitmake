@@ -8,7 +8,7 @@
  */
 
 import { InterfaceScript } from "@/core/MakeInterfaces";
-import { AbsolutePath } from "@/core/AbsolutePath";
+import { Locator } from "@/utils/Locator";
 import { ScopeHelper, VariableMap, VariantMap } from "@/core/Scope";
 import { SimpleObject } from "@/core/SimpleObject";
 
@@ -57,11 +57,11 @@ export class PostCustomScript extends InterfaceScript {
 
 export class CustomScript extends InterfaceScript {
   private _name: string;
-  private _scriptModule: string | AbsolutePath;
-  private _input?: AbsolutePath;
-  private _output: AbsolutePath;
-  private _sourceDir: AbsolutePath;
-  private _binaryDir: AbsolutePath;
+  private _scriptModule: string | Locator;
+  private _input?: Locator;
+  private _output: Locator;
+  private _sourceDir: Locator;
+  private _binaryDir: Locator;
   private _variableMap: VariableMap;
 
   private constructor(options: CustomScript.Options) {
@@ -91,19 +91,19 @@ export class CustomScript extends InterfaceScript {
     return this._scriptModule;
   }
 
-  public get INPUT(): AbsolutePath | undefined {
+  public get INPUT(): Locator | undefined {
     return this._input;
   }
 
-  public get OUTPUT(): AbsolutePath {
+  public get OUTPUT(): Locator {
     return this._output;
   }
 
-  public get sourceDir(): AbsolutePath {
+  public get sourceDir(): Locator {
     return this._sourceDir;
   }
 
-  public get binaryDir(): AbsolutePath {
+  public get binaryDir(): Locator {
     return this._binaryDir;
   }
 
@@ -119,13 +119,13 @@ export class CustomScript extends InterfaceScript {
     const options: CustomScript.Options = {
       variableMap: ScopeHelper.fromJSON(json.variableMap),
       name: json.name,
-      scriptModule: AbsolutePath.isAbsolute(json.scriptModule) ? AbsolutePath.create(json.scriptModule) : json.scriptModule,
-      output: AbsolutePath.create(json.output),
-      sourceDir: AbsolutePath.create(json.sourceDir),
-      binaryDir: AbsolutePath.create(json.binaryDir),
+      scriptModule: Locator.isAbsolute(json.scriptModule) ? Locator.create(json.scriptModule) : json.scriptModule,
+      output: Locator.create(json.output),
+      sourceDir: Locator.create(json.sourceDir),
+      binaryDir: Locator.create(json.binaryDir),
     };
     if (json.input) {
-      options.input = AbsolutePath.create(json.input);
+      options.input = Locator.create(json.input);
     }
     return CustomScript.create(options);
   }
@@ -151,11 +151,11 @@ export namespace CustomScript {
 
 export interface Options {
   name: string,
-  scriptModule: string | AbsolutePath,
-  input?: AbsolutePath,
-  output: AbsolutePath,
-  sourceDir: AbsolutePath,
-  binaryDir: AbsolutePath,
+  scriptModule: string | Locator,
+  input?: Locator,
+  output: Locator,
+  sourceDir: Locator,
+  binaryDir: Locator,
   variableMap: VariableMap,
 };
 

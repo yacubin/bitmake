@@ -24,7 +24,9 @@ import { downloadFile } from "@/utils/HttpRequest";
 import { CommandOptions } from "@/core/CommandOptions";
 import { Logger } from "@/logger";
 import { fileExists } from "@/utils/FileSystem";
+import { loadJSValue } from "@/utils/JSValue";
 import { importModule } from "@/utils/Module";
+import { Locator } from "@/utils/Locator";
 
 import actions from "@/actions";
 
@@ -68,6 +70,18 @@ function mergeEnvironment(...args: any) {
     }
   }
   return environment;
+}
+
+interface Environment {
+  [name: string]: boolean | number | string | string[];
+};
+
+async function resolveEnvironment(environment: Environment | string): Promise<Environment> {
+  if (typeof environment !== "string")
+    return environment;
+
+  const envFile = Locator.create(environment);
+  return loadJSValue(envFile);
 }
 
 function rebaseConfig(config: any) {
@@ -329,7 +343,7 @@ async function doTargetBuild(gconfig: IGeneralConfig, environment: any, config: 
     delete newConfig.preAction;
     delete newConfig.postAction;
     assignObject(newConfig, config.preAction);
-    const newEnvironment = mergeEnvironment(config.preAction.environment, environment);
+    const newEnvironment = mergeEnvironment(await resolveEnvironment(config.preAction.environment), environment);
     await doTargetBuild(gconfig, newEnvironment, newConfig, settings);
     await settings.pop();
   }
@@ -344,7 +358,7 @@ async function doTargetBuild(gconfig: IGeneralConfig, environment: any, config: 
       delete newConfig.preAction;
       delete newConfig.postAction;
       assignObject(newConfig, config.action[i]);
-      const newEnvironment = mergeEnvironment(config.action[i].environment, environment);
+      const newEnvironment = mergeEnvironment(await resolveEnvironment(config.action[i].environment), environment);
       await doTargetBuild(gconfig, newEnvironment, newConfig, settings);
       await settings.pop();
     }
@@ -368,7 +382,7 @@ async function doTargetBuild(gconfig: IGeneralConfig, environment: any, config: 
     delete newConfig.preAction;
     delete newConfig.postAction;
     assignObject(newConfig, config.postAction);
-    const newEnvironment = mergeEnvironment(config.postAction.environment, environment);
+    const newEnvironment = mergeEnvironment(await resolveEnvironment(config.postAction.environment), environment);
     await doTargetBuild(gconfig, newEnvironment, newConfig, settings);
     await settings.pop();
   }
@@ -443,7 +457,7 @@ export default async (options: CommandOptions) => {
       const completed = await settings.get("completed");
       if (entry.rebuild || !completed) {
         logger.info(`Started action: ${key}`);
-        const environment = mergeEnvironment(entry.environment, process.env);
+        const environment = mergeEnvironment(await resolveEnvironment(entry.environment), process.env);
         if (entry.sourceUrl && !entry.sourceUrl.startsWith(IMPORT_SCHEME)) {
           await doExtractArchive(gconfig, environment, entry, settings);
         }

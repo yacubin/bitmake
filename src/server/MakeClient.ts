@@ -11,9 +11,8 @@ import { Worker } from "node:worker_threads";
 
 import { currentScriptURL } from "@/utils/Module";
 import { MemoryMessageSender } from "@/server/MemoryTransport";
-import { WorkerSender } from "@/server/WorkerSender";
 import { JSONRPC_VERSION } from "@/server/Transport";
-import { JsonRpcServer } from "@/server/JsonRpcServer";
+import { JsonRpcDispatcher } from "@/server/JsonRpcDispatcher";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { MainTarget, PostTarget } from "@/core/Target";
 import { PostCustomScript, CustomScript } from "@/core/CustomScript";
@@ -38,13 +37,13 @@ interface ResponseEntry {
 };
 
 export class WorkerRpcClient {
-  private _jsonRpcServer: JsonRpcServer;
+  private _jsonRpcDispatcher: JsonRpcDispatcher;
   private _worker: Worker;
   private _id = 1;
   private _waitResponseMap = new Map<number,ResponseEntry>();;
 
-  public constructor(jsonRpcServer: JsonRpcServer) {
-    this._jsonRpcServer = jsonRpcServer;
+  public constructor(jsonRpcDispatcher: JsonRpcDispatcher) {
+    this._jsonRpcDispatcher = jsonRpcDispatcher;
     this._worker = new Worker(currentScriptURL());
     this._worker.on("message", message => this.onWorkerMessage(message));
     this._worker.on("error", error => this.onWorkerError(error));
@@ -72,11 +71,10 @@ export class WorkerRpcClient {
   private onWorkerMessage(message: any) {
     if (message instanceof SharedArrayBuffer) {
       const mt = new MemoryMessageSender(message)
-      this._jsonRpcServer.emitMessage(mt, mt.readMessage());
+      this._jsonRpcDispatcher.prerformMessage(mt.readMessage()).then(data => mt.sendMessage(data))
     }
     else if (Object.hasOwn(message, "method")) {
-      const sender = new WorkerSender(this._worker);
-      this._jsonRpcServer.emitMessage(sender, message);
+      this._jsonRpcDispatcher.prerformMessage(message).then(data => this._worker.postMessage(data));
     }
     else if (Object.hasOwn(message, "id")) {
       const promise = this._waitResponseMap.get(message.id);
@@ -108,8 +106,8 @@ export class WorkerRpcClient {
 class MakeContextClient {
   private _workerRpc: WorkerRpcClient;
 
-  public constructor(jsonRpcServer: JsonRpcServer) {
-    this._workerRpc = new WorkerRpcClient(jsonRpcServer);
+  public constructor(jsonRpcDispatcher: JsonRpcDispatcher) {
+    this._workerRpc = new WorkerRpcClient(jsonRpcDispatcher);
   }
 
   public createContext(): Promise<string> {
@@ -163,8 +161,8 @@ export class MakeClient {
   private _postScripts = new Array<PostCustomScript>;
   private _installEntries = new Array<InstallEntity>;
 
-  public constructor(jsonRpcServer: JsonRpcServer) {
-    this._makeContext = new MakeContextClient(jsonRpcServer);
+  public constructor(jsonRpcDispatcher: JsonRpcDispatcher) {
+    this._makeContext = new MakeContextClient(jsonRpcDispatcher);
   }
 
   public async execMakeScript(variableMap: VariableMap): Promise<void> {

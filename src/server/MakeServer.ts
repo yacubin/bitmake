@@ -11,7 +11,7 @@ import { ProjectContext } from "@/core/ProjectContext";
 import { ScriptContext } from "@/core/ScriptContext";
 import { ScopeHelper, VariableMap } from "@/core/Scope";
 import { MakeClient } from "@/server/MakeClient";
-import { JsonRpcServer } from "@/server/JsonRpcServer";
+import { JsonRpcDispatcher } from "@/server/JsonRpcDispatcher";
 import { importModule } from "@/utils/Module";
 import { loadJSValue } from "@/utils/JSValue";
 import { createVariableMapForDirectory } from "@/core/BaseContext";
@@ -45,7 +45,7 @@ export class MakeServer {
   private _rootVariableMap: VariableMap = {};
   private _project = ProjectContext.create();
   private _listeners: { [name: string]: Function[] };
-  private _jsonRpcServer = new JsonRpcServer;
+  private _jsonRpcDispatcher = new JsonRpcDispatcher;
   private _clients = new Array<MakeClient>;
 
   public constructor() {
@@ -53,9 +53,9 @@ export class MakeServer {
       [ CONFIGURE_EVENT ]: new Array<ConfigureListener>,
       [ BUILD_EVENT ]: new Array<BuildListener>,
     };
-    this._jsonRpcServer.registerCallback(MAINNODE_EXECUTESCRIPT, params => this.executeScript(params));
-    this._jsonRpcServer.registerCallback(MAINNODE_LOADJSON, params => this.loadJSON(params));
-    this._jsonRpcServer.registerCallback(MAINNODE_STARTMAKESCRIPT, params => this.startMakeScript(params));
+    this._jsonRpcDispatcher.registerCallback(MAINNODE_EXECUTESCRIPT, params => this.executeScript(params));
+    this._jsonRpcDispatcher.registerCallback(MAINNODE_LOADJSON, params => this.loadJSON(params));
+    this._jsonRpcDispatcher.registerCallback(MAINNODE_STARTMAKESCRIPT, params => this.startMakeScript(params));
   }
 
   public get rootVariableMap() {
@@ -95,7 +95,7 @@ export class MakeServer {
     if (!await this._project.prepearScriptFile(variableMap))
       return false;
 
-    const client = new MakeClient(this._jsonRpcServer);
+    const client = new MakeClient(this._jsonRpcDispatcher);
     this._clients.push(client);
 
     await client.execMakeScript(variableMap);

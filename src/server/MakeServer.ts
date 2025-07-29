@@ -124,9 +124,6 @@ export class MakeServer {
 
     this.combineResults();
     this.onConfigureEnd();
-
-    /*this._project.addSubdirectory(this._rootVariableMap, sourceDir, binaryDir);
-    this._project.doSubdirectory().then(() => this.onConfigureEnd());*/
   }
 
   private async onConfigureEnd() {

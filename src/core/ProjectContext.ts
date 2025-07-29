@@ -14,8 +14,6 @@ import { Locator } from "@/utils/Locator";
 import { fileExists, fileExistsSync } from "@/utils/FileSystem";
 import { TargetCollection } from "@/core/TargetCollection";
 import { GoalCollection, GoalTarget } from "@/core/GoalCollection";
-import { UserMakeContext } from "@/core/UserMakeContext";
-import { LocalMakeContext } from "@/core/LocalMakeContext";
 import { TargetCommand } from "@/core/Target";
 import { SystemScope } from "@/core/SystemScope";
 import { requireSync } from "@/utils/Module";
@@ -31,7 +29,6 @@ import { ExecScriptTask } from "@/core/ExecScriptTask";
 import { SpawnSyncTask } from "@/core/SpawnSyncTask";
 import { FileInstallationTask } from "@/core/FileInstallationTask";
 import { CustomScript, PostCustomScript } from "@/core/CustomScript";
-import { performContext, createVariableMapForDirectory } from "@/core/BaseContext";
 
 import builtinScripts from "@/core/BuiltinScripts";
 
@@ -99,7 +96,6 @@ export class ProjectContext {
   private _processedVariableMap: any;
   private _builtinScripts: BuildinScripts;
   private _subdirAlias: SubdirectoryAlias;
-  private _subdirList: VariableMap[];
 
   private constructor() {
     this[TARGETS] = TargetCollection.create();
@@ -108,7 +104,6 @@ export class ProjectContext {
     this._processedVariableMap = {};
     this._subdirAlias = {};
     this._builtinScripts = builtinScripts;
-    this._subdirList = [];
   }
 
   public static create() {
@@ -228,13 +223,6 @@ export class ProjectContext {
     return true;
   }
 
-  public addSubdirectory(variableMap: VariableMap, sourceDir: any, binaryDir?: any) {
-    const newVariableMap = createVariableMapForDirectory(variableMap, sourceDir, binaryDir);
-    if (newVariableMap) {
-      this._subdirList.push(newVariableMap);
-    }
-  }
-
   public findScriptFunction(name: string): Function | undefined {
     return this._builtinScripts[name];
   }
@@ -269,39 +257,6 @@ export class ProjectContext {
       if (!script)
         throw new Error(`There is no CustomScript named ${name}`);
       script.postUpdate(postScript);
-    }
-  }
-
-  public async doSubdirectory() {
-    const contextList = new Array<LocalMakeContext>();
-
-    for (;;) {
-      const variableMap = this._subdirList.shift();
-      if (!variableMap)
-        break;
-
-      if (!await this.prepearScriptFile(variableMap))
-        continue;
-
-      const ctx = new LocalMakeContext(this);
-      contextList.push(ctx);
-      const mk = UserMakeContext.create(ctx, variableMap);
-
-      const cwdSave = process.cwd();
-      process.chdir(mk.SCRIPT_DIR.toString());
-      await performContext(mk);
-      process.chdir(cwdSave);
-    }
-
-    for (const ctx of contextList) {
-      this.applyMainTargets(Array.from(ctx.targets.values()));
-      this.applyMainScripts(Array.from(ctx.mainScripts.values()));
-      this.applyInstallEntities(ctx.installList);
-    }
-
-    for (const ctx of contextList) {
-      this.applPostTargets(Array.from(ctx.postTargets.values()));
-      this.applPostScripts(Array.from(ctx.postScripts.values()));
     }
   }
 

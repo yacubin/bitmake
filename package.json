@@ -28,6 +28,7 @@
   },
   "devDependencies": {
     "dts-bundle-generator": "^9.5.1",
+    "html-webpack-inline-source-plugin": "^0.0.10",
     "ts-loader": "^9.5.2",
     "typescript": "^5.8.3",
     "webpack": "^5.99.5",

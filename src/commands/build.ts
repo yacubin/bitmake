@@ -9,30 +9,35 @@
 
 import fs from "node:fs";
 import url from "node:url";
+import http from "node:http";
+import child_process from "node:child_process";
 
 import { CMakeProcess } from "@/cmake";
 import { Path } from "@/utils/Path";
 import { makePatch } from "@/utils/MakePatch";
-import { saveIfDifferent, directoryExists } from "@/utils/FileSystem";
+import { saveIfDifferent, directoryExists, fileExists, FileSystem } from "@/utils/FileSystem";
 import { SettingsStorage } from "@/utils/SettingsStorage";
 import { arrayWrapper, assignObject } from "@/utils/Primitives";
 import { USER_CONFIG, BUILD_SETTINGS_FILE, REQUEST_ATTEMPTS } from "@/Constants";
 import { DEBUG_BUILD_TYPE, RELEASE_BUILD_TYPE } from "@/core/Types";
 import { IMPORT_SCHEME } from "@/utils/UrlScheme";
+import { randInt } from "@/utils/Random";
 import { requireResolve } from "@/utils/Module";
 import { downloadFile } from "@/utils/HttpRequest";
 import { CommandOptions } from "@/core/CommandOptions";
 import { Logger } from "@/logger";
-import { fileExists } from "@/utils/FileSystem";
 import { loadJSValue } from "@/utils/JSValue";
 import { importModule } from "@/utils/Module";
 import { Locator } from "@/utils/Locator";
+import { currentScriptURL } from "@/utils/Module";
 
 import actions from "@/actions";
+import path from "node:path";
 
 const logger = Logger.create(import.meta.url);
 
 interface IGeneralConfig {
+  webui: boolean;
   workDir: string;
   buildType: string;
 };
@@ -248,224 +253,327 @@ function makeBuildConfig(gconfig: IGeneralConfig, config: any) {
   return rootConfig;
 }
 
-async function doExtractArchive(gconfig: IGeneralConfig, environment: any, config: any, settings: any) {
-  if (!config.sourceUrl)
-    throw new Error("Unknown sourceUrl");
-  if (!config.archiveDir)
-    throw new Error("Unknown archiveDir");
-  if (!config.extractDir)
-    throw new Error("Unknown extractDir");
+type RequestHandler = (req: http.IncomingMessage, res: http.ServerResponse) => void;
 
-  if (!await directoryExists(config.archiveDir)) {
-    logger.notice(`mkdir -p ${config.archiveDir}`);
-    await fs.promises.mkdir(config.archiveDir, { recursive: true });
+class BuildContext {
+  private _gconfig: IGeneralConfig;
+  private _server?: http.Server;
+  private _startUrl = "";
+  private _hostname = "";
+  private _port = 0;
+  private _buildTreeConfig: any = {};
+  private _requestHandlers = new Map<string, RequestHandler>;
+
+  constructor(gconfig: IGeneralConfig) {
+    this._gconfig = gconfig;
   }
 
-  if (!await directoryExists(config.tempDir)) {
-    logger.notice(`mkdir -p ${config.tempDir}`);
-    await fs.promises.mkdir(config.tempDir, { recursive: true });
+  public get gconfig() {
+    return this._gconfig;
   }
 
-  const arcName = Path.basename(config.sourceUrl);
+  async doExtractArchive(gconfig: IGeneralConfig, environment: any, config: any, settings: any) {
+    if (!config.sourceUrl)
+      throw new Error("Unknown sourceUrl");
+    if (!config.archiveDir)
+      throw new Error("Unknown archiveDir");
+    if (!config.extractDir)
+      throw new Error("Unknown extractDir");
 
-  let arcFile;
-  let downloadUrls = await settings.get("downloadUrls") || {};
-  if (downloadUrls[config.sourceUrl])
-    arcFile = downloadUrls[config.sourceUrl];
-  else {
-    arcFile = Path.join(config.archiveDir, arcName);
-    await downloadFile(config.sourceUrl, arcFile, { attempts: REQUEST_ATTEMPTS });
-    downloadUrls[config.sourceUrl] = arcFile;
-    await settings.set("downloadUrls", downloadUrls);
-  }
-
-  let extractDir;
-  let extractFiles = await settings.get("extractFiles") || {};
-  if (extractFiles[arcFile]) {
-    extractDir = extractFiles[arcFile];
-  }
-  else {
-    extractDir = await fs.promises.mkdtemp(Path.resolve(config.tempDir, arcName + '.'));
-  
-    await CMakeProcess.getInstance().extract({
-      environment,
-      filename: arcFile,
-      workDir: extractDir,
-      logFile:  Path.join(config.tempDir, Path.basename(extractDir) + ".log"),
-    });
-  
-    const extractList = await fs.promises.readdir(extractDir);
-    if (extractList.length === 1) {
-      extractDir = Path.resolve(extractDir, extractList[0]);
-      if (!await directoryExists(extractDir)) {
-        logger.notice(`rm -fr ${extractDir}`);
-        await fs.promises.rm(extractDir, { recursive: true });
-        throw new Error(`Support only directory for archive`);
-      }
+    if (!await directoryExists(config.archiveDir)) {
+      await FileSystem.mkdir(config.archiveDir, { recursive: true });
     }
-  
-    if (await directoryExists(config.extractDir)) {
-      // TODO: Marge extractDir with output
-      logger.notice(`rm -fr ${config.extractDir}`);
-      await fs.promises.rm(config.extractDir, { recursive: true });
+
+    if (!await directoryExists(config.tempDir)) {
+      await FileSystem.mkdir(config.tempDir, { recursive: true });
+    }
+
+    const arcName = Path.basename(config.sourceUrl);
+
+    let arcFile;
+    let downloadUrls = await settings.get("downloadUrls") || {};
+    if (downloadUrls[config.sourceUrl])
+      arcFile = downloadUrls[config.sourceUrl];
+    else {
+      arcFile = Path.join(config.archiveDir, arcName);
+      await downloadFile(config.sourceUrl, arcFile, { attempts: REQUEST_ATTEMPTS });
+      downloadUrls[config.sourceUrl] = arcFile;
+      await settings.set("downloadUrls", downloadUrls);
+    }
+
+    let extractDir;
+    let extractFiles = await settings.get("extractFiles") || {};
+    if (extractFiles[arcFile]) {
+      extractDir = extractFiles[arcFile];
     }
     else {
-      const parentDir = Path.dirname(config.extractDir);
-      if (!await directoryExists(parentDir)) {
-        logger.notice(`mkdir -p ${parentDir}`);
-        await fs.promises.mkdir(parentDir, { recursive: true }); 
+      extractDir = await fs.promises.mkdtemp(Path.resolve(config.tempDir, arcName + '.'));
+    
+      await CMakeProcess.getInstance().extract({
+        environment,
+        filename: arcFile,
+        workDir: extractDir,
+        logFile:  Path.join(config.tempDir, Path.basename(extractDir) + ".log"),
+      });
+    
+      const extractList = await FileSystem.readdir(extractDir);
+      if (extractList.length === 1) {
+        extractDir = Path.resolve(extractDir, extractList[0]);
+        if (!await directoryExists(extractDir)) {
+          await FileSystem.rm(extractDir, { recursive: true });
+          throw new Error(`Support only directory for archive`);
+        }
+      }
+    
+      if (await directoryExists(config.extractDir)) {
+        // TODO: Marge extractDir with output
+        await FileSystem.rm(config.extractDir, { recursive: true });
+      }
+      else {
+        const parentDir = Path.dirname(config.extractDir);
+        if (!await directoryExists(parentDir)) {
+          await FileSystem.mkdir(parentDir, { recursive: true }); 
+        }
+      }
+    
+      await FileSystem.rename(extractDir, config.extractDir);
+    
+      extractFiles[arcFile] = extractDir;
+      await settings.set("extractFiles", extractFiles);
+    }
+
+    if (config.patchDir) {
+      let patchDirs = await settings.get("patchDirs") || {};
+      if (!patchDirs[config.patchDir]) {
+        await makePatch(config.patchDir, config.extractDir);
+        patchDirs[config.patchDir] = config.extractDir;
+        await settings.set("patchDirs", patchDirs);
       }
     }
-  
-    logger.notice(`mv ${extractDir} ${config.extractDir}`);
-    await fs.promises.rename(extractDir, config.extractDir);
-  
-    extractFiles[arcFile] = extractDir;
-    await settings.set("extractFiles", extractFiles);
   }
 
-  if (config.patchDir) {
-    let patchDirs = await settings.get("patchDirs") || {};
-    if (!patchDirs[config.patchDir]) {
-      await makePatch(config.patchDir, config.extractDir);
-      patchDirs[config.patchDir] = config.extractDir;
-      await settings.set("patchDirs", patchDirs);
-    }
-  }
-}
-
-async function doTargetBuild(gconfig: IGeneralConfig, environment: any, config: any, settings: SettingsStorage) {
-  if (config.preAction) {
-    await settings.push("preAction");
-    const newConfig: any = {};
-    assignObject(newConfig, config);
-    delete newConfig.action;
-    delete newConfig.preAction;
-    delete newConfig.postAction;
-    assignObject(newConfig, config.preAction);
-    const newEnvironment = mergeEnvironment(await resolveEnvironment(config.preAction.environment), environment);
-    await doTargetBuild(gconfig, newEnvironment, newConfig, settings);
-    await settings.pop();
-  }
-
-  if (Array.isArray(config.action)) {
-    await settings.push("action");
-    for (var i = 0; i < config.action.length; ++i) {
-      await settings.push(i.toString());
+  async doTargetBuild(gconfig: IGeneralConfig, environment: any, config: any, settings: SettingsStorage) {
+    if (config.preAction) {
+      await settings.push("preAction");
       const newConfig: any = {};
       assignObject(newConfig, config);
       delete newConfig.action;
       delete newConfig.preAction;
       delete newConfig.postAction;
-      assignObject(newConfig, config.action[i]);
-      const newEnvironment = mergeEnvironment(await resolveEnvironment(config.action[i].environment), environment);
-      await doTargetBuild(gconfig, newEnvironment, newConfig, settings);
+      assignObject(newConfig, config.preAction);
+      const newEnvironment = mergeEnvironment(await resolveEnvironment(config.preAction.environment), environment);
+      await this.doTargetBuild(gconfig, newEnvironment, newConfig, settings);
       await settings.pop();
     }
-    await settings.pop();
-  }
-  else {
-    if (!await directoryExists(config.binaryDir)) {
-      await fs.promises.mkdir(config.binaryDir, { recursive: true });
-    }
-    if (actions[config.action]) {
-      config.description && logger.notice(config.description);
-      await actions[config.action](config, environment, settings);
-    }
-  }
 
-  if (config.postAction) {
-    await settings.push("postAction");
-    const newConfig: any = {};
-    assignObject(newConfig, config);
-    delete newConfig.action;
-    delete newConfig.preAction;
-    delete newConfig.postAction;
-    assignObject(newConfig, config.postAction);
-    const newEnvironment = mergeEnvironment(await resolveEnvironment(config.postAction.environment), environment);
-    await doTargetBuild(gconfig, newEnvironment, newConfig, settings);
-    await settings.pop();
-  }
-}
-
-async function getUserConfig(options: CommandOptions) {
-  let configPath;
-  if (options.env.config) {
-    configPath = Path.isAbsolute(options.env.config) ? options.env.config : Path.resolve(options.workDir, options.env.config);
-    if (!await fileExists(configPath))
-      throw `Configuration '${options.env.config}' file does not exist`;
-  }
-  else {
-    const userConfigPath = Path.resolve(options.workDir, USER_CONFIG);
-    if (await fileExists(userConfigPath))
-      configPath = userConfigPath;
-    else {
-      logger.warn(`Config file '${USER_CONFIG}' is not available`);
-    }
-  }
-
-  if (!configPath) {
-    return {
-      "bundle:output": {
-        action: "bitmake",
-        variables: {
-          INSTALL_PREFIX: "/usr",
-        },
-        sourceDir: "${sourceRoot}",
-        destDir: "${binaryRoot}/output",
+    if (Array.isArray(config.action)) {
+      await settings.push("action");
+      for (var i = 0; i < config.action.length; ++i) {
+        await settings.push(i.toString());
+        const newConfig: any = {};
+        assignObject(newConfig, config);
+        delete newConfig.action;
+        delete newConfig.preAction;
+        delete newConfig.postAction;
+        assignObject(newConfig, config.action[i]);
+        const newEnvironment = mergeEnvironment(await resolveEnvironment(config.action[i].environment), environment);
+        await this.doTargetBuild(gconfig, newEnvironment, newConfig, settings);
+        await settings.pop();
       }
-    };
+      await settings.pop();
+    }
+    else {
+      if (!await directoryExists(config.binaryDir)) {
+        await FileSystem.mkdir(config.binaryDir, { recursive: true });
+      }
+      if (actions[config.action]) {
+        config.description && logger.notice(config.description);
+        await actions[config.action](config, environment, settings);
+      }
+    }
+
+    if (config.postAction) {
+      await settings.push("postAction");
+      const newConfig: any = {};
+      assignObject(newConfig, config);
+      delete newConfig.action;
+      delete newConfig.preAction;
+      delete newConfig.postAction;
+      assignObject(newConfig, config.postAction);
+      const newEnvironment = mergeEnvironment(await resolveEnvironment(config.postAction.environment), environment);
+      await this.doTargetBuild(gconfig, newEnvironment, newConfig, settings);
+      await settings.pop();
+    }
   }
 
-  const configUrl = url.pathToFileURL(configPath);
-  const configModule = await importModule(configUrl);
-  switch (typeof configModule.default) {
-  case "function":
-    const userConfig = configModule.default(options.env, {});
-    if (userConfig instanceof Promise)
-      return await userConfig;
-    return userConfig;
+  async getUserConfig(options: CommandOptions) {
+    let configPath;
+    if (options.env.config) {
+      configPath = Path.isAbsolute(options.env.config) ? options.env.config : Path.resolve(options.workDir, options.env.config);
+      if (!await fileExists(configPath))
+        throw `Configuration '${options.env.config}' file does not exist`;
+    }
+    else {
+      const userConfigPath = Path.resolve(options.workDir, USER_CONFIG);
+      if (await fileExists(userConfigPath))
+        configPath = userConfigPath;
+      else {
+        logger.warn(`Config file '${USER_CONFIG}' is not available`);
+      }
+    }
 
-  case "object":
-    return configModule.default;
+    if (!configPath) {
+      return {
+        "bundle:output": {
+          action: "bitmake",
+          variables: {
+            INSTALL_PREFIX: "/usr",
+          },
+          sourceDir: "${sourceRoot}",
+          destDir: "${binaryRoot}/output",
+        }
+      };
+    }
 
-  default:
-    throw new Error(`Unknown user configuration type`);
+    const configUrl = url.pathToFileURL(configPath);
+    const configModule = await importModule(configUrl);
+    switch (typeof configModule.default) {
+    case "function":
+      const userConfig = configModule.default(options.env, {});
+      if (userConfig instanceof Promise)
+        return await userConfig;
+      return userConfig;
+
+    case "object":
+      return configModule.default;
+
+    default:
+      throw new Error(`Unknown user configuration type`);
+    }
   }
-}
+
+  public async run(options: CommandOptions): Promise<void> {
+    const userConfig = await this.getUserConfig(options);
+    this._buildTreeConfig = makeBuildConfig(this._gconfig, userConfig);
+
+    if (this._buildTreeConfig.RECIPE_CONTENT_FILE) {
+      const recipeJson = JSON.stringify(this._buildTreeConfig, null, 2);
+      await saveIfDifferent(this._buildTreeConfig.RECIPE_CONTENT_FILE, recipeJson);
+    }
+
+    const settingsFilename = Path.resolve(this._buildTreeConfig.binaryRoot, BUILD_SETTINGS_FILE);
+    const settings = new SettingsStorage(settingsFilename);
+
+    for (const [key, entry] of Object.entries(this._buildTreeConfig) as any) {
+      if (entry && typeof entry === "object" && entry.action && !entry.disabled) {
+        await settings.push(key);
+        const completed = await settings.get("completed");
+        if (entry.rebuild || !completed) {
+          logger.info(`Started action: ${key}`);
+          const environment = mergeEnvironment(await resolveEnvironment(entry.environment), process.env);
+          if (entry.sourceUrl && !entry.sourceUrl.startsWith(IMPORT_SCHEME)) {
+            await this.doExtractArchive(this._gconfig, environment, entry, settings);
+          }
+          await this.doTargetBuild(this._gconfig, environment, entry, settings);
+          await settings.set("completed", true);
+          logger.info(`Completed action: ${key}`);
+        }
+        await settings.pop();
+      }
+    }
+  }
+
+  private onServerListen() {
+    console.log(`Server running at ${this._startUrl}`);
+  }
+
+  private onServerRequest(req: http.IncomingMessage, res: http.ServerResponse) {
+    const handler = req.url ? this._requestHandlers.get(req.url) : undefined;
+    if (handler)
+      handler(req, res);
+    else
+      res.destroy();
+  }
+
+  private mainPage(req: http.IncomingMessage, res: http.ServerResponse) {
+    res.statusCode = 200;
+    res.setHeader("Content-Type", "text/html");
+    res.end(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>BitMake</title>
+          <style>
+            body { font-family: Arial; background: #f0f0f0; text-align: center; padding: 50px; }
+            h1 { color: #007acc; }
+          </style>
+          <script src="script.js"></script>
+        </head>
+        <body>
+          <h1>BitMake</h1>
+          <p>This is an HTML response.</p>
+          <a href="tree-config.json">Build Tree Config</a>
+        </body>
+      </html>
+    `);
+  }
+
+  private mainScript(req: http.IncomingMessage, res: http.ServerResponse) {
+    const dirUrl = url.fileURLToPath(currentScriptURL());
+    const filename = path.join(path.dirname(dirUrl), "script.js");
+    
+    fs.readFile(filename, 'utf8', (err, data) => {
+      if (err) {
+        res.statusCode = 500;
+        res.setHeader("Content-Type", "text/plain");
+        res.end('Error loading script.js');
+      }
+      else {
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "application/javascript");
+        res.end(data);
+      }
+    });
+  }
+
+  private treeConfigJson(req: http.IncomingMessage, res: http.ServerResponse) {
+    res.statusCode = 200;
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify(this._buildTreeConfig));
+  }
+
+  public startServer() {
+    this._hostname = "localhost";
+    this._port = randInt(49152, 65535);
+    this._startUrl = `http://${this._hostname}:${this._port}`;
+
+    this._requestHandlers.set("/", this.mainPage.bind(this));
+    this._requestHandlers.set("/script.js", this.mainScript.bind(this));
+    this._requestHandlers.set("/tree-config.json", this.treeConfigJson.bind(this));
+
+    this._server = http.createServer((req, res) => this.onServerRequest(req, res));
+    this._server.listen(this._port, this._hostname, () => this.onServerListen());
+    const startCommand = process.platform === "win32" ? "start" : process.platform === "darwin" ? "open" : "xdg-open";
+    child_process.exec(`${startCommand} ${this._startUrl}`, (error, stdout, stderr) => {
+      error && logger.warn(`Code ${error.code} for command ${error.cmd}`);
+    });
+  }
+
+  public stopServer() {
+    this._server?.close();
+  }
+};
 
 export default async (options: CommandOptions) => {
-  const gconfig: IGeneralConfig = {
+  const buildContext = new BuildContext({
+    webui: options.env.webui === true,
     buildType: options.env.buildType == DEBUG_BUILD_TYPE ? options.env.buildType : RELEASE_BUILD_TYPE,
     workDir: options.workDir,
-  };
+  });
 
-  const userConfig = await getUserConfig(options);
-  const buildConfig = makeBuildConfig(gconfig, userConfig);
-
-  if (buildConfig.RECIPE_CONTENT_FILE) {
-    const jsonConfig = JSON.stringify(buildConfig, null, 2);
-    await saveIfDifferent(buildConfig.RECIPE_CONTENT_FILE, jsonConfig);
+  if (buildContext.gconfig.webui) {
+    buildContext.startServer();
   }
 
-  const settingsFilename = Path.resolve(buildConfig.binaryRoot, BUILD_SETTINGS_FILE);
-  const settings = new SettingsStorage(settingsFilename);
-
-  for (const [key, entry] of Object.entries(buildConfig) as any) {
-    if (entry && typeof entry === "object" && entry.action && !entry.disabled) {
-      await settings.push(key);
-      const completed = await settings.get("completed");
-      if (entry.rebuild || !completed) {
-        logger.info(`Started action: ${key}`);
-        const environment = mergeEnvironment(await resolveEnvironment(entry.environment), process.env);
-        if (entry.sourceUrl && !entry.sourceUrl.startsWith(IMPORT_SCHEME)) {
-          await doExtractArchive(gconfig, environment, entry, settings);
-        }
-        await doTargetBuild(gconfig, environment, entry, settings);
-        await settings.set("completed", true);
-        logger.info(`Completed action: ${key}`);
-      }
-      await settings.pop();
-    }
-  }
+  await buildContext.run(options);
 }

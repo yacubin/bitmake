@@ -68,7 +68,7 @@ export default async (env, argv) => {
     ],
   };
 
-  const config = {
+  const indexConfig = {
     mode,
     devtool,
     resolve,
@@ -96,5 +96,23 @@ export default async (env, argv) => {
     ],
   };
 
-  return config;
+  const scriptConfig = {
+    mode,
+    devtool,
+    resolve,
+    target: 'web',
+    entry: {
+      "script": "./src/script.ts",
+    },
+    output: {
+      path: outputPath,
+      filename: '[name].js',
+    },
+    module,
+    plugins: [
+      new webpack.DefinePlugin(globalVariables),
+    ],
+  };
+
+  return [ indexConfig, scriptConfig ];
 }

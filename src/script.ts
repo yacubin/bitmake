@@ -7,13 +7,6 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-export interface CommandOptions {
-  handler: string;
-  workDir: string;
-  env: {
-    buildType?: string;
-    config?: string;
-    preset?: string;
-    webui?: boolean;
-  };
-};
+/// <reference path="global.d.ts" />
+
+console.log("Hello World");

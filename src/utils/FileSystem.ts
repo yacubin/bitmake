@@ -34,12 +34,15 @@ export function pathExistsSync(path: string) {
   }
 }
 
-export async function fileExists(path: string) {
+export async function fileExists(file: fs.PathLike | Locator): Promise<boolean> {
+  const path = (file instanceof Locator) ? file.toPath() : file;
   try {
-    return (await fs.promises.stat(path)).isFile();
-  } catch {
-    return false;
-  }
+    const stat = await fs.promises.stat(path);
+    if (stat.isFile())
+      return true;
+    logger.warn(`Mode ${stat.mode} for ${file} is not a file`);
+  } catch { }
+  return false;
 }
 
 export function fileExistsSync(path: string) {
@@ -50,12 +53,15 @@ export function fileExistsSync(path: string) {
   } 
 }
 
-export async function directoryExists(path: string) {
+export async function directoryExists(file: fs.PathLike | Locator): Promise<boolean> {
+  const path = (file instanceof Locator) ? file.toPath() : file;
   try {
-    return (await fs.promises.stat(path)).isDirectory();
-  } catch {
-    return false;
-  }
+    const stat = await fs.promises.stat(path);
+    if (stat.isDirectory())
+      return true;
+    logger.warn(`Mode ${stat.mode} for ${file} is not a directory`);
+  } catch { }
+  return false;
 }
 
 export function directoryExistsSync(path: string) {
@@ -155,21 +161,21 @@ export async function saveAsJSON(filename: string, value: any, options?: { prett
 export namespace FileSystem {
 
 export function rm(path: fs.PathLike | Locator, options?: fs.RmOptions): Promise<void> {
-  logger.notice(`rm -f${options?.recursive ? "r" : ""} ${path}`);
+  logger.info(`rm -f${options?.recursive ? "r" : ""} ${path}`);
   if (path instanceof Locator)
     path = path.toPath();
   return fs.promises.rm(path, options);
 }
 
 export function mkdir(path: fs.PathLike | Locator, options: fs.MakeDirectoryOptions): Promise<string | undefined> {
-  logger.notice(`mkdir ${options?.recursive ? "-p " : ""}${path}`);
+  logger.info(`mkdir ${options?.recursive ? "-p " : ""}${path}`);
   if (path instanceof Locator)
     path = path.toPath();
   return fs.promises.mkdir(path, options); 
 }
 
 export function rename(oldPath: fs.PathLike, newPath: fs.PathLike): Promise<void> {
-  logger.notice(`mv ${oldPath} ${newPath}`);
+  logger.info(`mv ${oldPath} ${newPath}`);
   if (oldPath instanceof Locator)
     oldPath = oldPath.toPath();
   if (newPath instanceof Locator)
@@ -181,6 +187,13 @@ export function readdir(path: fs.PathLike | Locator, options?: fs.ObjectEncoding
   if (path instanceof Locator)
     path = path.toPath();
   return fs.promises.readdir(path, options);
+}
+
+export function writeFile(file: fs.PathLike | Locator, data: | string | NodeJS.ArrayBufferView, options?: fs.ObjectEncodingOptions | BufferEncoding | null): Promise<void> {
+  logger.info(`echo [Buffer object] > ${file}`);
+  if (file instanceof Locator)
+    file = file.toPath();
+  return fs.promises.writeFile(file, data, options);
 }
 
 } // namespace FileSystem

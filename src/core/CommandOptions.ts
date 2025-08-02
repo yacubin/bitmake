@@ -7,9 +7,11 @@
  * under the MIT License. See LICENSE file for details.
  */
 
+import { Locator } from "@/utils/Locator";
+
 export interface CommandOptions {
   handler: string;
-  workDir: string;
+  workDir: Locator;
   env: {
     buildType?: string;
     config?: string;

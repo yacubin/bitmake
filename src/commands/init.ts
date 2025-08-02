@@ -7,10 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import path from "node:path";
-import fs from "node:fs";
-
-import { fileExists, fetchBuffer } from "@/utils/FileSystem";
+import { FileSystem, fetchBuffer, fileExists } from "@/utils/FileSystem";
 import { USER_CONFIG } from "@/Constants";
 import { CommandOptions } from "@/core/CommandOptions";
 import { Logger } from "@/logger";
@@ -25,10 +22,10 @@ export default async function(options: CommandOptions) {
 
   const presetData = await fetchBuffer(preset);
 
-  const userConfigPath = path.resolve(options.workDir, USER_CONFIG);
+  const userConfigPath = options.workDir.join(USER_CONFIG);
   if (await fileExists(userConfigPath))
-    await fs.promises.rm(userConfigPath);
+    await FileSystem.rm(userConfigPath);
 
-  await fs.promises.writeFile(userConfigPath, presetData, "utf8");
+  await FileSystem.writeFile(userConfigPath, presetData, "utf8");
   logger.info(`Preset '${preset}' installed successfully`);
 }

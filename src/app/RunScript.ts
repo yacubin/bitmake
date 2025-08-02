@@ -15,6 +15,7 @@ import { Logger } from "@/logger";
 import { runScriptInit } from "@/app/RunScriptInit";
 import { MessagePortSender } from "@/server/MessagePortSender";
 import { WorkerMessageDispatcher } from "@/server/WorkerMessageDispatcher";
+import { Locator } from "@/utils/Locator";
 
 const logger = Logger.create(import.meta.url);
 
@@ -22,7 +23,7 @@ export async function runMainScript() {
   logger.info("Main thread started")
   const options: any = {
     handler: "default",
-    workDir: process.cwd(),
+    workDir: Locator.create(process.cwd()),
     env: {},
   };
 

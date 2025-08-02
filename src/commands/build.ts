@@ -38,8 +38,9 @@ const logger = Logger.create(import.meta.url);
 
 interface IGeneralConfig {
   webui: boolean;
-  workDir: string;
+  workDir: Locator;
   buildType: string;
+  configArg?: string;
 };
 
 function mergeEnvironment(...args: any) {
@@ -215,8 +216,8 @@ function makeBuildConfig(gconfig: IGeneralConfig, config: any) {
   const rootConfig = rebaseConfig(config);
 
   rootConfig.buildType = rootConfig.buildType || gconfig.buildType;
-  rootConfig.sourceRoot = rootConfig.sourceRoot || gconfig.workDir;
-  rootConfig.binaryRoot = rootConfig.binaryRoot || Path.join(gconfig.workDir, "build");
+  rootConfig.sourceRoot = rootConfig.sourceRoot || gconfig.workDir.toPath();
+  rootConfig.binaryRoot = rootConfig.binaryRoot || gconfig.workDir.join("build").toPath();
 
   for (const [key, entry] of Object.entries(rootConfig) as any) {
     if (entry && typeof entry === "object" && entry.action) {
@@ -263,9 +264,13 @@ class BuildContext {
   private _port = 0;
   private _buildTreeConfig: any = {};
   private _requestHandlers = new Map<string, RequestHandler>;
+  private _workDir: Locator;
+  private _configArg?: string;
 
   constructor(gconfig: IGeneralConfig) {
     this._gconfig = gconfig;
+    this._workDir = gconfig.workDir;
+    this._configArg = gconfig.configArg;
   }
 
   public get gconfig() {
@@ -406,15 +411,15 @@ class BuildContext {
     }
   }
 
-  async getUserConfig(options: CommandOptions) {
-    let configPath;
-    if (options.env.config) {
-      configPath = Path.isAbsolute(options.env.config) ? options.env.config : Path.resolve(options.workDir, options.env.config);
+  async loadBuildTree() {
+    let configPath: Locator | undefined;
+    if (this._configArg) {
+      configPath = this._workDir.resolve(this._configArg);
       if (!await fileExists(configPath))
-        throw `Configuration '${options.env.config}' file does not exist`;
+        throw `Configuration '${this._configArg}' file does not exist`;
     }
     else {
-      const userConfigPath = Path.resolve(options.workDir, USER_CONFIG);
+      const userConfigPath = this._workDir.join(USER_CONFIG);
       if (await fileExists(userConfigPath))
         configPath = userConfigPath;
       else {
@@ -435,26 +440,25 @@ class BuildContext {
       };
     }
 
-    const configUrl = url.pathToFileURL(configPath);
-    const configModule = await importModule(configUrl);
-    switch (typeof configModule.default) {
+    const { default: configModule } = await importModule(configPath.toURLString());
+    switch (typeof configModule) {
     case "function":
-      const userConfig = configModule.default(options.env, {});
+      const userConfig = configModule();
       if (userConfig instanceof Promise)
         return await userConfig;
       return userConfig;
 
     case "object":
-      return configModule.default;
+      return configModule;
 
     default:
       throw new Error(`Unknown user configuration type`);
     }
   }
 
-  public async run(options: CommandOptions): Promise<void> {
-    const userConfig = await this.getUserConfig(options);
-    this._buildTreeConfig = makeBuildConfig(this._gconfig, userConfig);
+  public async run(): Promise<void> {
+    const originConfig = await this.loadBuildTree();
+    this._buildTreeConfig = makeBuildConfig(this._gconfig, originConfig);
 
     if (this._buildTreeConfig.RECIPE_CONTENT_FILE) {
       const recipeJson = JSON.stringify(this._buildTreeConfig, null, 2);
@@ -569,11 +573,12 @@ export default async (options: CommandOptions) => {
     webui: options.env.webui === true,
     buildType: options.env.buildType == DEBUG_BUILD_TYPE ? options.env.buildType : RELEASE_BUILD_TYPE,
     workDir: options.workDir,
+    configArg: options.env.config,
   });
 
   if (buildContext.gconfig.webui) {
     buildContext.startServer();
   }
 
-  await buildContext.run(options);
+  await buildContext.run();
 }

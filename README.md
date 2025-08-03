@@ -2,13 +2,13 @@
 
 > Note: This project is under active development.
 
-BitMake is JavaScript-based build system originally developed as part of the [WASMUX](https://github.com/ykbin/wasmux) project.
+BitMake is JavaScript-based build system originally developed as part of the [WASMUX](https://github.com/yacubin/wasmux) project.
 The main task of BitMake is to build recipes and make scripts.
 
 Examples of building a dbc-0.0.1 project:
 ```
 export PATH=/opt/apps/llvm-project-llvmorg-19.1.3/bin:$PATH           # Path to clang compiler
-wget https://github.com/ykbin/dbc/archive/refs/tags/v0.0.1.tar.gz
+wget https://github.com/yacubin/dbc/archive/refs/tags/v0.0.1.tar.gz
 tar -xvf ./v0.0.1.tar.gz
 cd dbc-0.0.1/
 npm init -y
@@ -56,6 +56,6 @@ export default (mk) => {
 ```
 
 Examples of make recipes:
-* [nlohmann](https://github.com/ykbin/PkgExtras/blob/develop/MakeRecipes/nlohmann.mjs)
-* [libhv-static](https://github.com/ykbin/PkgExtras/blob/develop/MakeRecipes/libhv-static.mjs)
-* [Thunder-R2](https://github.com/ykbin/PkgExtras/blob/develop/MakeRecipes/Thunder-R2.mjs)
+* [nlohmann](https://github.com/yacubin/PkgExtras/blob/develop/MakeRecipes/nlohmann.mjs)
+* [libhv-static](https://github.com/yacubin/PkgExtras/blob/develop/MakeRecipes/libhv-static.mjs)
+* [Thunder-R2](https://github.com/yacubin/PkgExtras/blob/develop/MakeRecipes/Thunder-R2.mjs)

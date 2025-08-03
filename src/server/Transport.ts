@@ -35,7 +35,7 @@ export interface JsonRpcData {
   jsonrpc: string;
   method?: string;
   params?: any;
-  id?: number;
+  id?: number | null;
   error?: {
     code: number,
     message: string,
@@ -45,7 +45,8 @@ export interface JsonRpcData {
 };
 
 export type JsonRpcRequestHandler = (request: IJsonRpcRequest, response: IJsonRpcResponse) => void;
-export type JsonRpcCallback = (params: any) => any;
+export type JsonRpcCallback = (params?: any) => any;
+export type JsonRpcDataCallback = (data: JsonRpcData) => void;
 
 export interface IJsonRpcRequest {
   get params(): any;

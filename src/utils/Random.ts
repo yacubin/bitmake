@@ -24,3 +24,9 @@ export function randCIdentifer(length: number) {
 
   return result;
 }
+
+export function randInt(min: number = Number.MIN_SAFE_INTEGER, max: number = Number.MAX_SAFE_INTEGER): number {
+  if (min === max) return min;
+  if (min > max) [min, max] = [max, min];
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}

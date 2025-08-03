@@ -30,6 +30,7 @@ import { loadJSValue } from "@/utils/JSValue";
 import { importModule } from "@/utils/Module";
 import { Locator } from "@/utils/Locator";
 import { currentScriptURL } from "@/utils/Module";
+import { deepCopy } from "@/utils/Primitives";
 
 import actions from "@/actions";
 import path from "node:path";
@@ -41,6 +42,111 @@ interface IGeneralConfig {
   workDir: Locator;
   buildType: string;
   configArg?: string;
+};
+
+interface BmkNode {
+  name: string;
+  root: BmkRoot;
+  originConfig: any;
+  workConfig: any;
+};
+
+class BmkRoot {
+  private _children = new Map<string, BmkNode>;
+  private _buildType: string;
+  private _sourceRoot: Locator;
+  private _binaryRoot: Locator;
+
+  public constructor(buildType: string, sourceRoot: Locator, binaryRoot: Locator) {
+    this._buildType = buildType;
+    this._sourceRoot = sourceRoot;
+    this._binaryRoot = binaryRoot;
+  }
+
+  public static create(buildType: string, sourceRoot: Locator, binaryRoot: Locator, config: any): BmkRoot {
+    const root = new BmkRoot(buildType, sourceRoot, binaryRoot);
+
+    for (const [name, originConfig] of Object.entries(config) as any) {
+      const workConfig = deepCopy(originConfig);
+      root._children.set(name, { name, root, originConfig, workConfig });
+    }
+
+    return root;
+  }
+
+  public get buildType(): string {
+    return this._buildType;
+  }
+
+  public get sourceRoot(): Locator {
+    return this._sourceRoot;
+  }
+
+  public get binaryRoot(): Locator {
+    return this._binaryRoot;
+  }
+
+  public getNode(name: string) {
+    return this._children.get(name);
+  }
+
+  public hasNode(name: string) {
+    return this._children.has(name);
+  }
+
+  public nodeEntries() {
+    return this._children.entries();
+  }
+
+  public rebaseNodes() {
+    const baseConfig: any = {};
+    const otherConfig: any = {};
+
+    for (const [key, entry] of this._children) {
+      (entry.workConfig.base ? otherConfig : baseConfig)[key] = entry.workConfig;
+    }
+
+    while (true) {
+      const keys = Object.keys(otherConfig);
+      if (keys.length == 0)
+        break;
+      const doneKeys = [];
+      for (const key of keys) {
+        const otherIter = otherConfig[key];
+        const baseList = [];
+        for (const iter of arrayWrapper(otherIter.base)) {
+          const baseEntry = baseConfig[iter];
+          if (!baseEntry) {
+            baseList.length = 0;
+            break;
+          }
+          baseList.push(baseEntry);
+        }
+        if (baseList.length) {
+          baseList.push(otherIter);
+          let newEntry = {};
+          for (const iter of baseList) {
+            assignObject(newEntry, iter);
+          }
+          baseConfig[key] = newEntry;
+          doneKeys.push(key);
+        }
+      }
+      if (doneKeys.length == 0) {
+        for (const key of keys)
+          throw `Can't set base config for "${key}`;
+      }
+      for (const key of doneKeys) {
+        delete baseConfig[key].base;
+        delete otherConfig[key];
+      }
+    }
+
+    for (const [name, config] of Object.entries(baseConfig)) {
+      const entry = this._children.get(name) as BmkNode;
+      entry.workConfig = config;
+    }
+  }
 };
 
 function mergeEnvironment(...args: any) {
@@ -88,53 +194,6 @@ async function resolveEnvironment(environment: Environment | string): Promise<En
 
   const envFile = Locator.create(environment);
   return loadJSValue(envFile);
-}
-
-function rebaseConfig(config: any) {
-  const baseConfig: any = {};
-  const otherConfig: any = {};
-
-  for (const [key, entry] of Object.entries(config) as any) {
-    (entry.base ? otherConfig : baseConfig)[key] = entry;
-  }
-
-  while (true) {
-    const keys = Object.keys(otherConfig);
-    if (keys.length == 0)
-      break;
-    const doneKeys = [];
-    for (const key of keys) {
-      const otherIter = otherConfig[key];
-      const baseList = [];
-      for (const iter of arrayWrapper(otherIter.base)) {
-        const baseEntry = baseConfig[iter];
-        if (!baseEntry) {
-          baseList.length = 0;
-          break;
-        }
-        baseList.push(baseEntry);
-      }
-      if (baseList.length) {
-        baseList.push(otherIter);
-        let newEntry = {};
-        for (const iter of baseList) {
-          assignObject(newEntry, iter);
-        }
-        baseConfig[key] = newEntry;
-        doneKeys.push(key);
-      }
-    }
-    if (doneKeys.length == 0) {
-      for (const key of keys)
-        throw `Can't set base config for "${key}`;
-    }
-    for (const key of doneKeys) {
-      delete baseConfig[key].base;
-      delete otherConfig[key];
-    }
-  }
-
-  return baseConfig;
 }
 
 function resolveStringWithVariable(config: any, entryConfig: any, rootConfig: any, val: any) {
@@ -208,16 +267,22 @@ function resolveConfigStrings(config: any) {
   }
 }
 
-function makeBuildConfig(gconfig: IGeneralConfig, config: any) {
-  if (config["sourceRoot"]) {
-    throw new Error(`Variable "sourceRoot" cannot be changed to "${config.sourceRoot}"`);
+function makeBuildConfig(bmkRoot: BmkRoot) {
+  const sourceRootNode = bmkRoot.getNode("sourceRoot");
+  if (sourceRootNode) {
+    throw new Error(`Variable "sourceRoot" cannot be changed to "${sourceRootNode}"`);
   }
 
-  const rootConfig = rebaseConfig(config);
+  bmkRoot.rebaseNodes();
 
-  rootConfig.buildType = rootConfig.buildType || gconfig.buildType;
-  rootConfig.sourceRoot = rootConfig.sourceRoot || gconfig.workDir.toPath();
-  rootConfig.binaryRoot = rootConfig.binaryRoot || gconfig.workDir.join("build").toPath();
+  const rootConfig: any = {};
+  for (const [name, entry] of bmkRoot.nodeEntries()) {
+    rootConfig[name] = entry.workConfig;
+  }
+
+  rootConfig.buildType = rootConfig.buildType || bmkRoot.buildType;
+  rootConfig.sourceRoot = rootConfig.sourceRoot || bmkRoot.sourceRoot.toPath();
+  rootConfig.binaryRoot = rootConfig.binaryRoot || bmkRoot.binaryRoot.toPath();
 
   for (const [key, entry] of Object.entries(rootConfig) as any) {
     if (entry && typeof entry === "object" && entry.action) {
@@ -277,7 +342,7 @@ class BuildContext {
     return this._gconfig;
   }
 
-  async doExtractArchive(gconfig: IGeneralConfig, environment: any, config: any, settings: any) {
+  async doExtractArchive(environment: any, config: any, settings: any) {
     if (!config.sourceUrl)
       throw new Error("Unknown sourceUrl");
     if (!config.archiveDir)
@@ -411,7 +476,7 @@ class BuildContext {
     }
   }
 
-  async loadBuildTree() {
+  async loadTreeConfig() {
     let configPath: Locator | undefined;
     if (this._configArg) {
       configPath = this._workDir.resolve(this._configArg);
@@ -419,25 +484,20 @@ class BuildContext {
         throw `Configuration '${this._configArg}' file does not exist`;
     }
     else {
-      const userConfigPath = this._workDir.join(USER_CONFIG);
-      if (await fileExists(userConfigPath))
-        configPath = userConfigPath;
-      else {
+      configPath = this._workDir.join(USER_CONFIG);
+      if (!await fileExists(configPath)) {
         logger.warn(`Config file '${USER_CONFIG}' is not available`);
+        return {
+          "bundle:output": {
+            action: "bitmake",
+            variables: {
+              INSTALL_PREFIX: "/usr",
+            },
+            sourceDir: "${sourceRoot}",
+            destDir: "${binaryRoot}/output",
+          }
+        };
       }
-    }
-
-    if (!configPath) {
-      return {
-        "bundle:output": {
-          action: "bitmake",
-          variables: {
-            INSTALL_PREFIX: "/usr",
-          },
-          sourceDir: "${sourceRoot}",
-          destDir: "${binaryRoot}/output",
-        }
-      };
     }
 
     const { default: configModule } = await importModule(configPath.toURLString());
@@ -457,8 +517,14 @@ class BuildContext {
   }
 
   public async run(): Promise<void> {
-    const originConfig = await this.loadBuildTree();
-    this._buildTreeConfig = makeBuildConfig(this._gconfig, originConfig);
+    if (this._gconfig.webui) {
+      this.startServer();
+    }
+
+    const originConfig = await this.loadTreeConfig();
+    const bmkRoot = BmkRoot.create(this._gconfig.buildType, this._gconfig.workDir, this._gconfig.workDir.join("build"), originConfig);
+
+    this._buildTreeConfig = makeBuildConfig(bmkRoot);
 
     if (this._buildTreeConfig.RECIPE_CONTENT_FILE) {
       const recipeJson = JSON.stringify(this._buildTreeConfig, null, 2);
@@ -476,7 +542,7 @@ class BuildContext {
           logger.info(`Started action: ${key}`);
           const environment = mergeEnvironment(await resolveEnvironment(entry.environment), process.env);
           if (entry.sourceUrl && !entry.sourceUrl.startsWith(IMPORT_SCHEME)) {
-            await this.doExtractArchive(this._gconfig, environment, entry, settings);
+            await this.doExtractArchive(environment, entry, settings);
           }
           await this.doTargetBuild(this._gconfig, environment, entry, settings);
           await settings.set("completed", true);
@@ -515,7 +581,7 @@ class BuildContext {
         </head>
         <body>
           <h1>BitMake</h1>
-          <p>This is an HTML response.</p>
+          <p>This is a Main Page</p>
           <a href="tree-config.json">Build Tree Config</a>
         </body>
       </html>
@@ -575,10 +641,6 @@ export default async (options: CommandOptions) => {
     workDir: options.workDir,
     configArg: options.env.config,
   });
-
-  if (buildContext.gconfig.webui) {
-    buildContext.startServer();
-  }
 
   await buildContext.run();
 }

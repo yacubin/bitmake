@@ -315,7 +315,6 @@ function makeBuildConfig(bmkRoot: BmkRoot) {
   }
 
   resolveConfigStrings(rootConfig);
-
   return rootConfig;
 }
 

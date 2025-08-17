@@ -11,6 +11,7 @@ import fs from "node:fs";
 import url from "node:url";
 import http from "node:http";
 import child_process from "node:child_process";
+import { Stream } from "node:stream";
 
 import { CMakeProcess } from "@/cmake";
 import { Path } from "@/utils/Path";
@@ -318,16 +319,163 @@ function makeBuildConfig(bmkRoot: BmkRoot) {
   return rootConfig;
 }
 
-type RequestHandler = (req: http.IncomingMessage, res: http.ServerResponse) => void;
+abstract class HttpRequestExecuter {
+  protected _contentType?: string;
+
+  public setContentType(contentType: string) {
+    this._contentType = contentType;
+  }
+
+  protected sendResult(req: http.IncomingMessage, res: http.ServerResponse, data: any) {
+    res.statusCode = 200;
+
+    if (this._contentType)
+      res.setHeader("Content-Type", this._contentType);
+
+    res.end(data);
+  }
+
+  protected sendError(req: http.IncomingMessage, res: http.ServerResponse, message: string) {
+    res.statusCode = 500;
+    res.setHeader("Content-Type", "text/plain");
+    res.end(message);
+  }
+
+  abstract requestHandler(req: http.IncomingMessage, res: http.ServerResponse): void;
+};
+
+class StaticDataExecuter<T> extends HttpRequestExecuter {
+  private _data: T;
+
+  public constructor(data: T) {
+    super();
+    this._data = data;
+  }
+
+  public requestHandler(req: http.IncomingMessage, res: http.ServerResponse): void {
+    super.sendResult(req, res, this._data);
+  }
+};
+
+class AcquireDataExecuter extends HttpRequestExecuter {
+  private _callback: () => any | Promise<any>;
+  private _transforms: Array<(data: any) => any> = [];
+
+  public constructor(callback: () => any | Promise<any>) {
+    super();
+    this._callback = callback;
+  }
+
+  public requestHandler(req: http.IncomingMessage, res: http.ServerResponse): void {
+    const data = this._callback();
+    if (data instanceof Promise)
+      data.then(() => this.onRequest(req, res, data));
+    else
+      this.onRequest(req, res, data);
+  }
+
+  private onRequest(req: http.IncomingMessage, res: http.ServerResponse, data: any) {
+    for (const transform of this._transforms)
+      data = transform(data);
+    super.sendResult(req, res, data);
+  }
+
+  public addTransform(transform: (data: any) => any) {
+    this._transforms.push(transform);
+  }
+};
+
+class FilenameExecuter extends HttpRequestExecuter {
+  private _filename: string;
+
+  public constructor(filename: string) {
+    super();
+    this._filename = filename;
+  }
+
+  public requestHandler(req: http.IncomingMessage, res: http.ServerResponse): void {
+    fs.readFile(this._filename, 'utf8', (err, data) => {
+      if (err)
+        super.sendError(req, res, 'Error loading' + this._filename);
+      else
+        super.sendResult(req, res, data);
+    });
+  }
+};
+
+class WebServer {
+  private _httpServer: http.Server;
+  private _rootURL: URL;
+  private _requestExecuters = new Map<string, HttpRequestExecuter>;
+  
+  private constructor(hostname: string, port: number) {
+    this._rootURL = new URL(`http://${hostname}:${port}`);
+    this._httpServer = http.createServer((req, res) => this.onServerRequest(req, res));
+    this._httpServer.listen(port, hostname, () => this.onServerListen());
+    this._httpServer.addListener("listening", () => this.onServerListen());
+    this._httpServer.addListener("close", () => this.onServerClose());
+    this._httpServer.addListener("upgrade", (req, sock, head) => this.onServerUpgrade(req, sock, head));
+  }
+
+  private onServerUpgrade(req: http.IncomingMessage, socket: Stream.Duplex, head: Buffer) {
+    logger.info(`Server Upgrade`, req, socket, head);
+  }
+
+  public close() {
+    this._httpServer.close();
+  }
+
+  public get rootURL() {
+    return this._rootURL;
+  }
+
+  public registerJsonHandler(path: string, callback: () => any | Promise<any>) {
+    const executer = new AcquireDataExecuter(callback);
+    executer.setContentType("application/json");
+    executer.addTransform(JSON.stringify);
+    this._requestExecuters.set(path, executer);
+  }
+
+  public registerHtmlData(path: string, data: string) {
+    const executer = new StaticDataExecuter(data);
+    executer.setContentType("text/html");
+    this._requestExecuters.set(path, executer);
+  }
+
+  public registerFilename(path: string, filename: string) {
+    const executer = new FilenameExecuter(filename);
+    if (filename.match(/\.m?js$/))
+      executer.setContentType("application/javascript");
+    else
+      executer.setContentType("text/plain");
+    this._requestExecuters.set(path, executer);
+  }
+
+  private onServerListen() {
+    logger.info(`Server running at ${this._rootURL}`);
+  }
+
+  private onServerClose() {
+    logger.info(`Connection is closed`);
+  }
+
+  private onServerRequest(req: http.IncomingMessage, res: http.ServerResponse) {
+    const executer = req.url ? this._requestExecuters.get(req.url) : undefined;
+    if (executer)
+      executer.requestHandler(req, res);
+    else
+      res.destroy();
+  }
+
+  public static create(hostname: string, port: number): WebServer {
+    return new WebServer(hostname, port);
+  }
+};
 
 class BuildContext {
+  private _server?: WebServer;
   private _gconfig: IGeneralConfig;
-  private _server?: http.Server;
-  private _startUrl = "";
-  private _hostname = "";
-  private _port = 0;
   private _buildTreeConfig: any = {};
-  private _requestHandlers = new Map<string, RequestHandler>;
   private _workDir: Locator;
   private _configArg?: string;
 
@@ -552,22 +700,10 @@ class BuildContext {
     }
   }
 
-  private onServerListen() {
-    console.log(`Server running at ${this._startUrl}`);
-  }
-
-  private onServerRequest(req: http.IncomingMessage, res: http.ServerResponse) {
-    const handler = req.url ? this._requestHandlers.get(req.url) : undefined;
-    if (handler)
-      handler(req, res);
-    else
-      res.destroy();
-  }
-
-  private mainPage(req: http.IncomingMessage, res: http.ServerResponse) {
-    res.statusCode = 200;
-    res.setHeader("Content-Type", "text/html");
-    res.end(`
+  public startServer() {
+    this._server = WebServer.create("localhost", randInt(49152, 65535));
+  
+    this._server.registerHtmlData("/",`
       <!DOCTYPE html>
       <html>
         <head>
@@ -585,51 +721,24 @@ class BuildContext {
         </body>
       </html>
     `);
-  }
 
-  private mainScript(req: http.IncomingMessage, res: http.ServerResponse) {
     const dirUrl = url.fileURLToPath(currentScriptURL());
     const filename = path.join(path.dirname(dirUrl), "script.js");
-    
-    fs.readFile(filename, 'utf8', (err, data) => {
-      if (err) {
-        res.statusCode = 500;
-        res.setHeader("Content-Type", "text/plain");
-        res.end('Error loading script.js');
-      }
-      else {
-        res.statusCode = 200;
-        res.setHeader("Content-Type", "application/javascript");
-        res.end(data);
-      }
-    });
-  }
+    this._server.registerFilename("/script.js", filename);
 
-  private treeConfigJson(req: http.IncomingMessage, res: http.ServerResponse) {
-    res.statusCode = 200;
-    res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify(this._buildTreeConfig));
-  }
+    this._server.registerJsonHandler("/tree-config.json", () => this._buildTreeConfig);
 
-  public startServer() {
-    this._hostname = "localhost";
-    this._port = randInt(49152, 65535);
-    this._startUrl = `http://${this._hostname}:${this._port}`;
-
-    this._requestHandlers.set("/", this.mainPage.bind(this));
-    this._requestHandlers.set("/script.js", this.mainScript.bind(this));
-    this._requestHandlers.set("/tree-config.json", this.treeConfigJson.bind(this));
-
-    this._server = http.createServer((req, res) => this.onServerRequest(req, res));
-    this._server.listen(this._port, this._hostname, () => this.onServerListen());
     const startCommand = process.platform === "win32" ? "start" : process.platform === "darwin" ? "open" : "xdg-open";
-    child_process.exec(`${startCommand} ${this._startUrl}`, (error, stdout, stderr) => {
+    child_process.exec(`${startCommand} ${this._server.rootURL}`, (error, stdout, stderr) => {
       error && logger.warn(`Code ${error.code} for command ${error.cmd}`);
     });
   }
 
   public stopServer() {
-    this._server?.close();
+    if (this._server) {
+      this._server?.close();
+      this._server = undefined;
+    }
   }
 };
 

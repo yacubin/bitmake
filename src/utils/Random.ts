@@ -30,3 +30,15 @@ export function randInt(min: number = Number.MIN_SAFE_INTEGER, max: number = Num
   if (min > max) [min, max] = [max, min];
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
+
+export function randUint8(): number {
+  return Math.floor(Math.random() * 256);
+}
+
+export function randBuffer(buffer: Buffer, offset?: number, length?: number): void {
+  offset = offset ?? buffer.byteOffset;
+  length = length ?? buffer.byteLength;
+  for (let i = 0; i < length; i++) {
+    buffer.writeUint8(randUint8(), i);
+  }
+}

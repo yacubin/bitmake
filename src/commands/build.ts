@@ -8,10 +8,6 @@
  */
 
 import fs from "node:fs";
-import url from "node:url";
-import http from "node:http";
-import child_process from "node:child_process";
-import { Stream } from "node:stream";
 
 import { CMakeProcess } from "@/cmake";
 import { Path } from "@/utils/Path";
@@ -22,7 +18,6 @@ import { arrayWrapper, assignObject } from "@/utils/Primitives";
 import { USER_CONFIG, BUILD_SETTINGS_FILE, REQUEST_ATTEMPTS } from "@/Constants";
 import { DEBUG_BUILD_TYPE, RELEASE_BUILD_TYPE } from "@/core/Types";
 import { IMPORT_SCHEME } from "@/utils/UrlScheme";
-import { randInt } from "@/utils/Random";
 import { requireResolve } from "@/utils/Module";
 import { downloadFile } from "@/utils/HttpRequest";
 import { CommandOptions } from "@/core/CommandOptions";
@@ -30,16 +25,13 @@ import { Logger } from "@/logger";
 import { loadJSValue } from "@/utils/JSValue";
 import { importModule } from "@/utils/Module";
 import { Locator } from "@/utils/Locator";
-import { currentScriptURL } from "@/utils/Module";
 import { deepCopy } from "@/utils/Primitives";
 
 import actions from "@/actions";
-import path from "node:path";
 
 const logger = Logger.create(import.meta.url);
 
 interface IGeneralConfig {
-  webui: boolean;
   workDir: Locator;
   buildType: string;
   configArg?: string;
@@ -319,161 +311,7 @@ function makeBuildConfig(bmkRoot: BmkRoot) {
   return rootConfig;
 }
 
-abstract class HttpRequestExecuter {
-  protected _contentType?: string;
-
-  public setContentType(contentType: string) {
-    this._contentType = contentType;
-  }
-
-  protected sendResult(req: http.IncomingMessage, res: http.ServerResponse, data: any) {
-    res.statusCode = 200;
-
-    if (this._contentType)
-      res.setHeader("Content-Type", this._contentType);
-
-    res.end(data);
-  }
-
-  protected sendError(req: http.IncomingMessage, res: http.ServerResponse, message: string) {
-    res.statusCode = 500;
-    res.setHeader("Content-Type", "text/plain");
-    res.end(message);
-  }
-
-  abstract requestHandler(req: http.IncomingMessage, res: http.ServerResponse): void;
-};
-
-class StaticDataExecuter<T> extends HttpRequestExecuter {
-  private _data: T;
-
-  public constructor(data: T) {
-    super();
-    this._data = data;
-  }
-
-  public requestHandler(req: http.IncomingMessage, res: http.ServerResponse): void {
-    super.sendResult(req, res, this._data);
-  }
-};
-
-class AcquireDataExecuter extends HttpRequestExecuter {
-  private _callback: () => any | Promise<any>;
-  private _transforms: Array<(data: any) => any> = [];
-
-  public constructor(callback: () => any | Promise<any>) {
-    super();
-    this._callback = callback;
-  }
-
-  public requestHandler(req: http.IncomingMessage, res: http.ServerResponse): void {
-    const data = this._callback();
-    if (data instanceof Promise)
-      data.then(() => this.onRequest(req, res, data));
-    else
-      this.onRequest(req, res, data);
-  }
-
-  private onRequest(req: http.IncomingMessage, res: http.ServerResponse, data: any) {
-    for (const transform of this._transforms)
-      data = transform(data);
-    super.sendResult(req, res, data);
-  }
-
-  public addTransform(transform: (data: any) => any) {
-    this._transforms.push(transform);
-  }
-};
-
-class FilenameExecuter extends HttpRequestExecuter {
-  private _filename: string;
-
-  public constructor(filename: string) {
-    super();
-    this._filename = filename;
-  }
-
-  public requestHandler(req: http.IncomingMessage, res: http.ServerResponse): void {
-    fs.readFile(this._filename, 'utf8', (err, data) => {
-      if (err)
-        super.sendError(req, res, 'Error loading' + this._filename);
-      else
-        super.sendResult(req, res, data);
-    });
-  }
-};
-
-class WebServer {
-  private _httpServer: http.Server;
-  private _rootURL: URL;
-  private _requestExecuters = new Map<string, HttpRequestExecuter>;
-  
-  private constructor(hostname: string, port: number) {
-    this._rootURL = new URL(`http://${hostname}:${port}`);
-    this._httpServer = http.createServer((req, res) => this.onServerRequest(req, res));
-    this._httpServer.listen(port, hostname, () => this.onServerListen());
-    this._httpServer.addListener("listening", () => this.onServerListen());
-    this._httpServer.addListener("close", () => this.onServerClose());
-    this._httpServer.addListener("upgrade", (req, sock, head) => this.onServerUpgrade(req, sock, head));
-  }
-
-  private onServerUpgrade(req: http.IncomingMessage, socket: Stream.Duplex, head: Buffer) {
-    logger.info(`Server Upgrade`, req, socket, head);
-  }
-
-  public close() {
-    this._httpServer.close();
-  }
-
-  public get rootURL() {
-    return this._rootURL;
-  }
-
-  public registerJsonHandler(path: string, callback: () => any | Promise<any>) {
-    const executer = new AcquireDataExecuter(callback);
-    executer.setContentType("application/json");
-    executer.addTransform(JSON.stringify);
-    this._requestExecuters.set(path, executer);
-  }
-
-  public registerHtmlData(path: string, data: string) {
-    const executer = new StaticDataExecuter(data);
-    executer.setContentType("text/html");
-    this._requestExecuters.set(path, executer);
-  }
-
-  public registerFilename(path: string, filename: string) {
-    const executer = new FilenameExecuter(filename);
-    if (filename.match(/\.m?js$/))
-      executer.setContentType("application/javascript");
-    else
-      executer.setContentType("text/plain");
-    this._requestExecuters.set(path, executer);
-  }
-
-  private onServerListen() {
-    logger.info(`Server running at ${this._rootURL}`);
-  }
-
-  private onServerClose() {
-    logger.info(`Connection is closed`);
-  }
-
-  private onServerRequest(req: http.IncomingMessage, res: http.ServerResponse) {
-    const executer = req.url ? this._requestExecuters.get(req.url) : undefined;
-    if (executer)
-      executer.requestHandler(req, res);
-    else
-      res.destroy();
-  }
-
-  public static create(hostname: string, port: number): WebServer {
-    return new WebServer(hostname, port);
-  }
-};
-
 class BuildContext {
-  private _server?: WebServer;
   private _gconfig: IGeneralConfig;
   private _buildTreeConfig: any = {};
   private _workDir: Locator;
@@ -664,10 +502,6 @@ class BuildContext {
   }
 
   public async run(): Promise<void> {
-    if (this._gconfig.webui) {
-      this.startServer();
-    }
-
     const originConfig = await this.loadTreeConfig();
     const bmkRoot = BmkRoot.create(this._gconfig.buildType, this._gconfig.workDir, this._gconfig.workDir.join("build"), originConfig);
 
@@ -699,52 +533,10 @@ class BuildContext {
       }
     }
   }
-
-  public startServer() {
-    this._server = WebServer.create("localhost", randInt(49152, 65535));
-  
-    this._server.registerHtmlData("/",`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>BitMake</title>
-          <style>
-            body { font-family: Arial; background: #f0f0f0; text-align: center; padding: 50px; }
-            h1 { color: #007acc; }
-          </style>
-          <script src="script.js"></script>
-        </head>
-        <body>
-          <h1>BitMake</h1>
-          <p>This is a Main Page</p>
-          <a href="tree-config.json">Build Tree Config</a>
-        </body>
-      </html>
-    `);
-
-    const dirUrl = url.fileURLToPath(currentScriptURL());
-    const filename = path.join(path.dirname(dirUrl), "script.js");
-    this._server.registerFilename("/script.js", filename);
-
-    this._server.registerJsonHandler("/tree-config.json", () => this._buildTreeConfig);
-
-    const startCommand = process.platform === "win32" ? "start" : process.platform === "darwin" ? "open" : "xdg-open";
-    child_process.exec(`${startCommand} ${this._server.rootURL}`, (error, stdout, stderr) => {
-      error && logger.warn(`Code ${error.code} for command ${error.cmd}`);
-    });
-  }
-
-  public stopServer() {
-    if (this._server) {
-      this._server?.close();
-      this._server = undefined;
-    }
-  }
 };
 
 export default async (options: CommandOptions) => {
   const buildContext = new BuildContext({
-    webui: options.env.webui === true,
     buildType: options.env.buildType == DEBUG_BUILD_TYPE ? options.env.buildType : RELEASE_BUILD_TYPE,
     workDir: options.workDir,
     configArg: options.env.config,

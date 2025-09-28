@@ -15,6 +15,7 @@ import { InstallEntity } from "@/core/InstallEntity";
 import { TargetIncludes } from "@/core/TargetIncludes";
 import { TargetObjects } from "@/core/TargetObjects";
 import { TargetName } from "@/core/TargetName";
+import { TargetCommand } from "@/core/TargetCommand";
 import { SourceFile } from "@/core/SourceFile";
 import { DirPath, FilePath } from "@/utils/Locator";
 import { PostTarget, ObjectLibrary, StaticLibrary, SharedLibrary, Executable } from "@/core/Target";
@@ -31,6 +32,7 @@ export function runScriptInit() {
   SimpleObject.registerParser(TargetIncludes.name, TargetIncludes.fromJSON);
   SimpleObject.registerParser(TargetObjects.name, TargetObjects.fromJSON);
   SimpleObject.registerParser(TargetName.name, TargetName.fromJSON);
+  SimpleObject.registerParser(TargetCommand.name, TargetCommand.fromJSON);
   SimpleObject.registerParser(SourceFile.name, SourceFile.fromJSON);
   SimpleObject.registerParser(DirPath.name, DirPath.fromJSON);
   SimpleObject.registerParser(FilePath.name, FilePath.fromJSON);

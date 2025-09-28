@@ -17,25 +17,43 @@ import { requestGet, downloadFile } from "@/utils/HttpRequest";
 import { Path } from "@/utils/Path";
 import { runScript } from "@/app/RunScript";
 
+const cmake = {
+  scriptMode: (scriptFile: string, variables: object, options?: ScriptModeOptions) => CMakeProcess.getInstance().scriptMode(scriptFile, variables, options),
+  configure: (args: any) => CMakeProcess.getInstance().configure(args),
+  build: (args: any) => CMakeProcess.getInstance().build(args),
+  install: (args: any) => CMakeProcess.getInstance().install(args),
+  extract: (args: any) => CMakeProcess.getInstance().extract(args),
+  ctest: (args: any) => CTestProcess.getInstance().ctest(args),
+  getProjectInfo,
+};
+
+const process = {
+  spawn: spawnAsync,
+};
+
+const utils = {
+  requestGet,
+  downloadFile,
+};
+
+export {
+  cxx,
+  cmake,
+  process,
+  utils,
+};
+
 export default {
   cxx,
-  cmake: {
-    scriptMode: (scriptFile: string, variables: object, options?: ScriptModeOptions) => CMakeProcess.getInstance().scriptMode(scriptFile, variables, options),
-    configure: (args: any) => CMakeProcess.getInstance().configure(args),
-    build: (args: any) => CMakeProcess.getInstance().build(args),
-    install: (args: any) => CMakeProcess.getInstance().install(args),
-    extract: (args: any) => CMakeProcess.getInstance().extract(args),
-    ctest: (args: any) => CTestProcess.getInstance().ctest(args),
-    getProjectInfo,
-  },
-  process: {
-    spawn: spawnAsync,
-  },
-  utils: {
-    requestGet,
-    downloadFile,
-  },
+  cmake,
+  process,
+  utils,
   path: Path,
 };
+
+exports.cxx = cxx;
+exports.cmake = cmake;
+exports.process = process;
+exports.utils = utils;
 
 runScript();

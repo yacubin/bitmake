@@ -29,7 +29,7 @@ export abstract class GeneralContext implements IGeneralContext {
   }
 
   public findProgram(name: string): string | undefined {
-    return findProgramSync(name);
+    return findProgramSync(name, ScopeHelper.get(this._scope, "FIND_PROGRAM_PATHS"));
   }
 
   public getProperty(this: any, name: string): any {

@@ -77,7 +77,7 @@ export interface SystemScope {
   HOST_SYSTEM_NAME: string;
 
   // Paths searched for header files
-  INCLUDES: Array<Locator>;
+  INCLUDES: Locator[];
 
   // Path to the assembler compiler detected
   ASM_COMPILER: string;
@@ -183,4 +183,7 @@ export interface SystemScope {
 
   // Defines the file extension for executables on the host system
   HOST_EXECUTABLE_SUFFIX: string;
+
+  // Program search paths
+  FIND_PROGRAM_PATHS: string[];
 };

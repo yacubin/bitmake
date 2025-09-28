@@ -518,8 +518,7 @@ class BuildContext {
     for (const [key, entry] of Object.entries(this._buildTreeConfig) as any) {
       if (entry && typeof entry === "object" && entry.action && !entry.disabled) {
         await settings.push(key);
-        const completed = await settings.get("completed");
-        if (entry.rebuild || !completed) {
+        if (entry.rebuild || !(await settings.get("completed"))) {
           logger.info(`Started action: ${key}`);
           const environment = mergeEnvironment(await resolveEnvironment(entry.environment), process.env);
           if (entry.sourceUrl && !entry.sourceUrl.startsWith(IMPORT_SCHEME)) {

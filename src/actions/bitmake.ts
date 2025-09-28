@@ -8,8 +8,9 @@
  */
 
 import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
 
-import { Path } from "@/utils/Path";
 import { MakeServer } from "@/server/MakeServer";
 import { PluginContext } from "@/core/PluginContext";
 import { ScopeHelper } from "@/core/Scope";
@@ -38,6 +39,9 @@ export default async function(config: any, environment: any, settings: SettingsS
   ScopeHelper.extendVariableMapByValues(variableMap, "", config.variables);
   ScopeHelper.defineVariablesInVariableMap(variableMap, SYSTEM_VARIABLE_GROUP, SystemVariables);
   const scope = ScopeHelper.createProxy(variableMap) as SystemScope;
+
+  const platformPath = ((os.platform() === "win32") ? environment.Path : environment.PATH) as string | undefined;
+  scope.FIND_PROGRAM_PATHS = platformPath ? platformPath.split(path.delimiter) : [];
 
   const sourceDir = getPathString(config.sourceDir);
   const binaryDir = getPathString(config.binaryDir);
@@ -138,7 +142,7 @@ export default async function(config: any, environment: any, settings: SettingsS
     const total = goalList.length;
     for (const iter of goalList) {
       if (iter.output) {
-        const outputDir = Path.dirname(iter.output);
+        const outputDir = Locator.create(iter.output).dirname().toPath();
         await fs.promises.mkdir(outputDir, { recursive: true });
       }
       if (iter.message) {

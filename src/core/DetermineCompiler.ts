@@ -15,7 +15,7 @@ import { Logger } from "@/logger";
 const logger = Logger.create(import.meta.url);
 
 export async function determineCompiler(scope: SystemScope) {
-  const clangPath = await findProgram("clang");
+  const clangPath = await findProgram("clang", scope.FIND_PROGRAM_PATHS);
   if (clangPath) {
     let version = "Unknown";
     try {
@@ -38,7 +38,7 @@ export async function determineCompiler(scope: SystemScope) {
     return;
   }
 
-  const gccPath = await findProgram("gcc");
+  const gccPath = await findProgram("gcc", scope.FIND_PROGRAM_PATHS);
   if (gccPath) {
     logger.info("The C compiler identification is GNU a.b.c");
     scope.ASM_COMPILER = "gcc";

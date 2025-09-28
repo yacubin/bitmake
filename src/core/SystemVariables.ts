@@ -248,4 +248,9 @@ export default {
     value: Host.executableSuffix,
     // Readonly
   },
+  FIND_PROGRAM_PATHS: {
+    description: "Program search paths",
+    value: [],
+    // Readonly
+  },
 };

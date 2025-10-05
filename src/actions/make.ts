@@ -10,8 +10,9 @@
 import { spawnAsync } from "@/utils/ChildProcess";
 import { getPathString }  from "@/utils/FileSystem";
 import { SettingsStorage } from "@/utils/SettingsStorage";
+import { Environment } from "@/utils/Environment";
 
-export default async function(config: any, environment: any, settings: SettingsStorage) {
+export default async function(config: any, environment: Environment, settings: SettingsStorage) {
   const binaryDir = getPathString(config.binaryDir);
   const args = config.args || [];
   if (config.destDir) {

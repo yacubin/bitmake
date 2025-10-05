@@ -130,6 +130,14 @@ export class Locator {
     return url.fileURLToPath(this[PATH]);
   }
 
+  public isPath() {
+    if (this[PATH].startsWith(FILE_SCHEME))
+      return true;
+    if (this[PATH].startsWith(IMPORT_SCHEME))
+      return true;
+    return false;
+  }
+
   public toPath() {
     if (this[PATH].startsWith(FILE_SCHEME))
       return url.fileURLToPath(this[PATH]);

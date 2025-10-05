@@ -13,6 +13,7 @@ import * as cxx from "@/cxx";
 import { CMakeProcess, CTestProcess, ScriptModeOptions, getProjectInfo } from "@/cmake";
 
 import { spawnAsync } from "@/utils/ChildProcess";
+import { Locator } from "@/utils/Locator";
 import { requestGet, downloadFile } from "@/utils/HttpRequest";
 import { Path } from "@/utils/Path";
 import { runScript } from "@/app/RunScript";
@@ -41,6 +42,7 @@ export {
   cmake,
   process,
   utils,
+  Locator,
 };
 
 export default {
@@ -48,12 +50,15 @@ export default {
   cmake,
   process,
   utils,
-  path: Path,
+  Locator,
+
+  path: Path, // Remove me
 };
 
 exports.cxx = cxx;
 exports.cmake = cmake;
 exports.process = process;
 exports.utils = utils;
+exports.Locator = Locator;
 
 runScript();

@@ -11,6 +11,8 @@ import path from "node:path";
 import fs from "node:fs";
 import { spawn, execFile } from "node:child_process";
 import util from "node:util";
+
+import { Environment } from "@/utils/Environment";
 import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
@@ -18,7 +20,7 @@ const logger = Logger.create(import.meta.url);
 interface SpawnAsyncOptions {
   cwd?: string;
   encoding?: BufferEncoding;
-  env?: any;
+  env?: Environment;
   nostdout?: boolean;
   extra?: {
     verbose?: boolean;

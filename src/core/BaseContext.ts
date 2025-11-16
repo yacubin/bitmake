@@ -174,7 +174,7 @@ export async function performContext(mk: IGeneralContext & SystemScope) {
 
 export function createVariableMapForDirectory(variableMap: VariableMap, sourceDir: any, binaryDir?: any): VariableMap {
   if (binaryDir === undefined) {
-    if (!Locator.isAbsolute(sourceDir))
+    if (!Locator.isLocator(sourceDir))
       binaryDir = sourceDir;
     else {
       const binaryDir1 = ScopeHelper.get(variableMap, "PROJECT_BINARY_DIR").relative(sourceDir);

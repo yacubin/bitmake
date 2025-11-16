@@ -61,7 +61,6 @@ export declare class Locator {
 	valueOf(): string;
 	toURLString(): string;
 	toJSON(): any;
-	static isAbsolute(filepath: Locator | string): boolean;
 	static isLocator(value: any): boolean;
 	static ensureInstance(value: any): Locator;
 	static create(path: Locator | string): Locator;

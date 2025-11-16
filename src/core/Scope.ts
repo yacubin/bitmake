@@ -239,19 +239,20 @@ export function defineVariable(map: VariableMap, group: string, name: string, de
     isValidValue = Array.isArray;
   }
   else if (type === "Locator" || type === "FilePath" || type === "DirPath") {
-    isValidValue = (value: any) => !!Locator.create(value);
+    isValidValue = Locator.isLocator;
   }
   else if (type !== "object" && type !== "enum") {
     throw new Error(`Variable "${name}" has wrong "${type}" type`);
   }
 
-  if (descriptor.value === undefined) {
-    defineEntry.initValue = (type === "array") ? [] : undefined;
-  }
-  else {
-    if (!isValidValue(descriptor.value))
-        throw new TypeError(`Attempting to set "${descriptor.value}" to ${name} as initValue`);
-    defineEntry.initValue = (type === "array") ? Array.from(descriptor.value) : descriptor.value;
+  if (defineEntry.initValue === undefined) {
+    if (descriptor.value === undefined)
+      defineEntry.initValue = (type === "array") ? [] : undefined;
+    else {
+      if (!isValidValue(descriptor.value))
+          throw new TypeError(`Attempting to set "${descriptor.value}" to ${name} as initValue`);
+      defineEntry.initValue = (type === "array") ? Array.from(descriptor.value) : descriptor.value;
+    }
   }
 
   defineEntry.type = type;

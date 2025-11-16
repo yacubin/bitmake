@@ -184,7 +184,7 @@ export class UserMakeContext extends GeneralContext implements IMakeContext {
 
   public addExecutable(name: any, ...sources: any[]): UserTargetStruct {
     const target = createTargetImpl(Executable, this[IMPL], this[SCOPE], name);
-    target.setPrefix(this[SCOPE].EXECUTABLE_SUFFIX);
+    target.setSuffix(this[SCOPE].EXECUTABLE_SUFFIX);
     target.addLinkOptions(...this[SCOPE].EXE_LINKER_FLAGS);
 
     return UserTargetStruct.create(target, this[SCOPE], ...sources);

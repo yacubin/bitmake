@@ -1,3 +1,4 @@
+declare const PATH: unique symbol;
 declare const _default: {
 	cxx: typeof cxx;
 	cmake: {
@@ -16,7 +17,11 @@ declare const _default: {
 		requestGet: typeof requestGet;
 		downloadFile: typeof downloadFile;
 	};
+	Locator: typeof Locator;
 	path: typeof Path;
+};
+declare const process$1: {
+	spawn: typeof spawnAsync;
 };
 declare function downloadFile(url: string, file: string, options?: FetchOptions): Promise<undefined>;
 declare function filenameToPragmaOnceMacro(filepath: string, deep: number): string;
@@ -38,17 +43,56 @@ declare namespace Path {
 	function basename(path: string, suffix?: string): string;
 	function relative(from: string, to: string): string;
 }
+export declare class Locator {
+	private [PATH];
+	protected constructor(urlString: string);
+	join(...paths: Locator[] | string[]): Locator;
+	dirname(): Locator;
+	basename(): string;
+	extname(): string;
+	relative(to: Locator | string): string;
+	resolve(...paths: Array<Locator | string>): Locator;
+	match(regexp: RegExp): RegExpMatchArray | null;
+	startsWith(searchString: string, position?: number): boolean;
+	endsWith(searchString: string, endPosition?: number): boolean;
+	toString(): string;
+	isPath(): boolean;
+	toPath(): string;
+	valueOf(): string;
+	toURLString(): string;
+	toJSON(): any;
+	static isAbsolute(filepath: Locator | string): boolean;
+	static isLocator(value: any): boolean;
+	static ensureInstance(value: any): Locator;
+	static create(path: Locator | string): Locator;
+}
+export declare const cmake: {
+	scriptMode: (scriptFile: string, variables: object, options?: ScriptModeOptions) => Promise<void>;
+	configure: (args: any) => Promise<void>;
+	build: (args: any) => Promise<void>;
+	install: (args: any) => Promise<void>;
+	extract: (args: any) => Promise<void>;
+	ctest: (args: any) => Promise<void>;
+	getProjectInfo: typeof getProjectInfo;
+};
+export declare const utils: {
+	requestGet: typeof requestGet;
+	downloadFile: typeof downloadFile;
+};
+export interface Environment {
+	[key: string]: string | undefined;
+}
 export interface FetchOptions {
 	attempts?: number;
 }
 export interface ScriptModeOptions {
-	environment?: object;
+	environment?: Environment;
 	workDir?: string;
 }
 export interface SpawnAsyncOptions {
 	cwd?: string;
 	encoding?: BufferEncoding;
-	env?: any;
+	env?: Environment;
 	nostdout?: boolean;
 	extra?: {
 		verbose?: boolean;
@@ -69,6 +113,8 @@ declare namespace cxx {
 
 export {
 	_default as default,
+	cxx,
+	process$1 as process,
 };
 
 export as namespace bitmake;

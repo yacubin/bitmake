@@ -8,7 +8,7 @@ module.exports = {
     {
       filePath: "./src/index.ts",
       outFile: "./dist/bitmake.d.ts",
-      failOnClass: true,
+      failOnClass: false, // for Locator
       output: {
         inlineDeclareGlobals: false,
         sortNodes: true,

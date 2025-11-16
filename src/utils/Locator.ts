@@ -47,7 +47,7 @@ export class Locator {
     this[PATH] = urlString;
   }
 
-  public join(...paths: Array<Locator | string>): Locator {
+  public join(...paths: Locator[] | string[]): Locator {
     const url = new URL(this[PATH]);
     url.pathname = path.posix.join(url.pathname, ...paths.map(i => {
       if (i instanceof Locator)
@@ -164,6 +164,10 @@ export class Locator {
     if (filepath instanceof Locator)
       return true;
     return isAbsolute(filepath);
+  }
+
+  public static isLocator(value: any): boolean {
+    return (value instanceof Locator);
   }
 
   public static ensureInstance(value: any): Locator {

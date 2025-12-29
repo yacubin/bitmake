@@ -24,3 +24,6 @@ declare const HOST_SOURCE_URL: string;
 
 // Host source URL
 declare const LOGGER_DEBUG: string[];
+
+// Enable stack trace
+declare const ENABLE_STACK_TRACE: boolean;

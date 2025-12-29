@@ -87,10 +87,12 @@ export function runScript() {
   }
 
   runMainScript().then(() => process.exit(0)).catch((e) => {
-    if (e instanceof Error)
-      logger.fatal(e.stack);
-    else
-      logger.fatal(e);
+    if (ENABLE_STACK_TRACE) {
+      if (e instanceof Error)
+        logger.fatal(e.stack);
+      else
+        logger.fatal(e);
+    }
     process.exit(1);
   });
 }

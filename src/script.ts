@@ -13,22 +13,20 @@ console.log("Hello World");
 
 const socket = new WebSocket(`ws://${window.location.host}`);
 socket.addEventListener("open", event => {
-  console.log("[open] Connection established");
-  console.log("Sending to server");
-  socket.send("My name is John");
+  socket.send("Hello BitMake");
 });
 
 socket.addEventListener("message", event => {
-  console.log(`[message] Data received from server: ${event.data}`);
+  console.log(event.data);
 });
 
 socket.addEventListener("close", event => {
   if (event.wasClean)
-    console.log(`[close] Connection closed cleanly, code=${event.code} reason=${event.reason}`);
+    console.log("Connection closed", event.code, event.reason);
   else
-    console.log('[close] Connection died');
+    console.log("Connection died");
 });
 
 socket.addEventListener("error", error => {
-  console.log(`[error] ${error}`);
+  console.log(error);
 });

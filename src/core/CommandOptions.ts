@@ -10,6 +10,8 @@
 import { Locator } from "@/utils/Locator";
 
 export interface CommandOptions {
+  argv: string[];
+  nodePath: string;
   handler: string;
   workDir: Locator;
   env: {

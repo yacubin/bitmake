@@ -8,6 +8,7 @@
  */
 
 import { SettingsStorage } from "@/utils/SettingsStorage";
+import { Environment } from "@/utils/Environment";
 
 import none from "@/actions/none";
 import process from "@/actions/process";
@@ -17,7 +18,7 @@ import cmake from "@/actions/cmake";
 import bitmake from "@/actions/bitmake";
 
 interface ActionHandlers {
-  [name: string]: (config: any, environment: any, settings: SettingsStorage) => Promise<void>;
+  [name: string]: (config: any, environment: Environment, settings: SettingsStorage) => Promise<void>;
 }
 
 export default <ActionHandlers> {

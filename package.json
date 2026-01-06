@@ -1,6 +1,6 @@
 {
   "name": "bitmake",
-  "version": "0.0.1-develop.12",
+  "version": "0.0.1-develop.13",
   "description": "BitMake builds your code with the flexibility of JS-defined rules",
   "author": "Yurii Yakubin",
   "homepage": "https://github.com/yacubin/bitmake#readme",

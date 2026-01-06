@@ -12,12 +12,13 @@ import path from "node:path";
 
 import { getPathString } from "@/utils/FileSystem";
 import { SettingsStorage } from "@/utils/SettingsStorage";
+import { Environment } from "@/utils/Environment";
 import { spawnAsync } from "@/utils/ChildProcess";
 import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
 
-export default async function(config: any, environment: any, settings: SettingsStorage) {
+export default async function(config: any, environment: Environment, settings: SettingsStorage) {
   if (!config.command)
     throw new Error("Required command field for process action");
   const sourceDir = getPathString(config.sourceDir);

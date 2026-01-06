@@ -12,9 +12,10 @@ import path from "node:path";
 import { ensureBoolean } from "@/utils/StrictType";
 import { getPathString } from "@/utils/FileSystem";
 import { SettingsStorage } from "@/utils/SettingsStorage";
+import { Environment } from "@/utils/Environment";
 import { spawnAsync } from "@/utils/ChildProcess";
 
-export default async function(config: any, environment: any, settings: SettingsStorage) {
+export default async function(config: any, environment: Environment, settings: SettingsStorage) {
   const sourceDir = getPathString(config.sourceDir);
   const binaryDir = getPathString(config.binaryDir);
   let step = await settings.get("configure") || "config";

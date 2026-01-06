@@ -10,8 +10,9 @@
 import { CMakeProcess, DEFAULT_GENERATOR } from "@/cmake";
 import { getPathString }  from "@/utils/FileSystem";
 import { SettingsStorage } from "@/utils/SettingsStorage";
+import { Environment } from "@/utils/Environment";
 
-export default async function(config: any, environment: any, settings: SettingsStorage) {
+export default async function(config: any, environment: Environment, settings: SettingsStorage) {
   const sourceDir = getPathString(config.sourceDir);
   const binaryDir = getPathString(config.binaryDir);
   const cmakeArgs = {

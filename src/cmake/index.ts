@@ -13,6 +13,7 @@ import path from "node:path";
 
 import { spawnAsync } from "@/utils/ChildProcess";
 import { CMAKE_LISTS_TXT, DEFAULT_GENERATOR, ValueType } from "@/cmake/Constants";
+import { Environment } from "@/utils/Environment";
 import { convertToValue } from "@/cmake/Helper";
 import { Host } from "@/utils/Host";
 
@@ -46,7 +47,7 @@ function makeCmdVariables(variables: object, isCache: boolean): string[] {
 }
 
 export interface ScriptModeOptions {
-  environment?: object;
+  environment?: Environment;
   workDir?: string;
 };
 

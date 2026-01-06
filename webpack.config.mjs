@@ -35,6 +35,7 @@ export default async (env, argv) => {
     PROJECT_DESCRIPTION: pkg.description || "",
     PROJECT_HOMEPAGE_URL: pkg.homepage || "",
     HOST_SOURCE_URL: url.pathToFileURL(sourceDir),
+    ENABLE_STACK_TRACE: isDevelopment,
     LOGGER_DEBUG: [
     ],
   };

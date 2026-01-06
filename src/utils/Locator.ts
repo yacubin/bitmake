@@ -16,18 +16,20 @@ import { requireResolve } from "@/utils/Module";
 
 const PATH = Symbol("PATH");
 
-function isAbsolute(filepath: string): boolean {
-  if (filepath.startsWith(FILE_SCHEME))
+function isAbsolute(str: string): boolean {
+  if (str.startsWith("/"))
     return true;
-  if (filepath.startsWith(IMPORT_SCHEME))
-    return true;
-  if (filepath.startsWith("/"))
-    return true;
-  if (filepath.match(/^[a-zA-Z]:[\\/]/))
+  if (str.match(/^[a-zA-Z]:[\\/]/))
     return true;
   /* \\localhost */
   /* \\wsl.localhost\Ubuntu\opt */
   return false;
+}
+
+function isLocator(str: string): boolean {
+  if (str.startsWith(FILE_SCHEME) || str.startsWith(IMPORT_SCHEME))
+    return true;
+  return isAbsolute(str);
 }
 
 function toURLString(str: string) {
@@ -47,7 +49,7 @@ export class Locator {
     this[PATH] = urlString;
   }
 
-  public join(...paths: Array<Locator | string>): Locator {
+  public join(...paths: Locator[] | string[]): Locator {
     const url = new URL(this[PATH]);
     url.pathname = path.posix.join(url.pathname, ...paths.map(i => {
       if (i instanceof Locator)
@@ -101,7 +103,7 @@ export class Locator {
         rootPath = iter[PATH];
         break;
       }
-      if (Locator.isAbsolute(iter)) {
+      if (Locator.isLocator(iter)) {
         rootPath = toURLString(iter);
         break;
       }
@@ -130,6 +132,14 @@ export class Locator {
     return url.fileURLToPath(this[PATH]);
   }
 
+  public isPath() {
+    if (this[PATH].startsWith(FILE_SCHEME))
+      return true;
+    if (this[PATH].startsWith(IMPORT_SCHEME))
+      return true;
+    return false;
+  }
+
   public toPath() {
     if (this[PATH].startsWith(FILE_SCHEME))
       return url.fileURLToPath(this[PATH]);
@@ -152,10 +162,12 @@ export class Locator {
     return this[PATH];
   }
 
-  public static isAbsolute(filepath: Locator | string) {
-    if (filepath instanceof Locator)
+  public static isLocator(value: any): boolean {
+    if (value instanceof Locator)
       return true;
-    return isAbsolute(filepath);
+    if (typeof value === "string")
+      return isLocator(value);
+    return false;
   }
 
   public static ensureInstance(value: any): Locator {

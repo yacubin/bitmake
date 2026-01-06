@@ -8,9 +8,6 @@
  */
 
 import fs from "node:fs";
-import url from "node:url";
-import http from "node:http";
-import child_process from "node:child_process";
 
 import { CMakeProcess } from "@/cmake";
 import { Path } from "@/utils/Path";
@@ -21,7 +18,6 @@ import { arrayWrapper, assignObject } from "@/utils/Primitives";
 import { USER_CONFIG, BUILD_SETTINGS_FILE, REQUEST_ATTEMPTS } from "@/Constants";
 import { DEBUG_BUILD_TYPE, RELEASE_BUILD_TYPE } from "@/core/Types";
 import { IMPORT_SCHEME } from "@/utils/UrlScheme";
-import { randInt } from "@/utils/Random";
 import { requireResolve } from "@/utils/Module";
 import { downloadFile } from "@/utils/HttpRequest";
 import { CommandOptions } from "@/core/CommandOptions";
@@ -29,16 +25,13 @@ import { Logger } from "@/logger";
 import { loadJSValue } from "@/utils/JSValue";
 import { importModule } from "@/utils/Module";
 import { Locator } from "@/utils/Locator";
-import { currentScriptURL } from "@/utils/Module";
 import { deepCopy } from "@/utils/Primitives";
 
 import actions from "@/actions";
-import path from "node:path";
 
 const logger = Logger.create(import.meta.url);
 
 interface IGeneralConfig {
-  webui: boolean;
   workDir: Locator;
   buildType: string;
   configArg?: string;
@@ -318,16 +311,9 @@ function makeBuildConfig(bmkRoot: BmkRoot) {
   return rootConfig;
 }
 
-type RequestHandler = (req: http.IncomingMessage, res: http.ServerResponse) => void;
-
 class BuildContext {
   private _gconfig: IGeneralConfig;
-  private _server?: http.Server;
-  private _startUrl = "";
-  private _hostname = "";
-  private _port = 0;
   private _buildTreeConfig: any = {};
-  private _requestHandlers = new Map<string, RequestHandler>;
   private _workDir: Locator;
   private _configArg?: string;
 
@@ -516,10 +502,6 @@ class BuildContext {
   }
 
   public async run(): Promise<void> {
-    if (this._gconfig.webui) {
-      this.startServer();
-    }
-
     const originConfig = await this.loadTreeConfig();
     const bmkRoot = BmkRoot.create(this._gconfig.buildType, this._gconfig.workDir, this._gconfig.workDir.join("build"), originConfig);
 
@@ -536,8 +518,7 @@ class BuildContext {
     for (const [key, entry] of Object.entries(this._buildTreeConfig) as any) {
       if (entry && typeof entry === "object" && entry.action && !entry.disabled) {
         await settings.push(key);
-        const completed = await settings.get("completed");
-        if (entry.rebuild || !completed) {
+        if (entry.rebuild || !(await settings.get("completed"))) {
           logger.info(`Started action: ${key}`);
           const environment = mergeEnvironment(await resolveEnvironment(entry.environment), process.env);
           if (entry.sourceUrl && !entry.sourceUrl.startsWith(IMPORT_SCHEME)) {
@@ -551,91 +532,10 @@ class BuildContext {
       }
     }
   }
-
-  private onServerListen() {
-    console.log(`Server running at ${this._startUrl}`);
-  }
-
-  private onServerRequest(req: http.IncomingMessage, res: http.ServerResponse) {
-    const handler = req.url ? this._requestHandlers.get(req.url) : undefined;
-    if (handler)
-      handler(req, res);
-    else
-      res.destroy();
-  }
-
-  private mainPage(req: http.IncomingMessage, res: http.ServerResponse) {
-    res.statusCode = 200;
-    res.setHeader("Content-Type", "text/html");
-    res.end(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>BitMake</title>
-          <style>
-            body { font-family: Arial; background: #f0f0f0; text-align: center; padding: 50px; }
-            h1 { color: #007acc; }
-          </style>
-          <script src="script.js"></script>
-        </head>
-        <body>
-          <h1>BitMake</h1>
-          <p>This is a Main Page</p>
-          <a href="tree-config.json">Build Tree Config</a>
-        </body>
-      </html>
-    `);
-  }
-
-  private mainScript(req: http.IncomingMessage, res: http.ServerResponse) {
-    const dirUrl = url.fileURLToPath(currentScriptURL());
-    const filename = path.join(path.dirname(dirUrl), "script.js");
-    
-    fs.readFile(filename, 'utf8', (err, data) => {
-      if (err) {
-        res.statusCode = 500;
-        res.setHeader("Content-Type", "text/plain");
-        res.end('Error loading script.js');
-      }
-      else {
-        res.statusCode = 200;
-        res.setHeader("Content-Type", "application/javascript");
-        res.end(data);
-      }
-    });
-  }
-
-  private treeConfigJson(req: http.IncomingMessage, res: http.ServerResponse) {
-    res.statusCode = 200;
-    res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify(this._buildTreeConfig));
-  }
-
-  public startServer() {
-    this._hostname = "localhost";
-    this._port = randInt(49152, 65535);
-    this._startUrl = `http://${this._hostname}:${this._port}`;
-
-    this._requestHandlers.set("/", this.mainPage.bind(this));
-    this._requestHandlers.set("/script.js", this.mainScript.bind(this));
-    this._requestHandlers.set("/tree-config.json", this.treeConfigJson.bind(this));
-
-    this._server = http.createServer((req, res) => this.onServerRequest(req, res));
-    this._server.listen(this._port, this._hostname, () => this.onServerListen());
-    const startCommand = process.platform === "win32" ? "start" : process.platform === "darwin" ? "open" : "xdg-open";
-    child_process.exec(`${startCommand} ${this._startUrl}`, (error, stdout, stderr) => {
-      error && logger.warn(`Code ${error.code} for command ${error.cmd}`);
-    });
-  }
-
-  public stopServer() {
-    this._server?.close();
-  }
 };
 
 export default async (options: CommandOptions) => {
   const buildContext = new BuildContext({
-    webui: options.env.webui === true,
     buildType: options.env.buildType == DEBUG_BUILD_TYPE ? options.env.buildType : RELEASE_BUILD_TYPE,
     workDir: options.workDir,
     configArg: options.env.config,

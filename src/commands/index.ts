@@ -10,9 +10,11 @@
 import { CommandOptions } from "@/core/CommandOptions";
 import init from "@/commands/init";
 import build from "@/commands/build";
+import webui from "@/commands/webui";
 
 export default {
   default: build,
   init,
   build,
+  webui,
 } as { [name: string]: (options: CommandOptions) => any; };

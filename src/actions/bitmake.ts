@@ -8,8 +8,9 @@
  */
 
 import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
 
-import { Path } from "@/utils/Path";
 import { MakeServer } from "@/server/MakeServer";
 import { PluginContext } from "@/core/PluginContext";
 import { ScopeHelper } from "@/core/Scope";
@@ -19,6 +20,7 @@ import { Locator } from "@/utils/Locator";
 import { importModule }  from "@/utils/Module";
 import { determineCompiler }  from "@/core/DetermineCompiler";
 import { SettingsStorage } from "@/utils/SettingsStorage";
+import { Environment } from "@/utils/Environment";
 import { IMPORT_SCHEME } from "@/utils/UrlScheme";
 import { INSTALL_TARGET, PACKAGE_JSON, MAKE_CACHE } from "@/Constants";
 import { SYSTEM_VARIABLE_GROUP } from "@/Constants";
@@ -29,7 +31,7 @@ import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
 
-export default async function(config: any, environment: any, settings: SettingsStorage) {
+export default async function(config: any, environment: Environment, settings: SettingsStorage) {
   process.env = environment;
 
   const server = new MakeServer;
@@ -38,6 +40,9 @@ export default async function(config: any, environment: any, settings: SettingsS
   ScopeHelper.extendVariableMapByValues(variableMap, "", config.variables);
   ScopeHelper.defineVariablesInVariableMap(variableMap, SYSTEM_VARIABLE_GROUP, SystemVariables);
   const scope = ScopeHelper.createProxy(variableMap) as SystemScope;
+
+  const sysPath = (os.platform() === "win32") ? environment.Path : environment.PATH;
+  scope.FIND_PROGRAM_PATHS = sysPath ? sysPath.split(path.delimiter) : [];
 
   const sourceDir = getPathString(config.sourceDir);
   const binaryDir = getPathString(config.binaryDir);
@@ -138,7 +143,7 @@ export default async function(config: any, environment: any, settings: SettingsS
     const total = goalList.length;
     for (const iter of goalList) {
       if (iter.output) {
-        const outputDir = Path.dirname(iter.output);
+        const outputDir = Locator.create(iter.output).dirname().toPath();
         await fs.promises.mkdir(outputDir, { recursive: true });
       }
       if (iter.message) {

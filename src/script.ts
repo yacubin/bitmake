@@ -10,3 +10,23 @@
 /// <reference path="global.d.ts" />
 
 console.log("Hello World");
+
+const socket = new WebSocket(`ws://${window.location.host}`);
+socket.addEventListener("open", event => {
+  socket.send("Hello BitMake");
+});
+
+socket.addEventListener("message", event => {
+  console.log(event.data);
+});
+
+socket.addEventListener("close", event => {
+  if (event.wasClean)
+    console.log("Connection closed", event.code, event.reason);
+  else
+    console.log("Connection died");
+});
+
+socket.addEventListener("error", error => {
+  console.log(error);
+});

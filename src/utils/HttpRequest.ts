@@ -12,6 +12,7 @@ import fs from "node:fs";
 import http from "http";
 import https from "https";
 
+import { HTTPS_SCHEME } from "@/utils/UrlScheme";
 import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
@@ -56,7 +57,7 @@ function createBuilder(file?: string): IResolveBuilder {
 }
 
 function httpRequest(url: string, options: http.RequestOptions | https.RequestOptions, callback: any): http.ClientRequest {
-  if (url.startsWith("https://"))
+  if (url.startsWith(HTTPS_SCHEME))
     return https.request(url, options, callback);
   return http.request(url, options, callback);
 };
@@ -69,7 +70,7 @@ function fetchImpl(url: string, file: string | undefined, options: FetchOptions)
   return new Promise((resolve, reject) => {
     const httpOptions = {
       method: 'GET',
-      timeout: 5000,
+      timeout: 25000,
       headers: {
         "User-Agent": PROJECT_NAME + "/" + PROJECT_VERSION,
         "Accept": "*/*",

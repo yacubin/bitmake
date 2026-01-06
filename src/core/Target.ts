@@ -12,16 +12,12 @@ import { TargetName } from "@/core/TargetName";
 import { TargetFile } from "@/core/TargetFile";
 import { TargetIncludes } from "@/core/TargetIncludes";
 import { TargetObjects } from "@/core/TargetObjects";
+import { TargetCommand } from "@/core/TargetCommand";
 import { DirPath, Locator } from "@/utils/Locator";
 import { SimpleObject } from "./SimpleObject";
 import { Logger } from "@/logger";
 
 const logger = Logger.create(import.meta.url);
-
-export interface TargetCommand {
-  command: string | TargetFile;
-  args: Array<string | TargetFile>;
-};
 
 interface TargetElement<T> {
   value: T;
@@ -224,7 +220,7 @@ export abstract class BaseTarget {
   }
 
   public addPreBuild(command: string | TargetFile, args: Array<string | TargetFile>) {
-    this._preBuildList.push({command, args});
+    this._preBuildList.push(TargetCommand.create(command, args));
   }
 
   public get postBuildList() {
@@ -232,7 +228,7 @@ export abstract class BaseTarget {
   }
 
   public addPostBuild(command: string | TargetFile, args: Array<string | TargetFile>) {
-    this._postBuildList.push({command, args});
+    this._postBuildList.push(TargetCommand.create(command, args));
   }
 
   public get language(): string {

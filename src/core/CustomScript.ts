@@ -119,7 +119,7 @@ export class CustomScript extends InterfaceScript {
     const options: CustomScript.Options = {
       variableMap: ScopeHelper.fromJSON(json.variableMap),
       name: json.name,
-      scriptModule: Locator.isAbsolute(json.scriptModule) ? Locator.create(json.scriptModule) : json.scriptModule,
+      scriptModule: Locator.isLocator(json.scriptModule) ? Locator.create(json.scriptModule) : json.scriptModule,
       output: Locator.create(json.output),
       sourceDir: Locator.create(json.sourceDir),
       binaryDir: Locator.create(json.binaryDir),

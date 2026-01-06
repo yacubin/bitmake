@@ -81,6 +81,25 @@ const makeValueMap: any = {
   },
 };
 
+export function deepJsonCopy(o: any): any {
+  if (!o || typeof o !== "object")
+    return o;
+  else if (typeof o.toJSON === "function")
+    return o.toJSON();
+  else if (Array.isArray(o)) {
+    const result = [];
+    for (const iter of o)
+      result.push(deepJsonCopy(iter));
+    return result;
+  }
+  else {
+    const result = {} as any;
+    for (const [key,val] of Object.entries(o) as any)
+      result[key] = deepJsonCopy(val);
+    return result;
+  }
+}
+
 const tojsonValueMap: any = {
   array: (value: any) => {
     const result = [];
@@ -111,17 +130,18 @@ const tojsonValueMap: any = {
     return value.toJSON();
   },
   object: (value: any) => {
-    return deepCopy(value);
+    return deepJsonCopy(value);
   },
 };
 
 function makeJSONValue(entry: VariableEntry, value: any): any {
-  if (Array.isArray(entry.type))
+  return deepJsonCopy(value);
+  /*if (Array.isArray(entry.type))
     return value;
   const func = tojsonValueMap[entry.type];
   if (!func)
     throw new Error(`Unknown type "${entry.type}"`);
-  return func(value);
+  return func(value);*/
 }
 
 function makeEntryValue(entry: VariableEntry, value: any): any {
@@ -161,8 +181,11 @@ export function fromJSON(variableMap: VariableMap): VariableMap {
 
 export function toJSON(variableMap: VariableMap): VariableMap {
   const result: VariableMap = {};
-  for (const [key, val] of Object.entries(variableMap))
-    result[key] = copyEntryValue(val, makeJSONValue);
+  for (const [key, val] of Object.entries(variableMap)) {
+    const json = copyEntryValue(val, makeJSONValue);
+    if (json !== undefined)
+      result[key] = json;
+  }
   return result;
 }
 
@@ -239,15 +262,14 @@ export function defineVariable(map: VariableMap, group: string, name: string, de
     isValidValue = Array.isArray;
   }
   else if (type === "Locator" || type === "FilePath" || type === "DirPath") {
-    isValidValue = (value: any) => !!Locator.create(value);
+    isValidValue = Locator.isLocator;
   }
   else if (type !== "object" && type !== "enum") {
     throw new Error(`Variable "${name}" has wrong "${type}" type`);
   }
 
-  if (descriptor.value === undefined) {
+  if (descriptor.value === undefined)
     defineEntry.initValue = (type === "array") ? [] : undefined;
-  }
   else {
     if (!isValidValue(descriptor.value))
         throw new TypeError(`Attempting to set "${descriptor.value}" to ${name} as initValue`);
@@ -326,10 +348,13 @@ export function getVariablesByGroup(map: VariableMap, group?: string) {
   for (const [ name, entry ] of Object.entries(map)) {
     if (group !== undefined && entry.group && entry.group !== group)
       continue;
+    const value = getEntryValue(entry);
+    if (value === undefined)
+      continue;
     result[name] = {
       type: entry.type,
       description: entry.description,
-      value: getEntryValue(entry),
+      value,
     };
   }
   return result;

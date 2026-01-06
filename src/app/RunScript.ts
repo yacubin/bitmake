@@ -15,25 +15,29 @@ import { Logger } from "@/logger";
 import { runScriptInit } from "@/app/RunScriptInit";
 import { MessagePortSender } from "@/server/MessagePortSender";
 import { WorkerMessageDispatcher } from "@/server/WorkerMessageDispatcher";
+import { CommandOptions } from "@/core/CommandOptions";
 import { Locator } from "@/utils/Locator";
 
 const logger = Logger.create(import.meta.url);
 
 export async function runMainScript() {
-  logger.info("Main thread started")
-  const options: any = {
-    handler: "default",
-    workDir: Locator.create(process.cwd()),
-    env: {},
-  };
+  logger.info("Main thread started");
 
-  let nodeExecutable: string | undefined;
+  let nodePath = "";
   if (process.argv.length > 0)
-    nodeExecutable = process.argv[0];
+    nodePath = process.argv[0];
 
   let currentScript: string | undefined;
   if (process.argv.length > 1)
     currentScript = process.argv[1];
+
+  const options: CommandOptions = {
+    argv: process.argv,
+    nodePath,
+    handler: "default",
+    workDir: Locator.create(process.cwd()),
+    env: {},
+  };
 
   let argsIndex = process.argv.length;
   if (process.argv.length > 2) {
@@ -83,10 +87,12 @@ export function runScript() {
   }
 
   runMainScript().then(() => process.exit(0)).catch((e) => {
-    if (e instanceof Error)
-      logger.fatal(e.stack);
-    else
-      logger.fatal(e);
+    if (ENABLE_STACK_TRACE) {
+      if (e instanceof Error)
+        logger.fatal(e.stack);
+      else
+        logger.fatal(e);
+    }
     process.exit(1);
   });
 }

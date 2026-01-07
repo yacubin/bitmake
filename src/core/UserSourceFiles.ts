@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2025  Yurii Yakubin (yurii.yakubin@gmail.com)
+ * Copyright (c) 2025-2026  Yurii Yakubin (yurii.yakubin@gmail.com)
  *
  * Permission is granted to use, copy, modify, and distribute this software
  * under the MIT License. See LICENSE file for details.
@@ -41,6 +41,10 @@ export class UserSourceFiles extends InterfaceSourceFiles {
   public addCompileFlags(...options: string[]) {
     for (const iter of TargetHelper.normalizeCompileOptions(options.flat()))
       this[SOURCES].forEach(i => i.addCompileOption(iter));
+  }
+
+  public addCompileOptions(...options: string[]) {
+    this.addCompileFlags(...options);
   }
 
   public toJSON(): object {

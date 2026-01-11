@@ -10,7 +10,7 @@
 import { findProgram } from "@/core/FindProgram";
 import { SystemScope } from "@/core/SystemScope";
 import { clang } from "@/clang/index";
-import { Logger } from "@/logger";
+import { Logger } from "@/utils/Logger";
 
 const logger = Logger.create(import.meta.url);
 

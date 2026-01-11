@@ -9,7 +9,7 @@
 
 import { SimpleObject } from "@/core/SimpleObject";
 import { InterfaceTask } from "@/core/MakeInterfaces";
-import { Logger } from "@/logger";
+import { Logger } from "@/utils/Logger";
 import { Locator } from "@/utils/Locator";
 import { fileExists } from "@/utils/FileSystem";
 

@@ -27,7 +27,7 @@ import { SYSTEM_VARIABLE_GROUP } from "@/Constants";
 import { requireResolve } from "@/utils/Module";
 import { SystemScope } from "@/core/SystemScope";
 import SystemVariables from "@/core/SystemVariables";
-import { Logger } from "@/logger";
+import { Logger } from "@/utils/Logger";
 
 const logger = Logger.create(import.meta.url);
 

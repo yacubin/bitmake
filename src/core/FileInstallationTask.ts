@@ -12,7 +12,7 @@ import fs from "node:fs";
 import { InterfaceTask } from "@/core/MakeInterfaces";
 import { Locator } from "@/utils/Locator";
 import { SimpleObject } from "@/core/SimpleObject";
-import { Logger } from "@/logger";
+import { Logger } from "@/utils/Logger";
 
 const logger = Logger.create(import.meta.url);
 

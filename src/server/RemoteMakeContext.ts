@@ -13,7 +13,7 @@ import { JsonRpcRequestSync } from "@/server/JsonRpcRequestSync";
 import { MAINNODE_LOADJSON } from "@/server/RemoteMethods";
 import { MAINNODE_EXECUTESCRIPT } from "@/server/RemoteMethods";
 import { MAINNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
-import { Logger } from "@/logger";
+import { Logger } from "@/utils/Logger";
 import { ScopeHelper, VariableMap, VariantMap } from "@/core/Scope";
 import { Locator } from "@/utils/Locator";
 

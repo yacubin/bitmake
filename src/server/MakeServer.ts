@@ -18,7 +18,7 @@ import { createVariableMapForDirectory } from "@/core/BaseContext";
 import { MAINNODE_STARTMAKESCRIPT } from "@/server/RemoteMethods";
 import { MAINNODE_LOADJSON } from "@/server/RemoteMethods";
 import { MAINNODE_EXECUTESCRIPT } from "@/server/RemoteMethods";
-import { Logger } from "@/logger";
+import { Logger } from "@/utils/Logger";
 import { Locator } from "@/utils/Locator";
 
 const logger = Logger.create(import.meta.url);

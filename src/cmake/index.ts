@@ -14,8 +14,15 @@ import path from "node:path";
 import { spawnAsync } from "@/utils/ChildProcess";
 import { CMAKE_LISTS_TXT, DEFAULT_GENERATOR, ValueType } from "@/cmake/Constants";
 import { Environment } from "@/utils/Environment";
-import { convertToValue } from "@/cmake/Helper";
+import { cmakeVariableToString, cmakeCacheVariableToString } from "@/cmake/Helper";
 import { Host } from "@/utils/Host";
+import { Logger } from "@/utils/Logger";
+
+const logger = Logger.create(import.meta.url);
+
+interface CMakeVariables {
+  [name: string]: any;
+};
 
 function toVarType(key: string, val: any) {
   const map: any = {
@@ -32,23 +39,35 @@ function toVarType(key: string, val: any) {
   return ValueType.STRING;
 }
 
-function makeCmdVariable(key: string, val: any, isCache: boolean) {
-  let name = key;
-  if (isCache)
-    name += ":" + toVarType(key, val);
-  return name + "=" + convertToValue(val);
+export function cmakeVariablesAsArgs(variables: CMakeVariables): string[] {
+  const result: string[] = [];
+  for (const [key, val] of Object.entries(variables)) {
+    if (val !== undefined)
+      result.push("-D", cmakeVariableToString(key, val));
+  }
+  return result;
 }
 
-function makeCmdVariables(variables: object, isCache: boolean): string[] {
+export function cmakeCacheVariablesAsArgs(variables: CMakeVariables): string[] {
   const result: string[] = [];
-  for (const [key, val] of Object.entries(variables))
-    result.push("-D", makeCmdVariable(key, val, isCache));
+  for (const [key, val] of Object.entries(variables)) {
+    if (val !== undefined)
+      result.push("-D", cmakeCacheVariableToString(key, toVarType(key, val), val));
+  }
   return result;
 }
 
 export interface ScriptModeOptions {
   environment?: Environment;
   workDir?: string;
+};
+
+export interface CMakeCompressOptions {
+  input: string;
+  output: string;
+  workDir?: string;
+  environment?: Environment;
+  logFile?: string;
 };
 
 export class CMakeProcess {
@@ -58,9 +77,9 @@ export class CMakeProcess {
     this._cmakePath = cmakePath;
   }
 
-  public async scriptMode(scriptFile: string, variables: object, options?: ScriptModeOptions): Promise<void> {
+  public async scriptMode(scriptFile: string, variables: CMakeVariables, options?: ScriptModeOptions): Promise<void> {
     const spawnArgs = [
-      ...makeCmdVariables(variables, false),
+      ...cmakeVariablesAsArgs(variables),
       "-P", scriptFile,
     ];
     const res: any = await spawnAsync(this._cmakePath, spawnArgs, {
@@ -75,7 +94,7 @@ export class CMakeProcess {
   public async configure(args: any): Promise<void> {
     const spawnArgs = [
       "-G", args.generator,
-      ...makeCmdVariables(args.cacheVariables, true),
+      ...cmakeCacheVariablesAsArgs(args.cacheVariables),
       "-S", args.sourceDir,
       "-B", args.binaryDir,
     ];
@@ -145,6 +164,38 @@ export class CMakeProcess {
     if (res.status !== 0) {
       throw `Extract returned status ${res.status}`;
     }
+  }
+
+  public async compress(options: CMakeCompressOptions): Promise<void> {
+    let files = await fs.promises.readdir(options.input);
+    if (files.length == 0) {
+      throw `Directory ${options.input} is empty`;
+    }
+
+    const format = options.output.endsWith(".zip") ? "zip" : "gnutar";
+    const spawnArgs = [
+      "-E",
+      "tar",
+      "cvf",
+      options.output,
+      `--format=${format}`,
+      "--",
+      ...files,
+    ];
+
+    const res: any = await spawnAsync(this._cmakePath, spawnArgs, {
+      cwd: options.workDir ?? options.input,
+      env: options.environment ?? process.env,
+      extra: {
+        output: options.logFile ?? "cmake.compress.log",
+      },
+    });
+    if (res.status !== 0) {
+      throw `Process returned status ${res.status}`;
+    }
+
+    const filename = path.basename(options.output);
+    logger.notice(`Created archive - ${filename}`);
   }
 };
 

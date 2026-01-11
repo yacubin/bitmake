@@ -7,7 +7,7 @@
  * under the MIT License. See LICENSE file for details.
  */
 
-import { Logger } from "@/logger";
+import { Logger } from "@/utils/Logger";
 import { CompileOption } from "@/core/MakeInterfaces";
 import { Locator } from "@/utils/Locator";
 

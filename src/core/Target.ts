@@ -15,7 +15,7 @@ import { TargetObjects } from "@/core/TargetObjects";
 import { TargetCommand } from "@/core/TargetCommand";
 import { DirPath, Locator } from "@/utils/Locator";
 import { SimpleObject } from "./SimpleObject";
-import { Logger } from "@/logger";
+import { Logger } from "@/utils/Logger";
 
 const logger = Logger.create(import.meta.url);
 

@@ -11,7 +11,7 @@ import { isEntryPoint } from "@/utils/Module";
 import { isMainThread, parentPort, workerData, threadId } from "node:worker_threads";
 import { Args }  from "@/utils/Args";
 import commands from "@/commands";
-import { Logger } from "@/logger";
+import { Logger } from "@/utils/Logger";
 import { runScriptInit } from "@/app/RunScriptInit";
 import { MessagePortSender } from "@/server/MessagePortSender";
 import { WorkerMessageDispatcher } from "@/server/WorkerMessageDispatcher";

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { fileList } from "@/utils/FileSystem";
-import { Logger } from "@/logger";
+import { Logger } from "@/utils/Logger";
 
 const logger = Logger.create(import.meta.url);
 

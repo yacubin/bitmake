@@ -1,14 +1,14 @@
 /*
  * MIT License
  *
- * Copyright (c) 2025  Yurii Yakubin (yurii.yakubin@gmail.com)
+ * Copyright (c) 2025-2026  Yurii Yakubin (yurii.yakubin@gmail.com)
  *
  * Permission is granted to use, copy, modify, and distribute this software
  * under the MIT License. See LICENSE file for details.
  */
 
-import { TargetIncludes }from "@/core/TargetIncludes";
-import { TargetName }from "@/core/TargetName";
+import { TargetIncludes } from "@/core/TargetIncludes";
+import { TargetName } from "@/core/TargetName";
 import { MainTarget } from "@/core/Target";
 import { Locator } from "@/utils/Locator";
 import { SimpleObject } from "@/core/SimpleObject";

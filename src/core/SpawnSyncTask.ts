@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2025  Yurii Yakubin (yurii.yakubin@gmail.com)
+ * Copyright (c) 2025-2026  Yurii Yakubin (yurii.yakubin@gmail.com)
  *
  * Permission is granted to use, copy, modify, and distribute this software
  * under the MIT License. See LICENSE file for details.
@@ -41,7 +41,7 @@ export class SpawnSyncTask extends InterfaceTask {
       logger.debug(`  args[${i}]`, this._args[i]);
 
     const result = await spawnAsync(this._command, this._args, { cwd: this._cwd, encoding: "utf-8", nostdout: true });
-    if (result.error || result.status) {
+    if (result.error || result.status !== 0) {
       logger.notice("cd " + this._cwd);
       let cmd = this._args.join(" ");
       cmd = this._command + (cmd ? " " : "") + cmd;

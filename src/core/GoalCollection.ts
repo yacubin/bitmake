@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2025  Yurii Yakubin (yurii.yakubin@gmail.com)
+ * Copyright (c) 2025-2026  Yurii Yakubin (yurii.yakubin@gmail.com)
  *
  * Permission is granted to use, copy, modify, and distribute this software
  * under the MIT License. See LICENSE file for details.
@@ -11,6 +11,7 @@ import { SimpleObject } from "@/core/SimpleObject";
 import { InterfaceTask } from "@/core/MakeInterfaces";
 import { Logger } from "@/logger";
 import { Locator } from "@/utils/Locator";
+import { fileExists } from "@/utils/FileSystem";
 
 const logger = Logger.create(import.meta.url);
 
@@ -62,6 +63,12 @@ export class GoalTarget {
       const res = task.execute();
       if (res instanceof Promise)
         await res;
+    }
+    if (this._output) {
+      const isFileExists = await fileExists(this._output);
+      if (!isFileExists) {
+        throw new Error(`The task cannot create the file "${this._output}"`);
+      }
     }
   }
 

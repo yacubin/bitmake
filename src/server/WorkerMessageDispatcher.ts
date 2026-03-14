@@ -21,7 +21,7 @@ import { MAKECONTEXT_MAINSCRIPTS } from "@/server/RemoteMethods";
 import { MAKECONTEXT_POSTSCRIPTS } from "@/server/RemoteMethods";
 import { MAKECONTEXT_INSTALLENTRIES } from "@/server/RemoteMethods";
 import { WORKERSERVICE_PROCESSEXIT } from "@/server/RemoteMethods";
-import { Logger } from "@/logger";
+import { Logger } from "@/utils/Logger";
 
 const logger = Logger.create(import.meta.url);
 

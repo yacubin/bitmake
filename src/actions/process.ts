@@ -14,7 +14,7 @@ import { getPathString } from "@/utils/FileSystem";
 import { SettingsStorage } from "@/utils/SettingsStorage";
 import { Environment } from "@/utils/Environment";
 import { spawnAsync } from "@/utils/ChildProcess";
-import { Logger } from "@/logger";
+import { Logger } from "@/utils/Logger";
 
 const logger = Logger.create(import.meta.url);
 

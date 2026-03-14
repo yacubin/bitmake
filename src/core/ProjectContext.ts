@@ -16,7 +16,7 @@ import { TargetCollection } from "@/core/TargetCollection";
 import { GoalCollection, GoalTarget } from "@/core/GoalCollection";
 import { SystemScope } from "@/core/SystemScope";
 import { requireSync } from "@/utils/Module";
-import { Logger } from "@/logger";
+import { Logger } from "@/utils/Logger";
 import { TargetName } from "@/core/TargetName";
 import { TargetCommand } from "@/core/TargetCommand";
 import { MainTarget, PostTarget } from "@/core/Target";

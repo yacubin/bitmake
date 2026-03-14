@@ -21,7 +21,7 @@ import { IMPORT_SCHEME } from "@/utils/UrlScheme";
 import { requireResolve } from "@/utils/Module";
 import { downloadFile } from "@/utils/HttpRequest";
 import { CommandOptions } from "@/core/CommandOptions";
-import { Logger } from "@/logger";
+import { Logger } from "@/utils/Logger";
 import { loadJSValue } from "@/utils/JSValue";
 import { importModule } from "@/utils/Module";
 import { Locator } from "@/utils/Locator";
@@ -189,18 +189,18 @@ async function resolveEnvironment(environment: Environment | string): Promise<En
   return loadJSValue(envFile);
 }
 
-function resolveStringWithVariable(config: any, entryConfig: any, rootConfig: any, val: any) {
-  return val.replace(/\$\{([^}]+)\}/g, (match: any, value: any) => {
+function resolveStringWithVariable(val: string, parentConfigs: any[]) {
+  return val.replace(/\$\{([^}]+)\}/g, (match: string, value: string) => {
     let sel;
     for (const name of value.split(".")) {
       if (sel === undefined) {
-        if (config.hasOwnProperty(name))
-          sel = config[name];
-        else if (config !== entryConfig && entryConfig.hasOwnProperty(name))
-          sel = entryConfig[name];
-        else if (config !== rootConfig && rootConfig.hasOwnProperty(name))
-          sel = rootConfig[name];
-        else {
+        for (const iter of parentConfigs) {
+          if (iter.hasOwnProperty(name)) {
+            sel = iter[name];
+            break;
+          }
+        }
+        if (sel === undefined) {
           try {
             const mainFile = requireResolve(name);
             if (mainFile) {
@@ -225,13 +225,14 @@ function resolveStringWithVariable(config: any, entryConfig: any, rootConfig: an
   });
 }
 
-function resolveConfigStringsImpl(config: any, entryConfig: any, rootConfig: any) {
+function resolveConfigStringsImpl(config: any, parentConfigs: any[]) {
   let count = 0;
+  parentConfigs = [ config, ...parentConfigs ];
   for (const [key, val] of Object.entries(config)) {
     if (val && typeof val === "object")
-      count += resolveConfigStringsImpl(val, entryConfig, rootConfig);
+      count += resolveConfigStringsImpl(val, parentConfigs);
     else if (typeof val === "string") {
-      const v = resolveStringWithVariable(config, entryConfig, rootConfig, val);
+      const v = resolveStringWithVariable(val, parentConfigs);
       if (val !== v) {
         config[key] = v;
         count++;
@@ -241,23 +242,9 @@ function resolveConfigStringsImpl(config: any, entryConfig: any, rootConfig: any
   return count;
 }
 
-function resolveConfigStrings(config: any) {
-  for (;;) {
-    let count = 0;
-    for (const [key, val] of Object.entries(config)) {
-      if (val && typeof val === "object")
-        count += resolveConfigStringsImpl(val, val, config);
-      else  if (typeof val === "string") {
-        const v = resolveStringWithVariable(config, config, config, val);
-        if (val !== v) {
-          config[key] = v;
-          count++;
-        }
-      }
-    }
-    if (!count)
-      break;
-  }
+function resolveConfigStrings(config: any, parentConfigs: any[]) {
+  while (resolveConfigStringsImpl(config, parentConfigs) != 0)
+    /* */;
 }
 
 function makeBuildConfig(bmkRoot: BmkRoot) {
@@ -307,7 +294,7 @@ function makeBuildConfig(bmkRoot: BmkRoot) {
     }
   }
 
-  resolveConfigStrings(rootConfig);
+  resolveConfigStrings(rootConfig, []);
   return rootConfig;
 }
 
@@ -347,10 +334,11 @@ class BuildContext {
 
     let arcFile;
     let downloadUrls = await settings.get("downloadUrls") || {};
-    if (downloadUrls[config.sourceUrl])
+    if (downloadUrls[config.sourceUrl] && (await fileExists(downloadUrls[config.sourceUrl])))
       arcFile = downloadUrls[config.sourceUrl];
     else {
       arcFile = Path.join(config.archiveDir, arcName);
+      logger.notice("Downloading:", config.sourceUrl); // ? wget url
       await downloadFile(config.sourceUrl, arcFile, { attempts: REQUEST_ATTEMPTS });
       downloadUrls[config.sourceUrl] = arcFile;
       await settings.set("downloadUrls", downloadUrls);
@@ -358,9 +346,8 @@ class BuildContext {
 
     let extractDir;
     let extractFiles = await settings.get("extractFiles") || {};
-    if (extractFiles[arcFile]) {
+    if (extractFiles[arcFile] && (await directoryExists(extractFiles[arcFile])))
       extractDir = extractFiles[arcFile];
-    }
     else {
       extractDir = await fs.promises.mkdtemp(Path.resolve(config.tempDir, arcName + '.'));
     
@@ -392,7 +379,15 @@ class BuildContext {
       }
     
       await FileSystem.rename(extractDir, config.extractDir);
-    
+
+      if (config.patchDir) {
+        let patchDirs = await settings.get("patchDirs") || {};
+        if (patchDirs[config.patchDir]) {
+          delete patchDirs[config.patchDir];
+          await settings.set("patchDirs", patchDirs);
+        }
+      }
+
       extractFiles[arcFile] = extractDir;
       await settings.set("extractFiles", extractFiles);
     }
@@ -518,7 +513,7 @@ class BuildContext {
     for (const [key, entry] of Object.entries(this._buildTreeConfig) as any) {
       if (entry && typeof entry === "object" && entry.action && !entry.disabled) {
         await settings.push(key);
-        if (entry.rebuild || !(await settings.get("completed"))) {
+        if (entry.rebuild || !(await directoryExists(entry.binaryDir)) || !(await settings.get("completed"))) {
           logger.info(`Started action: ${key}`);
           const environment = mergeEnvironment(await resolveEnvironment(entry.environment), process.env);
           if (entry.sourceUrl && !entry.sourceUrl.startsWith(IMPORT_SCHEME)) {

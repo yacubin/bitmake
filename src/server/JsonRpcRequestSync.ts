@@ -9,7 +9,7 @@
 
 import { JSONRPC_VERSION } from "@/server/Transport";
 import { IRequestSync } from "@/server/Transport";
-import { Logger } from "@/logger";
+import { Logger } from "@/utils/Logger";
 
 const logger = Logger.create(import.meta.url);
 

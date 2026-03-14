@@ -18,7 +18,7 @@ import { SourceFile } from "@/core/SourceFile";
 import { UserSourceFiles } from "@/core/UserSourceFiles";
 import { TargetFile } from "@/core/TargetFile";
 import { TargetHelper } from "@/core/TargetHelper";
-import { Logger } from "@/logger";
+import { Logger } from "@/utils/Logger";
 
 const logger = Logger.create(import.meta.url);
 

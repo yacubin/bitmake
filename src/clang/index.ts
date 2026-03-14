@@ -8,7 +8,7 @@
  */
 
 import { execFileAsync } from "@/utils/ChildProcess";
-import { Logger } from "@/logger";
+import { Logger } from "@/utils/Logger";
 
 const logger = Logger.create(import.meta.url);
 

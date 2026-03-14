@@ -9,7 +9,7 @@
 
 import { MessagePort } from "node:worker_threads";
 import { IMessageSender } from "@/server/Transport";
-import { Logger } from "@/logger";
+import { Logger } from "@/utils/Logger";
 
 const logger = Logger.create(import.meta.url);
 

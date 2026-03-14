@@ -16,7 +16,7 @@ import { UserTargetStruct } from "@/core/UserTargetStruct";
 import { ALL_TARGET, INSTALL_TARGET } from "@/Constants";
 import { CUSTOM_VARIABLE_GROUP } from "@/Constants";
 import { randCIdentifer } from "@/utils/Random";
-import { Logger } from "@/logger";
+import { Logger } from "@/utils/Logger";
 import { FilePath, Locator } from "@/utils/Locator";
 import { TargetName } from "@/core/TargetName";
 

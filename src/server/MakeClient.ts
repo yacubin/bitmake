@@ -27,7 +27,7 @@ import { MAKECONTEXT_MAINSCRIPTS } from "@/server/RemoteMethods";
 import { MAKECONTEXT_POSTSCRIPTS } from "@/server/RemoteMethods";
 import { MAKECONTEXT_INSTALLENTRIES } from "@/server/RemoteMethods";
 import { WORKERSERVICE_PROCESSEXIT } from "@/server/RemoteMethods";
-import { Logger } from "@/logger";
+import { Logger } from "@/utils/Logger";
 
 const logger = Logger.create(import.meta.url);
 
@@ -46,7 +46,7 @@ export class WorkerRpcClient {
     this._jsonRpcDispatcher = jsonRpcDispatcher;
     this._worker = new Worker(currentScriptURL());
     this._worker.on("message", message => this.onWorkerMessage(message));
-    this._worker.on("error", error => this.onWorkerError(error));
+    this._worker.on("error", (error: Error) => this.onWorkerError(error));
     this._worker.on("exit", code => this.onWorkerExit(code));
   }
 

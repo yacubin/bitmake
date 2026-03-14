@@ -10,7 +10,7 @@
 /// <reference path="global.d.ts" />
 
 import * as cxx from "@/cxx";
-import { CMakeProcess, CTestProcess, ScriptModeOptions, getProjectInfo } from "@/cmake";
+import { CMakeProcess, CTestProcess, ScriptModeOptions, getProjectInfo, CMakeCompressOptions } from "@/cmake";
 
 import { spawnAsync } from "@/utils/ChildProcess";
 import { Locator } from "@/utils/Locator";
@@ -24,6 +24,7 @@ const cmake = {
   build: (args: any) => CMakeProcess.getInstance().build(args),
   install: (args: any) => CMakeProcess.getInstance().install(args),
   extract: (args: any) => CMakeProcess.getInstance().extract(args),
+  compress: (options: CMakeCompressOptions) => CMakeProcess.getInstance().compress(options),
   ctest: (args: any) => CTestProcess.getInstance().ctest(args),
   getProjectInfo,
 };

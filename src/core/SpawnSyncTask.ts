@@ -10,7 +10,7 @@
 import { InterfaceTask } from "@/core/MakeInterfaces";
 import { SimpleObject } from "@/core/SimpleObject";
 import { spawnAsync } from "@/utils/ChildProcess";
-import { Logger } from "@/logger";
+import { Logger } from "@/utils/Logger";
 
 const logger = Logger.create(import.meta.url);
 

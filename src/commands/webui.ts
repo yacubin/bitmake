@@ -15,7 +15,7 @@ import child_process from "node:child_process";
 
 import { randInt } from "@/utils/Random";
 import { CommandOptions } from "@/core/CommandOptions";
-import { Logger } from "@/logger";
+import { Logger } from "@/utils/Logger";
 import { currentScriptURL } from "@/utils/Module";
 import { WebServer } from "@/server/WebServer";
 

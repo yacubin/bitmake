@@ -10,7 +10,7 @@
 import { FileSystem, fetchBuffer, fileExists } from "@/utils/FileSystem";
 import { USER_CONFIG } from "@/Constants";
 import { CommandOptions } from "@/core/CommandOptions";
-import { Logger } from "@/logger";
+import { Logger } from "@/utils/Logger";
 
 const logger = Logger.create(import.meta.url);
 

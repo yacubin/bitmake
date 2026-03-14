@@ -12,7 +12,7 @@ import crypto from "node:crypto";
 import { Stream } from "node:stream";
 
 import { randUint8 } from "@/utils/Random";
-import { Logger } from "@/logger";
+import { Logger } from "@/utils/Logger";
 
 const logger = Logger.create(import.meta.url);
 

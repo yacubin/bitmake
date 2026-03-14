@@ -13,7 +13,7 @@ import { importModule } from "@/utils/Module";
 import { VariableMap } from "@/core/Scope";
 import { ScriptContext } from "@/core/ScriptContext";
 import { SimpleObject } from "@/core/SimpleObject";
-import { Logger } from "@/logger";
+import { Logger } from "@/utils/Logger";
 
 const logger = Logger.create(import.meta.url);
 

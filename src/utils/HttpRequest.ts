@@ -13,7 +13,7 @@ import http from "http";
 import https from "https";
 
 import { HTTPS_SCHEME } from "@/utils/UrlScheme";
-import { Logger } from "@/logger";
+import { Logger } from "@/utils/Logger";
 
 const logger = Logger.create(import.meta.url);
 

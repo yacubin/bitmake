@@ -14,7 +14,7 @@ import url from "node:url";
 import { FILE_SCHEME, IMPORT_SCHEME, HTTP_SCHEME, HTTPS_SCHEME } from "@/utils/UrlScheme";
 import { requireResolve } from "@/utils/Module";
 import { Locator } from "@/utils/Locator";
-import { Logger } from "@/logger";
+import { Logger } from "@/utils/Logger";
 
 const logger = Logger.create(import.meta.url);
 

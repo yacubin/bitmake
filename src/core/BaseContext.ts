@@ -17,7 +17,7 @@ import { MainTarget, PostTarget } from "@/core/Target";
 import { CustomScript, PostCustomScript } from "@/core/CustomScript";
 import { InstallEntity } from "@/core/InstallEntity";
 import { TargetName } from "@/core/TargetName";
-import { Logger } from "@/logger";
+import { Logger } from "@/utils/Logger";
 
 const logger = Logger.create(import.meta.url);
 

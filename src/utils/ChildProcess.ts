@@ -13,7 +13,7 @@ import { spawn, execFile } from "node:child_process";
 import util from "node:util";
 
 import { Environment } from "@/utils/Environment";
-import { Logger } from "@/logger";
+import { Logger } from "@/utils/Logger";
 
 const logger = Logger.create(import.meta.url);
 

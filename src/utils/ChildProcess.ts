@@ -87,6 +87,8 @@ export function spawnAsync(command: string, args: string[], options?: SpawnAsync
       exec.stderr.addListener("data", chunk => process.stderr.write(chunk));
     }
 
+    exec.addListener("error", (error: Error) => reject(error));
+
     exec.addListener("close", (status: number) => resolve({
       status,
       stdout: Buffer.concat(stdout).toString(encoding),

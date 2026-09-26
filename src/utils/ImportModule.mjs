@@ -9,7 +9,11 @@
 
 import url from "node:url";
 
-export const importModule = async (name) => import(/* webpackIgnore: true */ name);
+export function importModule(name) {
+  // if (typeof require !== 'undefined')
+  //  return Promise.resolve(require(name));
+  return import(/* webpackIgnore: true */ name);
+}
 
 export function isEntryPoint() {
   // if (Object(import.meta).url)

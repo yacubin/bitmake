@@ -93,6 +93,9 @@ export function runScript() {
       else
         logger.fatal(e);
     }
+    else if (e.message) {
+        logger.fatal(e.message);
+    }
     process.exit(1);
   });
 }

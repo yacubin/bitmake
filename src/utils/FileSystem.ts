@@ -196,4 +196,10 @@ export function writeFile(file: fs.PathLike | Locator, data: | string | NodeJS.A
   return fs.promises.writeFile(file, data, options);
 }
 
+export function stat(path: fs.PathLike | Locator) {
+  if (path instanceof Locator)
+    path = path.toPath();
+  return fs.promises.stat(path);
+}
+
 } // namespace FileSystem

@@ -32,6 +32,9 @@ function toOptionKey(name: string) {
       if (++hyphen > 1)
         return null;
     }
+    else {
+      return null;
+    }
   }
 
   return hyphen ? null : key;

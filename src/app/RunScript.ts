@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2025  Yurii Yakubin (yurii.yakubin@gmail.com)
+ * Copyright (c) 2025-2026  Yurii Yakubin (yurii.yakubin@gmail.com)
  *
  * Permission is granted to use, copy, modify, and distribute this software
  * under the MIT License. See LICENSE file for details.
@@ -92,6 +92,9 @@ export function runScript() {
         logger.fatal(e.stack);
       else
         logger.fatal(e);
+    }
+    else if (e.message) {
+        logger.fatal(e.message);
     }
     process.exit(1);
   });

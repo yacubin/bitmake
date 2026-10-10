@@ -1,13 +1,14 @@
 /*
  * MIT License
  *
- * Copyright (c) 2025  Yurii Yakubin (yurii.yakubin@gmail.com)
+ * Copyright (c) 2025-2026  Yurii Yakubin (yurii.yakubin@gmail.com)
  *
  * Permission is granted to use, copy, modify, and distribute this software
  * under the MIT License. See LICENSE file for details.
  */
 
 import fs from "node:fs";
+import crypto from "node:crypto";
 
 import { CMakeProcess } from "@/cmake";
 import { Path } from "@/utils/Path";
@@ -269,14 +270,13 @@ function makeBuildConfig(bmkRoot: BmkRoot) {
       entry.buildType = entry.buildType || rootConfig.buildType;
       const folder = key.replace(":", Path.sep);
       const workDir = Path.join(rootConfig.binaryRoot, folder);
-      entry.tempDir = entry.tempDir || Path.join(workDir, "tmp");
       if (entry.sourceUrl) {
-        if (entry.sourceUrl.startsWith(IMPORT_SCHEME)) {
+        if (typeof entry.sourceUrl === "string" && entry.sourceUrl.startsWith(IMPORT_SCHEME)) {
           const filename = requireResolve(entry.sourceUrl.slice(IMPORT_SCHEME.length));
           entry.sourceDir = Path.dirname(filename);
         }
         else {
-          entry.archiveDir = entry.archiveDir || Path.join(workDir, "arc");
+          entry.bitmakeDir = entry.bitmakeDir || Path.join(rootConfig.binaryRoot, ".bitmake");
           entry.extractDir = entry.extractDir || Path.join(workDir, "src");
           if (!entry.sourceDir)
             entry.sourceDir = entry.extractDir;
@@ -314,90 +314,114 @@ class BuildContext {
     return this._gconfig;
   }
 
-  async doExtractArchive(environment: any, config: any, settings: any) {
+  async doExtractArchive(environment: Environment, config: any) {
     if (!config.sourceUrl)
       throw new Error("Unknown sourceUrl");
-    if (!config.archiveDir)
-      throw new Error("Unknown archiveDir");
+    if (!config.bitmakeDir)
+      throw new Error("Unknown bitmakeDir");
     if (!config.extractDir)
       throw new Error("Unknown extractDir");
 
-    if (!await directoryExists(config.archiveDir)) {
-      await FileSystem.mkdir(config.archiveDir, { recursive: true });
+    if (!await directoryExists(config.bitmakeDir)) {
+      await FileSystem.mkdir(config.bitmakeDir, { recursive: true });
     }
 
-    if (!await directoryExists(config.tempDir)) {
-      await FileSystem.mkdir(config.tempDir, { recursive: true });
-    }
-
-    const arcName = Path.basename(config.sourceUrl);
-
-    let arcFile;
-    let downloadUrls = await settings.get("downloadUrls") || {};
-    if (downloadUrls[config.sourceUrl] && (await fileExists(downloadUrls[config.sourceUrl])))
-      arcFile = downloadUrls[config.sourceUrl];
+    const items = [];
+    if (typeof config.sourceUrl === "string")
+      items.push({ extractDir: config.extractDir, sourceUrl: config.sourceUrl, extractMtime: 0});
     else {
-      arcFile = Path.join(config.archiveDir, arcName);
-      logger.notice("Downloading:", config.sourceUrl); // ? wget url
-      await downloadFile(config.sourceUrl, arcFile, { attempts: REQUEST_ATTEMPTS });
-      downloadUrls[config.sourceUrl] = arcFile;
-      await settings.set("downloadUrls", downloadUrls);
+      for (const [pathName, sourceUrl] of Object.entries(config.sourceUrl))
+        items.push({ extractDir: Path.join(config.extractDir, pathName), sourceUrl, extractMtime: 0});
     }
 
-    let extractDir;
-    let extractFiles = await settings.get("extractFiles") || {};
-    if (extractFiles[arcFile] && (await directoryExists(extractFiles[arcFile])))
-      extractDir = extractFiles[arcFile];
-    else {
-      extractDir = await fs.promises.mkdtemp(Path.resolve(config.tempDir, arcName + '.'));
-    
-      await CMakeProcess.getInstance().extract({
-        environment,
-        filename: arcFile,
-        workDir: extractDir,
-        logFile:  Path.join(config.tempDir, Path.basename(extractDir) + ".log"),
-      });
-    
-      const extractList = await FileSystem.readdir(extractDir);
-      if (extractList.length === 1) {
-        extractDir = Path.resolve(extractDir, extractList[0]);
-        if (!await directoryExists(extractDir)) {
-          await FileSystem.rm(extractDir, { recursive: true });
-          throw new Error(`Support only directory for archive`);
-        }
-      }
-    
-      if (await directoryExists(config.extractDir)) {
-        // TODO: Marge extractDir with output
-        await FileSystem.rm(config.extractDir, { recursive: true });
-      }
-      else {
-        const parentDir = Path.dirname(config.extractDir);
-        if (!await directoryExists(parentDir)) {
-          await FileSystem.mkdir(parentDir, { recursive: true }); 
-        }
-      }
-    
-      await FileSystem.rename(extractDir, config.extractDir);
+    for (const iter of items) {
+      const arcName = Path.basename((new URL(iter.sourceUrl)).pathname);
+      const arcHash = crypto.createHash("md5").update(iter.sourceUrl).digest("hex");
+      const arcDir = Path.join(config.bitmakeDir, arcHash);
+      const arcFile = Path.join(arcDir, arcName);
 
-      if (config.patchDir) {
-        let patchDirs = await settings.get("patchDirs") || {};
-        if (patchDirs[config.patchDir]) {
-          delete patchDirs[config.patchDir];
-          await settings.set("patchDirs", patchDirs);
-        }
+      if (!await directoryExists(arcDir))
+        await FileSystem.mkdir(arcDir, { recursive: true });
+
+      let arcMtime = 0;
+      try { arcMtime = (await FileSystem.stat(arcFile)).mtimeMs; } catch (_e) {}
+
+      if (!arcMtime) {
+        logger.notice("Downloading:", iter.sourceUrl); // ? wget url
+        const tmpFile = arcFile + ".tmp";
+        await downloadFile(iter.sourceUrl, tmpFile, { attempts: REQUEST_ATTEMPTS });
+        await FileSystem.rename(tmpFile, arcFile);
+        arcMtime = (await FileSystem.stat(arcFile)).mtimeMs;
       }
 
-      extractFiles[arcFile] = extractDir;
-      await settings.set("extractFiles", extractFiles);
+      const extractHash = crypto.createHash("md5").update(iter.extractDir).digest("hex");
+      const extractHashDir = Path.join(config.bitmakeDir, extractHash);
+      const extractStamp = Path.join(extractHashDir, arcHash + ".txt");
+
+      if (!await directoryExists(extractHashDir))
+        await FileSystem.mkdir(extractHashDir, { recursive: true });
+
+      let extractMtime = 0;
+      try { extractMtime = (await FileSystem.stat(extractStamp)).mtimeMs; } catch (_e) {}
+
+      if (!await directoryExists(iter.extractDir) || arcMtime > extractMtime) {
+        const tempDir = await fs.promises.mkdtemp(Path.join(extractHashDir, arcName + '.'));
+        let contentDir = Path.join(tempDir, "content");
+
+      if (!await directoryExists(contentDir))
+        await FileSystem.mkdir(contentDir, { recursive: true });
+
+        await CMakeProcess.getInstance().extract({
+          environment,
+          filename: arcFile,
+          workDir: contentDir,
+          logFile:  Path.join(tempDir, "extract.log"),
+        });
+
+        const extractList = await FileSystem.readdir(contentDir);
+        if (extractList.length === 1) {
+          contentDir = Path.resolve(contentDir, extractList[0]);
+          if (!await directoryExists(contentDir)) {
+            await FileSystem.rm(contentDir, { recursive: true });
+            throw new Error(`Support only directory for archive`);
+          }
+        }
+
+        if (await directoryExists(iter.extractDir)) {
+          // TODO: Marge extractDir with output
+          await FileSystem.rm(iter.extractDir, { recursive: true });
+        }
+        else {
+          const parentDir = Path.dirname(iter.extractDir);
+          if (!await directoryExists(parentDir)) {
+            await FileSystem.mkdir(parentDir, { recursive: true }); 
+          }
+        }
+
+        await FileSystem.rename(contentDir, iter.extractDir);
+        await FileSystem.writeFile(extractStamp, iter.sourceUrl);
+        extractMtime = (await FileSystem.stat(extractStamp)).mtimeMs;
+      }
+      iter.extractMtime = extractMtime;
     }
 
     if (config.patchDir) {
-      let patchDirs = await settings.get("patchDirs") || {};
-      if (!patchDirs[config.patchDir]) {
-        await makePatch(config.patchDir, config.extractDir);
-        patchDirs[config.patchDir] = config.extractDir;
-        await settings.set("patchDirs", patchDirs);
+      const extractHash = crypto.createHash("md5").update(config.extractDir).digest("hex");
+      const extractHashDir = Path.join(config.bitmakeDir, extractHash);
+
+      if (!await directoryExists(extractHashDir))
+        await FileSystem.mkdir(extractHashDir, { recursive: true });
+
+      const patchHash = crypto.createHash("md5").update(config.patchDir).digest("hex");
+      const patchStamp = Path.join(extractHashDir, patchHash + ".txt");
+      let patchMtime = 0;
+      try { patchMtime = (await FileSystem.stat(patchStamp)).mtimeMs; } catch (_e) {}
+      for (const iter of items) {
+        if (iter.extractMtime > patchMtime) {
+          await makePatch(config.patchDir, config.extractDir);
+          await FileSystem.writeFile(patchStamp, config.patchDir);
+          break;
+        }
       }
     }
   }
@@ -516,8 +540,8 @@ class BuildContext {
         if (entry.rebuild || !(await directoryExists(entry.binaryDir)) || !(await settings.get("completed"))) {
           logger.info(`Started action: ${key}`);
           const environment = mergeEnvironment(await resolveEnvironment(entry.environment), process.env);
-          if (entry.sourceUrl && !entry.sourceUrl.startsWith(IMPORT_SCHEME)) {
-            await this.doExtractArchive(environment, entry, settings);
+          if (entry.sourceUrl && !(typeof entry.sourceUrl === "string" && entry.sourceUrl.startsWith(IMPORT_SCHEME))) {
+            await this.doExtractArchive(environment, entry);
           }
           await this.doTargetBuild(this._gconfig, environment, entry, settings);
           await settings.set("completed", true);

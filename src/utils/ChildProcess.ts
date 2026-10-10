@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2025  Yurii Yakubin (yurii.yakubin@gmail.com)
+ * Copyright (c) 2025-2026  Yurii Yakubin (yurii.yakubin@gmail.com)
  *
  * Permission is granted to use, copy, modify, and distribute this software
  * under the MIT License. See LICENSE file for details.
@@ -86,6 +86,8 @@ export function spawnAsync(command: string, args: string[], options?: SpawnAsync
       exec.stdout.addListener("data", chunk => process.stdout.write(chunk));
       exec.stderr.addListener("data", chunk => process.stderr.write(chunk));
     }
+
+    exec.addListener("error", (error: Error) => reject(error));
 
     exec.addListener("close", (status: number) => resolve({
       status,

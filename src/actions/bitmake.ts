@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2025  Yurii Yakubin (yurii.yakubin@gmail.com)
+ * Copyright (c) 2025-2026  Yurii Yakubin (yurii.yakubin@gmail.com)
  *
  * Permission is granted to use, copy, modify, and distribute this software
  * under the MIT License. See LICENSE file for details.
@@ -119,7 +119,7 @@ export default async function(config: any, environment: Environment, settings: S
     await determineCompiler(scope);
   }
 
-  if (config.sourceUrl && config.sourceUrl.startsWith(IMPORT_SCHEME)) {
+  if (typeof config.sourceUrl === "string" && config.sourceUrl.startsWith(IMPORT_SCHEME)) {
     const scriptFile = requireResolve(config.sourceUrl.slice(IMPORT_SCHEME.length));
     scope.SCRIPT_FILE = Locator.create(scriptFile);
     scope.SCRIPT_DIR = scope.SCRIPT_FILE.dirname();

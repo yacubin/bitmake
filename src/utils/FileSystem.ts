@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2025  Yurii Yakubin (yurii.yakubin@gmail.com)
+ * Copyright (c) 2025-2026  Yurii Yakubin (yurii.yakubin@gmail.com)
  *
  * Permission is granted to use, copy, modify, and distribute this software
  * under the MIT License. See LICENSE file for details.
@@ -147,6 +147,8 @@ export function resolveURLString(str: string) {
 export async function fetchBuffer(str: string): Promise<Buffer> {
   if (str.startsWith(HTTP_SCHEME) || str.startsWith(HTTPS_SCHEME)) {
     const response = await fetch(str);
+    if (!response.ok)
+      throw new Error(`Failed to fetch '${str}': ${response.status} ${response.statusText}`);
     return Buffer.from(await response.arrayBuffer());
   }
   return await fs.promises.readFile(getURLString(str));
@@ -194,6 +196,12 @@ export function writeFile(file: fs.PathLike | Locator, data: | string | NodeJS.A
   if (file instanceof Locator)
     file = file.toPath();
   return fs.promises.writeFile(file, data, options);
+}
+
+export function stat(path: fs.PathLike | Locator) {
+  if (path instanceof Locator)
+    path = path.toPath();
+  return fs.promises.stat(path);
 }
 
 } // namespace FileSystem

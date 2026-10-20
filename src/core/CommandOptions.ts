@@ -10,14 +10,13 @@
 import { Locator } from "@/utils/Locator";
 
 export interface CommandOptions {
-  argv: string[];
-  nodePath: string;
-  handler: string;
-  workDir: Locator;
+  argv?: string[];
   env: {
     buildType?: string;
-    config?: string;
+    config?: string | Record<string, unknown>;
     preset?: string;
     webui?: boolean;
   };
+  handler: string;
+  workDir: Locator;
 };

@@ -20,6 +20,27 @@ import { Locator } from "@/utils/Locator";
 
 const logger = Logger.create(import.meta.url);
 
+async function runHandler(options: CommandOptions) {
+  const handler = commands[options.handler];
+  if (!handler)
+    throw Error(`The ${PROJECT_NAME} does not support the ${options.handler} command`);
+
+  const res = handler(options);
+  if (res instanceof Promise) {
+    await res;
+  }
+}
+
+export async function runCommand(command: string, env: object) {
+  logger.info("Main thread started");
+  return runHandler({
+    argv: undefined,
+    handler: command,
+    workDir: Locator.create(process.cwd()),
+    env,
+  });
+}
+
 export async function runMainScript() {
   logger.info("Main thread started");
 
@@ -33,7 +54,6 @@ export async function runMainScript() {
 
   const options: CommandOptions = {
     argv: process.argv,
-    nodePath,
     handler: "default",
     workDir: Locator.create(process.cwd()),
     env: {},
@@ -50,15 +70,7 @@ export async function runMainScript() {
   }
 
   options.env = Args.toObject(process.argv.slice(argsIndex));
-
-  const handler = commands[options.handler];
-  if (!handler)
-    throw Error(`The ${PROJECT_NAME} does not support the ${options.handler} command`);
-
-  const res = handler(options);
-  if (res instanceof Promise) {
-    await res;
-  }
+  return runHandler(options);
 }
 
 export async function runWorkerScript() {

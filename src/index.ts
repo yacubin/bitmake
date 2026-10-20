@@ -16,7 +16,7 @@ import { spawnAsync } from "@/utils/ChildProcess";
 import { Locator } from "@/utils/Locator";
 import { requestGet, downloadFile } from "@/utils/HttpRequest";
 import { Path } from "@/utils/Path";
-import { runScript } from "@/app/RunScript";
+import { runScript, runCommand } from "@/app/RunScript";
 
 const cmake = {
   scriptMode: (scriptFile: string, variables: object, options?: ScriptModeOptions) => CMakeProcess.getInstance().scriptMode(scriptFile, variables, options),
@@ -38,12 +38,15 @@ const utils = {
   downloadFile,
 };
 
+const run = runCommand;
+
 export {
   cxx,
   cmake,
   process,
   utils,
   Locator,
+  run,
 };
 
 export default {
@@ -52,6 +55,7 @@ export default {
   process,
   utils,
   Locator,
+  run,
 
   path: Path, // Remove me
 };

@@ -35,7 +35,8 @@ const logger = Logger.create(import.meta.url);
 interface IGeneralConfig {
   workDir: Locator;
   buildType: string;
-  configArg?: string;
+  config?: string | Record<string, unknown>;
+  argv?: string[];
 };
 
 interface BmkNode {
@@ -302,12 +303,14 @@ class BuildContext {
   private _gconfig: IGeneralConfig;
   private _buildTreeConfig: any = {};
   private _workDir: Locator;
-  private _configArg?: string;
+  private _config?: string | Record<string, unknown>;
+  private _argv?: string[];
 
   constructor(gconfig: IGeneralConfig) {
     this._gconfig = gconfig;
     this._workDir = gconfig.workDir;
-    this._configArg = gconfig.configArg;
+    this._config = gconfig.config;
+    this._argv = gconfig.argv;
   }
 
   public get gconfig() {
@@ -481,11 +484,17 @@ class BuildContext {
   }
 
   async loadTreeConfig() {
+    if (typeof this._config === "object")
+      return this._config;
+
+    if (this._argv === undefined)
+      throw new Error(`Unknown ${this._config} configuration type`);
+
     let configPath: Locator | undefined;
-    if (this._configArg) {
-      configPath = this._workDir.resolve(this._configArg);
+    if (this._config) {
+      configPath = this._workDir.resolve(this._config);
       if (!await fileExists(configPath))
-        throw `Configuration '${this._configArg}' file does not exist`;
+        throw `Configuration '${this._config}' file does not exist`;
     }
     else {
       configPath = this._workDir.join(USER_CONFIG);
@@ -505,23 +514,24 @@ class BuildContext {
     }
 
     const { default: configModule } = await importModule(configPath.toURLString());
-    switch (typeof configModule) {
-    case "function":
-      const userConfig = configModule();
-      if (userConfig instanceof Promise)
-        return await userConfig;
-      return userConfig;
-
-    case "object":
-      return configModule;
-
-    default:
-      throw new Error(`Unknown user configuration type`);
-    }
+    return configModule;
   }
 
   public async run(): Promise<void> {
-    const originConfig = await this.loadTreeConfig();
+    let originConfig = await this.loadTreeConfig();
+    switch (typeof originConfig) {
+    case "function":
+      originConfig = originConfig();
+      if (originConfig instanceof Promise)
+        originConfig = await originConfig;
+      break;
+    case "object":
+      break;
+
+    default:
+      throw new Error(`Unknown ${originConfig} configuration type`);
+    }
+
     const bmkRoot = BmkRoot.create(this._gconfig.buildType, this._gconfig.workDir, this._gconfig.workDir.join("build"), originConfig);
 
     this._buildTreeConfig = makeBuildConfig(bmkRoot);
@@ -557,8 +567,8 @@ export default async (options: CommandOptions) => {
   const buildContext = new BuildContext({
     buildType: options.env.buildType == DEBUG_BUILD_TYPE ? options.env.buildType : RELEASE_BUILD_TYPE,
     workDir: options.workDir,
-    configArg: options.env.config,
+    argv: options.argv,
+    config: options.env.config,
   });
-
   await buildContext.run();
 }
